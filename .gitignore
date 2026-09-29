@@ -285,6 +285,12 @@ FakesAssemblies/
 .ntvs_analysis.dat
 node_modules/
 
+# Local agent/MCP settings containing API tokens
+stock-exchange/.agents/mcp_config.json
+.agents/mcp_config.json
+.env
+.env.local
+
 # Visual Studio 6 build log
 *.plg
 

@@ -1,0 +1,844 @@
+أيوه. من الـ 17 screens الموجودة في الصورة، أقدر أفكك الـ UI إلى Reusable Frontend Components بدل ما نعمل كل Screen بشكل منفصل.
+
+وبما إن التصميم واضح إنه Admin Dashboard موحّد، فأفضل Architecture هي إننا نبني Design System + Layout Components + CRUD Components + Page-specific Components.
+
+1. App Shell Components
+
+دي المكونات المشتركة تقريبًا في كل الـ screens:
+
+src/components/layout/
+├── AppShell
+├── Sidebar
+├── SidebarLogo
+├── SidebarNavigation
+├── SidebarNavItem
+├── SidebarSection
+├── SidebarFooter
+├── Topbar
+├── GlobalSearch
+├── NotificationButton
+├── UserMenu
+├── Breadcrumbs
+└── PageContainer
+AppShell
+
+المكون الأساسي:
+
+┌─────────────────────────────────────────┐
+│ Topbar                                  │
+├──────────┬──────────────────────────────┤
+│ Sidebar  │ Page Content                 │
+│          │                              │
+│          │                              │
+└──────────┴──────────────────────────────┘
+2. Sidebar Components
+
+الـ Sidebar في الصورة ثابت تقريبًا:
+
+FinWise
+
+Dashboard
+
+CONTENT
+  Articles
+  Videos
+  Market News
+
+MONETIZATION
+  Subscription Plans
+
+USERS
+  Users
+
+APP
+  Onboarding
+  About FinWise
+
+Settings
+
+Logout
+
+Components:
+
+Sidebar
+├── SidebarBrand
+├── SidebarMenu
+├── SidebarSection
+├── SidebarItem
+├── SidebarIcon
+└── SidebarLogout
+SidebarItem
+
+يدعم:
+
+icon
+label
+route
+active
+badge
+
+والـ active state يكون بالـ mint/emerald background.
+
+3. Topbar
+
+في أعلى كل Dashboard screen:
+
+Topbar
+├── Breadcrumbs
+├── GlobalSearch
+├── NotificationButton
+├── HelpButton
+├── UserAvatar
+└── UserDropdown
+
+مثلاً:
+
+Articles > Create Article
+
+والـ search:
+
+🔍 Search anything...
+4. Global UI Components
+
+دي أهم مجموعة لأن كل الصفحات تعتمد عليها.
+
+components/ui/
+
+Button
+IconButton
+Input
+Textarea
+Select
+MultiSelect
+Checkbox
+Radio
+Switch
+DatePicker
+SearchInput
+Dropdown
+DropdownMenu
+Badge
+Avatar
+Tooltip
+Divider
+Card
+Modal
+Drawer
+Toast
+Alert
+Tabs
+Pagination
+Spinner
+Skeleton
+EmptyState
+ConfirmDialog
+5. Button System
+
+الصورة تستخدم بشكل أساسي:
+
+Primary
+┌─────────────────┐
+│ + New Article    │
+└─────────────────┘
+Secondary
+┌──────────────┐
+│ Cancel       │
+└──────────────┘
+Destructive
+Delete
+
+Components:
+
+<Button variant="primary" />
+<Button variant="secondary" />
+<Button variant="danger" />
+<Button variant="ghost" />
+<IconButton />
+6. Form Components
+
+من الـ Article / Video / News / Plan screens واضح إن عندك Form System متكرر جدًا.
+
+Form
+├── FormField
+├── FormLabel
+├── FormInput
+├── FormSelect
+├── FormTextarea
+├── FormRadioGroup
+├── FormCheckbox
+├── FormSwitch
+├── FormError
+└── FormActions
+
+مثلاً:
+
+Title *
+┌──────────────────────────────┐
+│ Investing 101                │
+└──────────────────────────────┘
+
+ده يكون:
+
+<FormField>
+    <FormLabel />
+    <Input />
+    <FormError />
+</FormField>
+7. Page Header
+
+كل صفحة تقريبًا عندها نفس الـ structure:
+
+PageHeader
+
+Title
+Description
+
+                          Primary Action
+
+مثلاً:
+
+Articles
+Manage educational content published on FinWise
+
+                              + New Article
+
+Component:
+
+<PageHeader
+    title="Articles"
+    description="Manage educational content"
+>
+    <Button />
+</PageHeader>
+8. Filter Bar
+
+موجود في:
+
+Articles
+Videos
+News
+Users
+
+Structure:
+
+FilterBar
+├── SearchInput
+├── SelectFilter
+├── SelectFilter
+├── SelectFilter
+└── ClearFilters
+
+مثلاً:
+
+┌──────────────────┐ ┌──────────┐ ┌────────┐ ┌────────┐
+│ 🔍 Search...     │ │ Category │ │ Tier   │ │ Status │
+└──────────────────┘ └──────────┘ └────────┘ └────────┘
+9. Data Table System
+
+دي من أهم الـ components.
+
+بدل ما تعمل Table لكل module:
+
+DataTable
+├── TableHeader
+├── TableToolbar
+├── Table
+├── TableHead
+├── TableBody
+├── TableRow
+├── TableCell
+├── TableActions
+├── TableEmpty
+├── TableLoading
+└── TablePagination
+
+وتستخدمها:
+
+<ArticleTable />
+<VideoTable />
+<NewsTable />
+<UserTable />
+
+أو الأفضل تعمل Generic:
+
+<DataTable
+    :columns="columns"
+    :data="articles"
+/>
+10. Table Action Menu
+
+موجود في أغلب الـ CRUD screens:
+
+⋮
+───────
+Edit
+Preview
+Publish
+Delete
+
+Component:
+
+<ActionMenu
+    :items="[
+        'edit',
+        'preview',
+        'delete'
+    ]"
+/>
+11. Status Badge
+
+في الصورة فيه عدة أنواع:
+
+Published
+Draft
+Active
+Expired
+FREE
+BASIC
+PRO
+LIVE
+BREAKING
+
+Component:
+
+<StatusBadge
+    status="published"
+/>
+
+Variants:
+
+success
+warning
+danger
+info
+neutral
+12. Dashboard Components
+
+الـ Dashboard محتاج Components خاصة به:
+
+dashboard/
+├── StatsGrid
+├── StatCard
+├── StatIcon
+├── StatTrend
+├── MiniChart
+├── QuickActions
+├── ActivityTable
+├── ActivityItem
+└── MarketRallyCard
+StatCard
+
+مثلاً:
+
+┌──────────────────────┐
+│ 📰 Articles           │
+│                       │
+│ 128                   │
+│ ↑ 12% this week       │
+└──────────────────────┘
+
+Props:
+
+title
+value
+icon
+trend
+trendLabel
+13. Quick Actions
+
+في Dashboard:
+
+Quick Actions
+
+[ + New Article ]
+
+[ + New Video ]
+
+[ + Post News ]
+
+Component:
+
+<QuickActions />
+<QuickActionButton />
+14. Recent Activity
+Recent Activity
+
+User              Action          Type       Time
+Ahmed Mohamed     Purchased Pro   Payment    2m ago
+Sara Ali          Created account User       8m ago
+Admin             Added article   Article    15m ago
+
+Components:
+
+ActivityPanel
+ActivityTable
+ActivityRow
+ActivityTypeBadge
+15. Article Components
+
+الـ Article screens محتاجة:
+
+articles/
+├── ArticleList
+├── ArticleTable
+├── ArticleForm
+├── ArticleInformation
+├── ArticleCoverUpload
+├── ArticleContentEditor
+├── AccessTierSelector
+├── ArticleStatusSelector
+└── ArticlePreview
+أهم Component
+
+ArticleForm
+
+ArticleForm
+├── ArticleInformation
+│   ├── TitleInput
+│   ├── CategorySelect
+│   ├── AuthorInput
+│   ├── AuthorRoleInput
+│   └── ReadingTimeInput
+│
+├── CoverImageUpload
+│
+├── ArticleEditor
+│
+├── AccessTierSelector
+│
+├── StatusSelector
+│
+└── FormActions
+16. Rich Text Editor
+
+موجود في:
+
+Article Create
+Article Edit
+Video Description
+News Summary
+About Us
+
+فالأفضل Component مستقل:
+
+RichTextEditor
+
+Toolbar:
+
+B  I  U
+H1 H2
+Quote
+Link
+List
+17. Image Upload Component
+
+موجود في Articles و Videos و News.
+
+ImageUploader
+├── UploadDropzone
+├── ImagePreview
+├── ReplaceButton
+├── RemoveButton
+└── UploadProgress
+
+الحالة الأساسية:
+
+┌──────────────────────────────┐
+│                              │
+│          ↑                   │
+│      Upload image            │
+│                              │
+│ Drag & drop or browse        │
+│                              │
+└──────────────────────────────┘
+18. Video Components
+videos/
+├── VideoTable
+├── VideoForm
+├── VideoInformation
+├── VideoSourceSelector
+├── VideoUrlInput
+├── VideoThumbnailUpload
+├── VideoPreview
+├── DurationInput
+├── EducatorFields
+├── AccessTierSelector
+└── VideoDescriptionEditor
+Video Source Selector
+
+الصورة توضح:
+
+[ YouTube ] [ Vimeo ] [ Direct MP4 ]
+
+Component:
+
+<VideoSourceTabs />
+19. Video Preview
+
+في Edit Video:
+
+┌─────────────────────────────┐
+│                             │
+│       ▶                    │
+│                             │
+│     Video Thumbnail         │
+│                             │
+└─────────────────────────────┘
+
+Component:
+
+<VideoPreview />
+20. Market News Components
+news/
+├── NewsTable
+├── NewsForm
+├── NewsHeadlineInput
+├── NewsBadgeSelector
+├── RallyPercentageInput
+├── NewsSummaryEditor
+├── NewsImageUpload
+├── NewsSourceInput
+├── PinToHomeToggle
+└── NewsPreviewCard
+21. Rally Card
+
+مهم جدًا لأن FinWise عنده market highlight.
+
+┌────────────────────────────┐
+│ Market Rally               │
+│                            │
+│ +18%                       │
+│                            │
+│ ───────╱╲────╱╲────────    │
+│                            │
+│ Top Gainer                 │
+└────────────────────────────┘
+
+Component:
+
+<MarketRallyCard />
+22. Subscription Components
+
+الـ Subscription screen مختلفة عن الـ tables.
+
+subscriptions/
+├── PlansGrid
+├── PlanCard
+├── PlanBadge
+├── PlanPrice
+├── FeatureList
+├── FeatureItem
+├── PopularBadge
+├── PlanStatus
+├── PlanForm
+└── FeatureInput
+Plan Card
+┌────────────────────────┐
+│ BASIC                  │
+│                        │
+│ 200 EGP /mo            │
+│                        │
+│ ✓ Premium articles     │
+│ ✓ Videos               │
+│ ✓ Market news          │
+│                        │
+│ [Active]               │
+│                        │
+│ Edit       ⋮           │
+└────────────────────────┘
+23. Dynamic Feature Input
+
+في Create Plan:
+
+Benefits
+
+✓ Daily market news       ×
+✓ Premium articles        ×
+✓ Unlimited videos        ×
+
++ Add benefit
+
+Component:
+
+<DynamicListInput />
+
+مفيد جدًا وممكن reuse في أي مكان.
+
+24. Users Components
+users/
+├── UsersTable
+├── UserRow
+├── UserAvatar
+├── UserDetails
+├── UserSubscriptionCard
+├── UserAccountStatus
+├── PlanSelector
+├── SubscriptionStatus
+├── ExpirationDatePicker
+└── AccountStatusToggle
+25. User Details Layout
+
+الصورة فيها:
+
+User Profile
+       +
+Subscription
+       +
+Account
+
+Components:
+
+<UserProfileCard />
+
+<UserSubscriptionCard />
+
+<UserAccountCard />
+26. Onboarding Components
+
+دي لها UI مختلف:
+
+onboarding/
+├── OnboardingEditor
+├── SlideTabs
+├── SlideCard
+├── SlidePreview
+├── SlideForm
+├── SlideImage
+├── StepBadgeInput
+└── MobilePreview
+Mobile Preview
+
+ده Component مميز جدًا:
+
+┌─────────────────┐
+│     FinWise     │
+│                 │
+│     [IMAGE]     │
+│                 │
+│ Learn about     │
+│ the market      │
+│                 │
+│    STEP 01      │
+│                 │
+│      ● ○ ○      │
+└─────────────────┘
+27. About FinWise Components
+about/
+├── MissionEditor
+├── FeaturesEditor
+├── FeatureItem
+├── AddFeatureButton
+├── ContactInformation
+├── SupportEmailInput
+├── WebsiteInput
+├── SocialLinksEditor
+└── AboutPreview
+28. Profile / Settings
+
+الصورة الأخيرة فيها:
+
+Profile
+├── AdminAvatar
+├── FullName
+├── Email
+└── ChangePassword
+
+Notifications
+├── New users
+├── Subscription payments
+├── Content updates
+└── System notifications
+
+Components:
+
+settings/
+├── ProfileCard
+├── AvatarUploader
+├── ProfileForm
+├── ChangePasswordForm
+├── NotificationSettings
+├── NotificationToggle
+└── SettingsTabs
+29. Confirmation Components
+
+أي CRUD dashboard لازم يكون عنده:
+
+ConfirmDialog
+DeleteDialog
+PublishDialog
+DeactivateDialog
+UnsavedChangesDialog
+
+مثلاً:
+
+┌───────────────────────────────────────┐
+│ Delete Article?                       │
+│                                       │
+│ This action cannot be undone.         │
+│                                       │
+│       Cancel       Delete             │
+└───────────────────────────────────────┘
+30. Empty States
+
+مهمة جدًا:
+
+<EmptyState
+    icon="article"
+    title="No articles found"
+    description="Create your first article"
+>
+    <Button>New Article</Button>
+</EmptyState>
+31. Loading Components
+PageSkeleton
+TableSkeleton
+CardSkeleton
+FormSkeleton
+StatCardSkeleton
+32. Toast System
+
+بعد العمليات:
+
+✓ Article created successfully
+✓ Changes saved successfully
+✓ Video published
+✓ User subscription updated
+
+Components:
+
+Toast
+ToastContainer
+33. Responsive Components
+
+لازم نعمل:
+
+ResponsiveSidebar
+MobileSidebar
+MobileTopbar
+ResponsiveTable
+MobileTableCard
+ResponsiveForm
+
+خصوصًا الـ tables لأن على الشاشات الصغيرة تتحول من:
+
+TABLE
+
+إلى:
+
+CARD
+🧩 Architecture النهائية المقترحة
+
+لو هتعمل المشروع بـ Vue 3 + TypeScript زي الـ specification، أنا أنصح بالـ structure ده:
+
+src/
+│
+├── components/
+│
+│   ├── layout/
+│   │   ├── AppShell.vue
+│   │   ├── Sidebar.vue
+│   │   ├── SidebarItem.vue
+│   │   ├── Topbar.vue
+│   │   ├── GlobalSearch.vue
+│   │   ├── UserMenu.vue
+│   │   └── Breadcrumbs.vue
+│   │
+│   ├── ui/
+│   │   ├── Button.vue
+│   │   ├── Input.vue
+│   │   ├── Select.vue
+│   │   ├── Textarea.vue
+│   │   ├── Checkbox.vue
+│   │   ├── Radio.vue
+│   │   ├── Switch.vue
+│   │   ├── Badge.vue
+│   │   ├── Card.vue
+│   │   ├── Modal.vue
+│   │   ├── Drawer.vue
+│   │   ├── Dropdown.vue
+│   │   ├── Tooltip.vue
+│   │   ├── Pagination.vue
+│   │   ├── Skeleton.vue
+│   │   ├── Toast.vue
+│   │   ├── EmptyState.vue
+│   │   └── ConfirmDialog.vue
+│   │
+│   ├── data-table/
+│   │   ├── DataTable.vue
+│   │   ├── TableToolbar.vue
+│   │   ├── TableActions.vue
+│   │   ├── TablePagination.vue
+│   │   └── TableSkeleton.vue
+│   │
+│   ├── forms/
+│   │   ├── FormField.vue
+│   │   ├── FormLabel.vue
+│   │   ├── FormError.vue
+│   │   ├── FormActions.vue
+│   │   ├── RichTextEditor.vue
+│   │   ├── ImageUploader.vue
+│   │   └── DynamicListInput.vue
+│   │
+│   ├── dashboard/
+│   │   ├── StatCard.vue
+│   │   ├── StatsGrid.vue
+│   │   ├── QuickActions.vue
+│   │   ├── ActivityTable.vue
+│   │   └── MarketRallyCard.vue
+│   │
+│   ├── articles/
+│   │   ├── ArticleTable.vue
+│   │   ├── ArticleForm.vue
+│   │   ├── ArticleEditor.vue
+│   │   └── ArticlePreview.vue
+│   │
+│   ├── videos/
+│   │   ├── VideoTable.vue
+│   │   ├── VideoForm.vue
+│   │   ├── VideoSourceSelector.vue
+│   │   └── VideoPreview.vue
+│   │
+│   ├── news/
+│   │   ├── NewsTable.vue
+│   │   ├── NewsForm.vue
+│   │   ├── RallyInput.vue
+│   │   └── NewsPreview.vue
+│   │
+│   ├── subscriptions/
+│   │   ├── PlansGrid.vue
+│   │   ├── PlanCard.vue
+│   │   ├── PlanForm.vue
+│   │   └── FeatureList.vue
+│   │
+│   ├── users/
+│   │   ├── UsersTable.vue
+│   │   ├── UserDetails.vue
+│   │   ├── UserSubscription.vue
+│   │   └── UserStatus.vue
+│   │
+│   ├── onboarding/
+│   │   ├── SlideCard.vue
+│   │   ├── SlideEditor.vue
+│   │   └── MobilePreview.vue
+│   │
+│   └── about/
+│       ├── MissionEditor.vue
+│       ├── FeaturesEditor.vue
+│       └── ContactEditor.vue
+│
+└── views/
+    ├── auth/
+    ├── dashboard/
+    ├── articles/
+    ├── videos/
+    ├── news/
+    ├── subscriptions/
+    ├── users/
+    ├── onboarding/
+    ├── about/
+    └── settings/
+
+-------------------------------------------------------------
+
+
+إليك تفكيك المكونات كـ Design System وعناصر مرئية (Visual Components) مستخرجة من الشاشات الـ 17:   1. الألوان والخطوط (Colors & Typography)اللون الرئيسي (Primary): درجة الأخضر (Mint/Emerald) تُستخدم في الأزرار الأساسية (مثل زر "+ New Article")، وحالات التفعيل (Active states)، وبعض الشارات (Badges).   ألوان الخلفيات: رمادي فاتح جداً لخلفية الشاشات (Page Background)، وأبيض ناصع لخلفية القائمة الجانبية (Sidebar) والبطاقات (Cards) والجداول.   الخطوط (Text): أسود/رمادي داكن للعناوين والنصوص الأساسية، ورمادي فاتح للعناوين الفرعية (Subtitles) ورؤوس الجداول (Table Headers) والنصوص الإرشادية (Placeholders).   2. تخطيط الشاشة الأساسي (App Shell Layout)القائمة الجانبية (Sidebar): ثابتة على اليسار بخلفية بيضاء. تحتوي على الشعار بالأعلى، روابط مقسمة تحت عناوين رئيسية رمادية (مثل CONTENT, MONETIZATION)، العنصر النشط يأخذ خلفية خضراء باهتة مع نص أيقونة باللون الأخضر الأساسي. أسفل القائمة يوجد الإعدادات وزر تسجيل الخروج.   الشريط العلوي (Topbar): شريط أبيض علوي يحتوي على حقل بحث وسطي (Search anything...)، أيقونة إشعارات، وملف المستخدم الشخصي (صورة مصغرة + الاسم) على اليمين.   3. الأزرار (Buttons System)الأزرار الرئيسية (Primary Buttons): مستطيلة بحواف دائرية بسيطة، خلفية خضراء ونص أبيض (مثل "+ New Article", "Save Changes", "Publish").   الأزرار الثانوية (Secondary/Ghost): خلفية بيضاء مع إطار خفيف أو بدون إطار، تستخدم للإلغاء (Cancel) أو الخيارات الإضافية (مثل أزرار النقاط الثلاث "..." في الجداول).   أزرار التصفح (Pagination): مربعات صغيرة أسفل الجداول، الصفحة النشطة بخلفية خضراء، والبقية بيضاء بإطار رمادي.   4. النماذج وحقول الإدخال (Form Elements)حقول النصوص والقوائم المنسدلة (Inputs & Selects): مستطيلة بحواف دائرية خفيفة وإطار رمادي، التسمية (Label) تكون أعلى الحقل، وتحتوي على نص إرشادي باهت بالداخل.   محرر النصوص (Rich Text Editor): صندوق يحتوي على شريط أدوات علوي (Bold, Italic, Underline, Link, Lists) ومساحة للكتابة بالأسفل.   مربع رفع الملفات (Drag & Drop Upload): مساحة مستطيلة بإطار متقطع (Dashed Border)، بداخلها أيقونة سحابة أو رفع، ونص "Drag & drop image".   مفاتيح التبديل والاختيار (Toggles & Radios): أزرار اختيار دائرية (Radio) للاختيار بين (Free / Paid)، ومفاتيح تبديل (Toggle Switches) لتفعيل وتعطيل الإشعارات في شاشة الإعدادات.   5. عرض البيانات (Data Display)الجداول (Data Tables): مساحات بيضاء بدون إطارات داخلية بين الخلايا، صف العناوين العلوي بخط رمادي باهت. تحتوي الصفوف على صور مصغرة (Thumbnails) بجانب النصوص.   الشارات (Status Badges): كبسولات صغيرة (Pills) ملونة لتوضيح الحالة:أخضر: Published, Active, FREE.   أصفر/برتقالي: Draft, PRO, BASIC.   أحمر: BREAKING, Expired.   6. البطاقات والإحصائيات (Cards & Widgets)بطاقات الإحصائيات (Stat Cards): مستطيلات بيضاء في شاشة الـ Dashboard تحتوي على أيقونة، عنوان (مثل Active Users)، رقم كبير، ومؤشر نمو بنسبة مئوية باللون الأخضر أو الأحمر (مثل ↑ 12%).   بطاقات خطط الاشتراك (Pricing Cards): بطاقات عمودية في شاشة (Subscription Plans) يبرز فيها اسم الخطة، السعر الشهري بحجم كبير، قائمة بالمميزات مع علامات (✓) خضراء، وشارة توضح ما إذا كانت نشطة (Active).   7. مكونات العرض المسبق (Preview Components)معاينة الجوال (Mobile Preview): في شاشة (Onboarding)، يوجد إطار يحاكي شكل الهاتف المحمول، يعرض صورة الغلاف، النص، ومؤشرات النقاط (Dots) بالأسفل لتمثيل الخطوات.   معاينة الفيديو (Video Player): مربع أسود يمثل مشغل الفيديو مع زر تشغيل (Play) في المنتصف، يُستخدم في شاشات إضافة وتعديل الفيديوهات.   هذا التفكيك يمنحك خريطة بصرية واضحة للعناصر المتكررة. يمكنك الآن بناء كل "بلوك" كـ Component مستقل في الكود الخاص بك بناءً على هذا الوصف المرئي.

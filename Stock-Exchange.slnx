@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Stock-Exchange/stock-exchange.esproj">
+    <Build />
+    <Deploy />
+  </Project>
+</Solution>

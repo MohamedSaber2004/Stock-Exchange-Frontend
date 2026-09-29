@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-primary: #f8fafc;
+    --bg-secondary: #ffffff;
+    --bg-surface: #ffffff;
+    --bg-surface-hover: #f1f5f9;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+    --brand-primary: #10b981;
+    --brand-primary-hover: #059669;
+    --brand-primary-light: #ecfdf5;
+    --brand-success: #10b981;
+    --brand-warning: #f59e0b;
+    --brand-danger: #ef4444;
+    --border-color: #e2e8f0;
+  }
+
+  html, body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Plus Jakarta Sans', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    width: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html[dir="rtl"], 
+  html[dir="rtl"] body, 
+  [dir="rtl"] {
+    font-family: 'Tajawal', 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+  }
+
+  #app {
+    min-height: 100vh;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    max-width: 100%;
+    background-color: var(--bg-primary);
+  }
+}
+
+/* Custom Scrollbar for Light Theme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
