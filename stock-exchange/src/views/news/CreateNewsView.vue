@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import AppShell from '@/components/layout/AppShell.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import ImageUploader from '@/components/forms/ImageUploader.vue'
+import AttachmentUploader, { type AttachmentItem } from '@/components/forms/AttachmentUploader.vue'
 import RichTextEditor from '@/components/forms/RichTextEditor.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { useI18n } from 'vue-i18n'
@@ -19,6 +20,7 @@ const form = ref({
   summary: '',
   source: 'FinWise Editorial Team',
   featuredImage: '',
+  attachments: [] as AttachmentItem[],
   pinToHome: true
 })
 
@@ -109,8 +111,15 @@ const handlePublish = () => {
             <!-- Featured Image Upload -->
             <ImageUploader
               v-model="form.featuredImage"
-              label="Featured Image"
-              hint="Recommended size: 1200×675"
+              :label="isAr ? 'الصورة البارزة' : 'Featured Image'"
+              :hint="isAr ? 'الحجم الموصى به: 1200×675' : 'Recommended size: 1200×675'"
+            />
+
+            <!-- Press Release Attachments / Documents with Accessible Progress Bar -->
+            <AttachmentUploader
+              v-model="form.attachments"
+              :label="isAr ? 'المرفقات والبيانات الصحفية' : 'Press Releases & Disclosures'"
+              :hint="isAr ? 'PDF, Word, Excel (بحد أقصى 15MB)' : 'PDF, Word, Excel (max 15MB)'"
             />
           </div>
 

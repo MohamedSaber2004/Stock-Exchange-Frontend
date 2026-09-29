@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import AppShell from '@/components/layout/AppShell.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import ImageUploader from '@/components/forms/ImageUploader.vue'
+import AttachmentUploader, { type AttachmentItem } from '@/components/forms/AttachmentUploader.vue'
 import RichTextEditor from '@/components/forms/RichTextEditor.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { useI18n } from 'vue-i18n'
@@ -21,6 +22,7 @@ const form = ref({
   readingTime: '',
   content: '',
   coverImage: '',
+  attachments: [] as AttachmentItem[],
   status: 'Published'
 })
 
@@ -134,6 +136,13 @@ const handlePublish = () => {
               v-model="form.coverImage"
               :label="isAr ? 'صورة الغلاف' : 'Cover Image'"
               :hint="isAr ? 'الحجم الموصى به: 1200×675' : 'Recommended size: 1200×675'"
+            />
+
+            <!-- Attachments & Documents Upload with Accessible Progress Bar -->
+            <AttachmentUploader
+              v-model="form.attachments"
+              :label="isAr ? 'المرفقات والتقارير المالية' : 'Attachments & Financial Documents'"
+              :hint="isAr ? 'PDF, Excel, Word (بحد أقصى 15MB)' : 'PDF, Excel, Word (max 15MB)'"
             />
 
             <!-- Status Selector -->

@@ -18,7 +18,6 @@ const isAr = computed(() => locale.value === 'ar')
 
 const search = ref('')
 const selectedCategory = ref('')
-const selectedTier = ref('')
 const selectedStatus = ref('')
 const currentPage = ref(1)
 
@@ -38,16 +37,6 @@ const filters = computed(() => [
     ]
   },
   {
-    id: 'tier',
-    label: t('videos.tierCol'),
-    value: selectedTier.value,
-    options: [
-      { label: t('videos.tierFree'), value: 'FREE' },
-      { label: t('videos.tierBasic'), value: 'BASIC' },
-      { label: t('videos.tierPro'), value: 'PRO' },
-    ]
-  },
-  {
     id: 'status',
     label: t('videos.statusCol'),
     value: selectedStatus.value,
@@ -60,7 +49,6 @@ const filters = computed(() => [
 
 const handleFilterChange = (filterId: string, val: string) => {
   if (filterId === 'category') selectedCategory.value = val
-  if (filterId === 'tier') selectedTier.value = val
   if (filterId === 'status') selectedStatus.value = val
 }
 
@@ -71,14 +59,6 @@ const getCategoryLabel = (category: string) => {
   if (c === 'technical') return t('videos.catTechnical')
   if (c === 'investing') return t('videos.catInvesting')
   return category
-}
-
-const getTierLabel = (tier: string) => {
-  const upper = (tier || '').toUpperCase()
-  if (upper === 'FREE') return t('videos.tierFree')
-  if (upper === 'BASIC') return t('videos.tierBasic')
-  if (upper === 'PRO') return t('videos.tierPro')
-  return tier
 }
 
 const getStatusLabel = (status: string) => {
@@ -95,7 +75,6 @@ interface VideoLesson {
   category: string
   educator: string
   duration: string
-  tier: 'FREE' | 'BASIC' | 'PRO'
   status: 'Published' | 'Draft'
 }
 
@@ -107,7 +86,6 @@ const videos = ref<VideoLesson[]>([
     category: 'Beginner',
     educator: 'Ali Hussain',
     duration: '15:30',
-    tier: 'FREE',
     status: 'Published'
   },
   {
@@ -117,7 +95,6 @@ const videos = ref<VideoLesson[]>([
     category: 'Market',
     educator: 'Maryam Ali',
     duration: '21:45',
-    tier: 'PRO',
     status: 'Published'
   },
   {
@@ -127,7 +104,6 @@ const videos = ref<VideoLesson[]>([
     category: 'Technical',
     educator: 'Omar Ali',
     duration: '18:20',
-    tier: 'BASIC',
     status: 'Draft'
   },
   {
@@ -137,7 +113,6 @@ const videos = ref<VideoLesson[]>([
     category: 'Investing',
     educator: 'Sarah Ahmed',
     duration: '25:10',
-    tier: 'PRO',
     status: 'Published'
   }
 ])
@@ -148,9 +123,8 @@ const filteredVideos = computed(() => {
       vid.title.toLowerCase().includes(search.value.toLowerCase()) || 
       vid.educator.toLowerCase().includes(search.value.toLowerCase())
     const matchesCat = !selectedCategory.value || vid.category === selectedCategory.value
-    const matchesTier = !selectedTier.value || vid.tier === selectedTier.value
     const matchesStatus = !selectedStatus.value || vid.status === selectedStatus.value
-    return matchesSearch && matchesCat && matchesTier && matchesStatus
+    return matchesSearch && matchesCat && matchesStatus
   })
 })
 
@@ -215,7 +189,6 @@ const handleAction = async (actionId: string, vid: VideoLesson) => {
                 <th class="py-3 px-4 text-start">{{ t('videos.categoryCol') }}</th>
                 <th class="py-3 px-4 text-start">{{ t('videos.educatorCol') }}</th>
                 <th class="py-3 px-4 text-start">{{ t('videos.durationCol') }}</th>
-                <th class="py-3 px-4 text-start">{{ t('videos.tierCol') }}</th>
                 <th class="py-3 px-4 text-start">{{ t('videos.statusCol') }}</th>
                 <th class="py-3 px-4 text-end">{{ t('common.actions') }}</th>
               </tr>
@@ -248,13 +221,6 @@ const handleAction = async (actionId: string, vid: VideoLesson) => {
 
                 <!-- Duration -->
                 <td class="py-3 px-4 text-slate-500 font-medium text-start">{{ vid.duration }}</td>
-
-                <!-- Tier -->
-                <td class="py-3 px-4 text-start">
-                  <StatusBadge :status="vid.tier" :variant="vid.tier === 'PRO' ? 'purple' : vid.tier === 'BASIC' ? 'warning' : 'success'">
-                    {{ getTierLabel(vid.tier) }}
-                  </StatusBadge>
-                </td>
 
                 <!-- Status -->
                 <td class="py-3 px-4 text-start">
@@ -310,8 +276,6 @@ const handleAction = async (actionId: string, vid: VideoLesson) => {
                   </h3>
                   <div class="flex items-center gap-2 mt-0.5">
                     <span class="text-[11px] text-slate-500 font-medium">{{ getCategoryLabel(previewVideo.category) }}</span>
-                    <span class="text-slate-300">•</span>
-                    <span class="text-[11px] text-emerald-600 font-semibold">{{ getTierLabel(previewVideo.tier) }}</span>
                   </div>
                 </div>
               </div>

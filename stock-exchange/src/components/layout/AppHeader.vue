@@ -105,8 +105,6 @@ const breadcrumbs = computed(() => {
     if (route.params.id) crumbs.push({ label: isAr.value ? 'تفاصيل المستخدم' : 'User Details' })
   } else if (path.startsWith('/countries')) {
     crumbs.push({ label: t('nav.countries'), to: '/countries' })
-  } else if (path.startsWith('/help-center')) {
-    crumbs.push({ label: t('nav.helpCenter'), to: '/help-center' })
   } else if (path.startsWith('/terms')) {
     crumbs.push({ label: t('nav.terms'), to: '/terms' })
   } else if (path.startsWith('/about')) {

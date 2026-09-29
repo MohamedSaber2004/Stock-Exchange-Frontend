@@ -150,15 +150,7 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'User Details', requiresAuth: true },
   },
 
-  // 15. Help Center & Support
-  {
-    path: '/help-center',
-    name: 'help-center',
-    component: () => import('@/views/help/HelpCenterView.vue'),
-    meta: { title: 'Help Center & FAQs', requiresAuth: true },
-  },
-
-  // 16. Terms & Conditions and Privacy
+  // 15. Terms & Conditions and Privacy
   {
     path: '/terms',
     name: 'terms',
@@ -201,6 +193,14 @@ const routes: RouteRecordRaw[] = [
     name: 'countries',
     component: () => import('@/views/countries/CountriesListView.vue'),
     meta: { title: 'Country Management', requiresAuth: true },
+  },
+
+  // 20. Notifications
+  {
+    path: '/notifications',
+    name: 'notifications',
+    component: () => import('@/views/notifications/NotificationsView.vue'),
+    meta: { title: 'Notifications', requiresAuth: true },
   },
 
   // Catch-all 404 redirect

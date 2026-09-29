@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import AppShell from '@/components/layout/AppShell.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import ImageUploader from '@/components/forms/ImageUploader.vue'
+import AttachmentUploader, { type AttachmentItem } from '@/components/forms/AttachmentUploader.vue'
 import RichTextEditor from '@/components/forms/RichTextEditor.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { useI18n } from 'vue-i18n'
@@ -21,6 +22,14 @@ const form = ref({
   readingTime: '5 min',
   content: 'Investing is one of the most powerful ways to build long-term wealth and beat inflation over time. When you invest, you put your capital to work in assets that have the potential to appreciate in value or generate income...',
   coverImage: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800&auto=format&fit=crop&q=80',
+  attachments: [
+    {
+      id: 'att-101',
+      name: 'Beginner_Investor_CheatSheet.pdf',
+      size: 1420000,
+      status: 'success'
+    }
+  ] as AttachmentItem[],
   status: 'Published'
 })
 
@@ -117,6 +126,13 @@ const handleSaveChanges = () => {
               v-model="form.coverImage"
               :label="isAr ? 'صورة الغلاف' : 'Cover Image'"
               :hint="isAr ? 'الحجم الموصى به: 1200×675' : 'Recommended size: 1200×675'"
+            />
+
+            <!-- Attachments & Documents Upload with Accessible Progress Bar -->
+            <AttachmentUploader
+              v-model="form.attachments"
+              :label="isAr ? 'المرفقات والتقارير المالية' : 'Attachments & Financial Documents'"
+              :hint="isAr ? 'PDF, Excel, Word (بحد أقصى 15MB)' : 'PDF, Excel, Word (max 15MB)'"
             />
 
             <!-- Status Selector -->

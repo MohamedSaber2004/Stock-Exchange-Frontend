@@ -5,6 +5,7 @@ import { Clock, Film, Sparkles, X, Image as ImageIcon, Camera } from 'lucide-vue
 import AppShell from '@/components/layout/AppShell.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import RichTextEditor from '@/components/forms/RichTextEditor.vue'
+import UploadProgressBar from '@/components/forms/UploadProgressBar.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { useI18n } from 'vue-i18n'
 
@@ -26,7 +27,7 @@ const form = ref({
   status: 'Published'
 })
 
-// Video source, player, auto-duration, and auto-thumbnail state
+// Video source, player, auto-duration, auto-thumbnail & upload progress state
 const videoSource = ref<string>('')
 const videoFile = ref<File | null>(null)
 const videoPlayerRef = ref<HTMLVideoElement | null>(null)
@@ -34,6 +35,10 @@ const videoInputRef = ref<HTMLInputElement | null>(null)
 const isDraggingVideo = ref(false)
 const isDurationAuto = ref(false)
 const isThumbnailAuto = ref(false)
+const isVideoUploading = ref(false)
+const videoUploadProgress = ref(0)
+const videoUploadStatus = ref<'uploading' | 'processing' | 'success' | 'error'>('uploading')
+let videoUploadTimer: ReturnType<typeof setInterval> | null = null
 
 const formatDuration = (seconds: number): string => {
   if (isNaN(seconds) || seconds <= 0) return '00:00'
@@ -174,22 +179,60 @@ const handleVideoDrop = (event: DragEvent) => {
   }
 }
 
+const cancelVideoUpload = () => {
+  if (videoUploadTimer) {
+    clearInterval(videoUploadTimer)
+    videoUploadTimer = null
+  }
+  isVideoUploading.value = false
+  videoUploadProgress.value = 0
+  if (videoInputRef.value) videoInputRef.value.value = ''
+}
+
 const loadVideoFile = (file: File) => {
   if (!file.type.startsWith('video/')) {
     toast.error(isAr.value ? 'يرجى اختيار ملف فيديو صالح' : 'Please select a valid video file')
     return
   }
-  videoFile.value = file
-  if (videoSource.value && videoSource.value.startsWith('blob:')) {
-    URL.revokeObjectURL(videoSource.value)
-  }
-  videoSource.value = URL.createObjectURL(file)
-  isDurationAuto.value = false
-  isThumbnailAuto.value = false
-  form.value.thumbnail = ''
 
-  // Immediately extract thumbnail from the file
-  extractThumbnailFromFile(file)
+  cancelVideoUpload()
+
+  isVideoUploading.value = true
+  videoUploadProgress.value = 10
+  videoUploadStatus.value = 'uploading'
+  videoFile.value = file
+
+  videoUploadTimer = setInterval(() => {
+    if (videoUploadProgress.value < 80) {
+      videoUploadProgress.value += Math.floor(Math.random() * 15) + 12
+    } else if (videoUploadProgress.value < 95) {
+      videoUploadProgress.value += 4
+      videoUploadStatus.value = 'processing'
+    } else {
+      if (videoUploadTimer) {
+        clearInterval(videoUploadTimer)
+        videoUploadTimer = null
+      }
+      videoUploadProgress.value = 100
+      videoUploadStatus.value = 'success'
+
+      setTimeout(() => {
+        isVideoUploading.value = false
+        videoUploadProgress.value = 0
+
+        if (videoSource.value && videoSource.value.startsWith('blob:')) {
+          URL.revokeObjectURL(videoSource.value)
+        }
+        videoSource.value = URL.createObjectURL(file)
+        isDurationAuto.value = false
+        isThumbnailAuto.value = false
+        form.value.thumbnail = ''
+
+        // Immediately extract thumbnail from the file
+        extractThumbnailFromFile(file)
+      }, 350)
+    }
+  }, 100)
 }
 
 const setSampleVideo = () => {
@@ -358,9 +401,22 @@ const handleSave = () => {
                 @change="handleVideoSelect"
               />
 
+              <!-- When Video Upload is In Progress: Accessible Progress Bar -->
+              <div v-if="isVideoUploading" class="w-full">
+                <UploadProgressBar
+                  :progress="videoUploadProgress"
+                  :file-name="videoFile?.name || (isAr ? 'ملف الفيديو' : 'Video file')"
+                  :file-size="videoFile?.size || 0"
+                  :status="videoUploadStatus"
+                  :can-cancel="true"
+                  @cancel="cancelVideoUpload"
+                  @remove="cancelVideoUpload"
+                />
+              </div>
+
               <!-- When Video is Displayed -->
               <div
-                v-if="videoSource"
+                v-else-if="videoSource"
                 class="flex flex-col gap-2.5 p-3 bg-slate-50/90 border border-slate-200 rounded-2xl"
               >
                 <!-- Displayed HTML5 Video element -->
@@ -393,15 +449,16 @@ const handleSave = () => {
                     <button
                       type="button"
                       @click="videoInputRef?.click()"
-                      class="px-2.5 py-1 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+                      class="px-2.5 py-1 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
                     >
                       {{ t('videos.changeVideo') }}
                     </button>
                     <button
                       type="button"
                       @click="removeVideo"
-                      class="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                      class="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:outline-none"
                       :title="t('videos.removeVideo')"
+                      :aria-label="t('videos.removeVideo')"
                     >
                       <X class="w-4 h-4" />
                     </button>
@@ -409,16 +466,21 @@ const handleSave = () => {
                 </div>
               </div>
 
-              <!-- When No Video: Upload Dropzone -->
+              <!-- When No Video: Upload Dropzone with Keyboard Accessibility -->
               <div
                 v-else
+                role="button"
+                tabindex="0"
+                :aria-label="isAr ? 'رفع ملف فيديو - انقر أو اضغط Enter لاختيار ملف أو اسحب وأفلت هنا' : 'Upload video file - click or press Enter to choose file or drag and drop here'"
                 @click="videoInputRef?.click()"
+                @keydown.enter.prevent="videoInputRef?.click()"
+                @keydown.space.prevent="videoInputRef?.click()"
                 @dragover.prevent="isDraggingVideo = true"
                 @dragleave.prevent="isDraggingVideo = false"
                 @drop.prevent="handleVideoDrop"
                 :class="[
-                  'w-full border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center gap-2.5 transition-all cursor-pointer select-none bg-slate-50/50 hover:bg-emerald-50/20 hover:border-emerald-400',
-                  isDraggingVideo ? 'border-emerald-500 bg-emerald-50/40' : 'border-slate-200'
+                  'w-full border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center gap-2.5 transition-all cursor-pointer select-none bg-slate-50/50 hover:bg-emerald-50/20 hover:border-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:border-emerald-500',
+                  isDraggingVideo ? 'border-emerald-500 bg-emerald-50/40 ring-2 ring-emerald-500/20' : 'border-slate-200'
                 ]"
               >
                 <div class="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-xs">

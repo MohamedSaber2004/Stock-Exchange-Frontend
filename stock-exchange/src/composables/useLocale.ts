@@ -25,6 +25,7 @@ export function useLocale() {
   return {
     currentLocale,
     isRTL,
+    isAr: isRTL,
     setLocale,
     toggleLocale,
   }

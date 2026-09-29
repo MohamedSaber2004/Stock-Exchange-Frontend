@@ -17,72 +17,79 @@ export interface FeaturePermission {
   plans: Record<PlanTier, boolean>
 }
 
-const STORAGE_KEY = 'finwise_plan_permissions_v4'
+const STORAGE_KEY = 'finwise_plan_permissions_v10'
 
 const defaultPermissions: FeaturePermission[] = [
-  // 1. Market News (CRUD in /news)
+  // ── FREE+ ────────────────────────────────────────────────────────────────
+  // 1. Daily Market News — available to everyone
   {
-    id: 'realtime_news',
-    key: 'realtimeNews',
-    name: 'Real-Time Market News & Bulletins',
-    nameAr: 'أخبار وبيانات السوق اللحظية والعاجلة',
-    description: 'Instant corporate disclosures, earnings reports, and breaking financial updates',
-    descriptionAr: 'الاطلاع على كافة الأخبار المالية اللحظية وإفصاحات الشركات وتحديثات الأسهم',
+    id: 'daily_market_news',
+    key: 'dailyMarketNews',
+    name: 'Daily Market News',
+    nameAr: 'أخبار السوق اليومية',
+    description: 'Breaking news, corporate disclosures, and daily financial bulletins',
+    descriptionAr: 'الأخبار العاجلة وإفصاحات الشركات والنشرات المالية اليومية',
     category: 'news',
     categoryName: 'Market News',
     categoryNameAr: 'أخبار السوق',
     plans: { FREE: true, BASIC: true, PRO: true }
   },
 
-  // 2. Educational Articles & Guides (CRUD in /articles)
+  // ── BASIC ─────────────────────────────────────────────────────────────────
+  // 2. Limited Articles — Basic only (Pro gets unlimited instead)
   {
-    id: 'basic_articles',
-    key: 'basicArticles',
-    name: 'Standard Educational Articles & Guides',
-    nameAr: 'قراءة المقالات التعليمية والأدلة الإرشادية',
-    description: 'Access to beginner investing concepts, terminology, and foundational guides',
-    descriptionAr: 'قراءة المقالات التعليمية العامة وشروحات المفاهيم الاستثمارية الأساسية',
+    id: 'limited_articles',
+    key: 'limitedArticles',
+    name: 'Limited Articles',
+    nameAr: 'مقالات محدودة',
+    description: 'Access to a curated selection of educational articles and investment guides',
+    descriptionAr: 'الوصول لمجموعة مختارة من المقالات التعليمية وأدلة الاستثمار',
     category: 'articles',
     categoryName: 'Articles & Guides',
-    categoryNameAr: 'المقالات والأدلة التعليمية',
-    plans: { FREE: true, BASIC: true, PRO: true }
-  },
-  {
-    id: 'market_articles',
-    key: 'marketArticles',
-    name: 'In-Depth Market Analysis Articles',
-    nameAr: 'قراءة المقالات والتحليلات المتعمقة',
-    description: 'Comprehensive macroeconomic insights and professional daily stock breakdowns',
-    descriptionAr: 'مراجعات اقتصادية شاملة وتقارير بحثية يومية لحركة الأسهم والقطاعات',
-    category: 'articles',
-    categoryName: 'Articles & Guides',
-    categoryNameAr: 'المقالات والأدلة التعليمية',
-    plans: { FREE: false, BASIC: true, PRO: true }
+    categoryNameAr: 'المقالات والأدلة',
+    plans: { FREE: false, BASIC: true, PRO: false }
   },
 
-  // 3. Educational Video Lessons (CRUD in /videos)
+  // 3. Limited Videos — Basic only (Pro gets unlimited instead)
   {
-    id: 'beginner_courses',
-    key: 'beginnerCourses',
-    name: 'Standard Video Lessons Library',
-    nameAr: 'مشاهدة مكتبة الفيديوهات التعليمية الأساسية',
-    description: 'Core concepts of capital allocation, order execution, and portfolio risk management',
-    descriptionAr: 'مشاهدة شروحات الفيديو الأساسية لإدارة رأس المال وتنفيذ الأوامر بالبورصة',
+    id: 'limited_videos',
+    key: 'limitedVideos',
+    name: 'Limited Video Courses',
+    nameAr: 'فيديوهات محدودة',
+    description: 'Access to a selection of beginner video lessons on trading and investing',
+    descriptionAr: 'الوصول لمجموعة مختارة من دروس الفيديو للمبتدئين في التداول والاستثمار',
     category: 'videos',
-    categoryName: 'Educational Videos',
-    categoryNameAr: 'الفيديوهات التعليمية',
-    plans: { FREE: false, BASIC: true, PRO: true }
+    categoryName: 'Video Courses',
+    categoryNameAr: 'دورات الفيديو',
+    plans: { FREE: false, BASIC: true, PRO: false }
   },
+
+  // ── PRO ───────────────────────────────────────────────────────────────────
+  // 4. Unlimited Articles — Pro only
   {
-    id: 'technical_masterclass',
-    key: 'technicalMasterclass',
-    name: 'Advanced Technical Analysis Video Masterclass',
-    nameAr: 'مشاهدة الدروس المرئية المتقدمة والتحليل الفني',
-    description: 'Complex chart patterns, Fibonacci retracements, Bollinger Bands, and RSI indicators',
-    descriptionAr: 'نماذج الشموع المركبة، نسب فيبوناتشي، ومؤشرات الزخم والسيولة المتقدمة بالفيديو',
+    id: 'unlimited_articles',
+    key: 'unlimitedArticles',
+    name: 'Unlimited Articles',
+    nameAr: 'مقالات لانهائية',
+    description: 'Unlimited access to all articles, in-depth market analysis, and research reports',
+    descriptionAr: 'وصول غير محدود لجميع المقالات والتحليلات المعمقة للسوق والتقارير البحثية',
+    category: 'articles',
+    categoryName: 'Articles & Guides',
+    categoryNameAr: 'المقالات والأدلة',
+    plans: { FREE: false, BASIC: false, PRO: true }
+  },
+
+  // 5. Unlimited Videos — Pro only
+  {
+    id: 'unlimited_videos',
+    key: 'unlimitedVideos',
+    name: 'Unlimited Video Courses',
+    nameAr: 'فيديوهات لانهائية',
+    description: 'Unlimited access to all expert video courses, live sessions, and masterclasses',
+    descriptionAr: 'وصول غير محدود لجميع دورات الفيديو من الخبراء والجلسات الحية والـ masterclasses',
     category: 'videos',
-    categoryName: 'Educational Videos',
-    categoryNameAr: 'الفيديوهات التعليمية',
+    categoryName: 'Video Courses',
+    categoryNameAr: 'دورات الفيديو',
     plans: { FREE: false, BASIC: false, PRO: true }
   }
 ]
@@ -92,15 +99,14 @@ const permissions = ref<FeaturePermission[]>(loadStoredPermissions())
 
 function loadStoredPermissions(): FeaturePermission[] {
   if (typeof window !== 'undefined') {
-    localStorage.removeItem('finwise_plan_permissions_v1')
-    localStorage.removeItem('finwise_plan_permissions_v2')
-    localStorage.removeItem('finwise_plan_permissions_v3')
+    for (let i = 1; i <= 9; i++) {
+      localStorage.removeItem(`finwise_plan_permissions_v${i}`)
+    }
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
       try {
         const parsed = JSON.parse(raw)
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Merge to ensure only valid implemented features are preserved
           return defaultPermissions.map(def => {
             const found = parsed.find((p: any) => p.id === def.id)
             return found ? { ...def, plans: { ...def.plans, ...found.plans } } : def
@@ -142,7 +148,6 @@ export function usePlanPermissions() {
     persistPermissions()
   }
 
-  // Returns list of active features for a given plan in current language
   const getActiveFeaturesForPlan = (plan: PlanTier, isAr: boolean) => {
     return permissions.value
       .filter(p => p.plans[plan])
@@ -154,7 +159,6 @@ export function usePlanPermissions() {
       }))
   }
 
-  // Grouped features by category for easy display
   const groupedPermissions = computed(() => {
     const groups: {
       category: FeatureCategory
@@ -176,15 +180,14 @@ export function usePlanPermissions() {
       },
       {
         category: 'videos',
-        name: 'Educational Videos',
-        nameAr: 'الفيديوهات التعليمية',
+        name: 'Video Courses',
+        nameAr: 'دورات الفيديو',
         features: permissions.value.filter(p => p.category === 'videos')
       }
     ]
     return groups
   })
 
-  // Dynamic counts of active features per plan
   const planFeatureCounts = computed(() => ({
     FREE: permissions.value.filter(p => p.plans.FREE).length,
     BASIC: permissions.value.filter(p => p.plans.BASIC).length,

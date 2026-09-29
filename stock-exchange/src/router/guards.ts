@@ -1,8 +1,16 @@
 import type { Router } from 'vue-router'
 import { coreServices } from '@/di'
+import { useRouteLoading } from '@/composables/useRouteLoading'
 
 export function setupRouterGuards(router: Router): void {
-  router.beforeEach((to, _from, next) => {
+  const routeLoading = useRouteLoading()
+
+  router.beforeEach((to, from, next) => {
+    // Only trigger progress if navigating to a different path
+    if (to.path !== from.path) {
+      routeLoading.start(to.meta.title ? String(to.meta.title) : undefined)
+    }
+
     const tokenStore = coreServices.tokenStore
     const isAuthenticated = tokenStore.hasValidToken()
 
@@ -25,5 +33,16 @@ export function setupRouterGuards(router: Router): void {
     }
 
     next()
+  })
+
+  router.afterEach((to) => {
+    // Finish route loading with a smooth transition
+    setTimeout(() => {
+      routeLoading.finish(to.meta.title ? String(to.meta.title) : undefined)
+    }, 120)
+  })
+
+  router.onError(() => {
+    routeLoading.fail()
   })
 }
