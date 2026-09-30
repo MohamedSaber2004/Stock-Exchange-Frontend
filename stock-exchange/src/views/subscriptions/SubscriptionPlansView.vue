@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus, Check, X, Sliders, Sparkles } from 'lucide-vue-next'
+import { Plus, Check, X, Sparkles } from 'lucide-vue-next'
 import AppShell from '@/components/layout/AppShell.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import StatusBadge from '@/components/ui/StatusBadge.vue'
@@ -117,15 +117,6 @@ const handleAction = async (actionId: string, plan: Plan) => {
       >
         <template #actions>
           <div class="flex items-center gap-2.5 flex-wrap">
-            <button
-              type="button"
-              @click="router.push('/permissions')"
-              class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all shadow-2xs cursor-pointer flex-1 sm:flex-initial justify-center"
-            >
-              <Sliders class="w-3.5 h-3.5 text-emerald-600" />
-              <span>{{ isAr ? 'إدارة الصلاحيات والميزات' : 'Manage Permissions' }}</span>
-            </button>
-
             <button
               type="button"
               @click="router.push('/subscriptions/create')"

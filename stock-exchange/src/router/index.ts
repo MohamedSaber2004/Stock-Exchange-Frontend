@@ -122,16 +122,14 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Create Subscription Plan', requiresAuth: true },
   },
 
-  // 12b. Plan Features & Permissions Matrix
+  // Redirect obsolete permissions routes to subscriptions
   {
     path: '/permissions',
-    name: 'permissions',
-    component: () => import('@/views/permissions/PermissionsView.vue'),
-    meta: { title: 'Plan Permissions & Features', requiresAuth: true },
+    redirect: '/subscriptions',
   },
   {
     path: '/subscriptions/permissions',
-    redirect: '/permissions',
+    redirect: '/subscriptions',
   },
 
   // 13. Users List

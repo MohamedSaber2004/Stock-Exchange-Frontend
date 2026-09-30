@@ -7,6 +7,14 @@ import AppButton from './AppButton.vue'
 const confirmService = coreServices.confirm
 const state = confirmService.state
 const { t } = useI18n()
+
+const handleCancel = () => {
+  confirmService.handleCancel()
+}
+
+const handleConfirm = () => {
+  confirmService.handleConfirm()
+}
 </script>
 
 <template>
@@ -22,7 +30,7 @@ const { t } = useI18n()
       <div
         v-if="state.isOpen"
         class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs"
-        @click.self="confirmService.handleCancel"
+        @click.self="handleCancel"
       >
         <div
           class="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-5 sm:p-7 shadow-2xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200 text-start"
@@ -50,7 +58,7 @@ const { t } = useI18n()
             </div>
             <button
               class="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
-              @click="confirmService.handleCancel"
+              @click="handleCancel"
             >
               <X class="w-4 h-4" />
             </button>
@@ -63,14 +71,14 @@ const { t } = useI18n()
 
           <!-- Footer -->
           <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-2.5 pt-3 border-t border-slate-100">
-            <AppButton variant="ghost" size="sm" class="w-full sm:w-auto" @click="confirmService.handleCancel">
+            <AppButton variant="ghost" size="sm" class="w-full sm:w-auto" @click="handleCancel">
               {{ state.cancelText || t('common.cancel') }}
             </AppButton>
             <AppButton
               :variant="state.type === 'danger' ? 'danger' : 'primary'"
               size="sm"
               class="w-full sm:w-auto"
-              @click="confirmService.handleConfirm"
+              @click="handleConfirm"
             >
               {{ state.confirmText || t('common.confirm') }}
             </AppButton>

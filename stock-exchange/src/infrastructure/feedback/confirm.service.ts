@@ -26,7 +26,7 @@ export class ConfirmService {
 
   readonly state = readonly(this._state)
 
-  ask(options: ConfirmOptions): Promise<boolean> {
+  ask = (options: ConfirmOptions): Promise<boolean> => {
     return new Promise<boolean>((resolve) => {
       this._state.value = {
         ...options,
@@ -39,13 +39,19 @@ export class ConfirmService {
     })
   }
 
-  handleConfirm(): void {
-    this._state.value.resolve(true)
+  handleConfirm = (): void => {
+    const resolver = this._state.value.resolve
     this._state.value.isOpen = false
+    if (resolver) {
+      resolver(true)
+    }
   }
 
-  handleCancel(): void {
-    this._state.value.resolve(false)
+  handleCancel = (): void => {
+    const resolver = this._state.value.resolve
     this._state.value.isOpen = false
+    if (resolver) {
+      resolver(false)
+    }
   }
 }

@@ -13,7 +13,6 @@ import {
   LogOut,
   TrendingUp,
   Activity,
-  Sliders,
   Bell,
   X,
   type LucideIcon
@@ -65,8 +64,7 @@ const navSections = computed<NavSection[]>(() => [
   {
     title: t('nav.monetization'),
     items: [
-      { id: 'subscriptions', label: t('nav.subscriptions'), to: '/subscriptions', icon: CreditCard },
-      { id: 'permissions', label: t('nav.permissions'), to: '/permissions', icon: Sliders }
+      { id: 'subscriptions', label: t('nav.subscriptions'), to: '/subscriptions', icon: CreditCard }
     ]
   },
   {

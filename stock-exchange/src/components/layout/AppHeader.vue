@@ -98,8 +98,6 @@ const breadcrumbs = computed(() => {
   } else if (path.startsWith('/subscriptions')) {
     crumbs.push({ label: t('nav.subscriptions'), to: '/subscriptions' })
     if (path.includes('/create')) crumbs.push({ label: isAr.value ? 'إنشاء خطة' : 'Create Plan' })
-  } else if (path.startsWith('/permissions')) {
-    crumbs.push({ label: t('nav.permissions'), to: '/permissions' })
   } else if (path.startsWith('/users')) {
     crumbs.push({ label: t('nav.users'), to: '/users' })
     if (route.params.id) crumbs.push({ label: isAr.value ? 'تفاصيل المستخدم' : 'User Details' })
