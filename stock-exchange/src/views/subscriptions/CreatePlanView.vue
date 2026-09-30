@@ -43,7 +43,7 @@ const handleSave = () => {
         :description="t('subscriptions.subtitle')"
       />
 
-      <div class="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-2xs flex flex-col gap-6">
+      <div class="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-6 lg:p-8 shadow-2xs flex flex-col gap-6">
         <!-- Plan Name & Price -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div class="sm:col-span-2 flex flex-col gap-1.5">
@@ -100,18 +100,18 @@ const handleSave = () => {
         </div>
 
         <!-- Footer Actions -->
-        <div class="mt-4 pt-6 border-t border-slate-100 flex items-center justify-end gap-3">
+        <div class="mt-4 pt-6 border-t border-slate-100 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 sm:gap-3">
           <button
             type="button"
             @click="router.push('/subscriptions')"
-            class="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-xs transition-colors cursor-pointer"
+            class="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-xs transition-colors cursor-pointer text-center"
           >
             {{ t('common.cancel') }}
           </button>
           <button
             type="button"
             @click="handleSave"
-            class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs cursor-pointer"
+            class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs cursor-pointer text-center"
           >
             {{ t('subscriptions.savePlan') }}
           </button>

@@ -116,11 +116,11 @@ const handleAction = async (actionId: string, plan: Plan) => {
         :description="t('subscriptions.subtitle')"
       >
         <template #actions>
-          <div class="flex items-center gap-2.5">
+          <div class="flex items-center gap-2.5 flex-wrap">
             <button
               type="button"
               @click="router.push('/permissions')"
-              class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all shadow-2xs cursor-pointer"
+              class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all shadow-2xs cursor-pointer flex-1 sm:flex-initial justify-center"
             >
               <Sliders class="w-3.5 h-3.5 text-emerald-600" />
               <span>{{ isAr ? 'إدارة الصلاحيات والميزات' : 'Manage Permissions' }}</span>
@@ -129,7 +129,7 @@ const handleAction = async (actionId: string, plan: Plan) => {
             <button
               type="button"
               @click="router.push('/subscriptions/create')"
-              class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+              class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex-1 sm:flex-initial justify-center"
             >
               <Plus class="w-3.5 h-3.5 stroke-[3]" />
               {{ t('subscriptions.addPlan') }}
@@ -139,7 +139,7 @@ const handleAction = async (actionId: string, plan: Plan) => {
       </PageHeader>
 
       <!-- Plans Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-stretch">
         <div
           v-for="plan in plans"
           :key="plan.id"

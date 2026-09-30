@@ -400,7 +400,7 @@ const clearFilters = () => {
       <!-- Country Table -->
       <div class="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
         <div class="overflow-x-auto">
-          <table class="w-full text-start text-xs">
+          <table class="w-full text-start text-xs min-w-[650px]">
             <thead>
               <tr class="text-[11px] font-bold text-slate-400 border-b border-slate-100 uppercase tracking-wider bg-slate-50/50">
                 <th class="py-3 px-5 text-start">{{ t('countries.enName') }}</th>
@@ -492,7 +492,7 @@ const clearFilters = () => {
         </div>
 
         <!-- Pagination -->
-        <div class="p-4 border-t border-slate-100 flex items-center justify-between">
+        <div class="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
           <span class="text-xs font-medium text-slate-500">
             Showing <strong class="text-slate-800">{{ paginatedCountries.length }}</strong> of <strong class="text-slate-800">{{ filteredCountries.length }}</strong> countries
           </span>

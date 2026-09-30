@@ -194,7 +194,7 @@ const handleAction = async (actionId: string, u: UserItem) => {
 
         <!-- Data Table -->
         <div class="overflow-x-auto">
-          <table class="w-full text-start text-xs">
+          <table class="w-full text-start text-xs min-w-[800px]">
             <thead>
               <tr class="text-[11px] font-bold text-slate-400 border-b border-slate-100 uppercase tracking-wider bg-slate-50/50">
                 <th class="py-3 px-4 text-start">{{ t('users.userCol') }}</th>

@@ -167,12 +167,12 @@ const handleSave = () => {
       </PageHeader>
 
       <!-- Tabs -->
-      <div class="flex items-center gap-2 border-b border-slate-200">
+      <div class="flex items-center gap-2 border-b border-slate-200 overflow-x-auto pb-px">
         <button
           type="button"
           @click="activeTab = 'content'"
           :class="[
-            'px-4 py-3 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-2',
+            'px-4 py-3 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-2 shrink-0',
             activeTab === 'content'
               ? 'border-emerald-600 text-emerald-700'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -186,7 +186,7 @@ const handleSave = () => {
           type="button"
           @click="activeTab = 'features'"
           :class="[
-            'px-4 py-3 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-2',
+            'px-4 py-3 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-2 shrink-0',
             activeTab === 'features'
               ? 'border-emerald-600 text-emerald-700'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -200,7 +200,7 @@ const handleSave = () => {
           type="button"
           @click="activeTab = 'team'"
           :class="[
-            'px-4 py-3 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-2',
+            'px-4 py-3 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-2 shrink-0',
             activeTab === 'team'
               ? 'border-emerald-600 text-emerald-700'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -214,7 +214,7 @@ const handleSave = () => {
           type="button"
           @click="activeTab = 'contact'"
           :class="[
-            'px-4 py-3 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-2',
+            'px-4 py-3 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-2 shrink-0',
             activeTab === 'contact'
               ? 'border-emerald-600 text-emerald-700'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -228,7 +228,7 @@ const handleSave = () => {
       <!-- TAB 1: STORY & MISSION -->
       <div v-if="activeTab === 'content'" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- English Story -->
-        <div class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-2xs flex flex-col gap-4">
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-6 shadow-2xs flex flex-col gap-4">
           <div class="flex items-center gap-2">
             <span class="w-2.5 h-2.5 rounded-full bg-emerald-500" />
             <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">English Story & Mission</h3>
@@ -254,7 +254,7 @@ const handleSave = () => {
         </div>
 
         <!-- Arabic Story -->
-        <div class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-2xs flex flex-col gap-4">
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-6 shadow-2xs flex flex-col gap-4">
           <div class="flex items-center gap-2">
             <span class="w-2.5 h-2.5 rounded-full bg-emerald-500" />
             <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">القصة والرؤية بالعربية</h3>

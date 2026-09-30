@@ -300,7 +300,7 @@ const getTypeLabel = (type: string) => {
       </PageHeader>
 
       <!-- Stat Summary Badges -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
         <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
           <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700 shrink-0">
             <Activity class="w-5 h-5" />
@@ -383,7 +383,7 @@ const getTypeLabel = (type: string) => {
       <!-- Activity Table -->
       <div class="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
         <div class="overflow-x-auto">
-          <table class="w-full text-start text-xs">
+          <table class="w-full text-start text-xs min-w-[750px]">
             <thead>
               <tr class="text-[11px] font-bold text-slate-400 border-b border-slate-100 uppercase tracking-wider bg-slate-50/50">
                 <th class="py-3 px-5 text-start">{{ t('activity.actorUser') }}</th>
@@ -485,7 +485,7 @@ const getTypeLabel = (type: string) => {
         </div>
 
         <!-- Pagination -->
-        <div class="p-4 border-t border-slate-100 flex items-center justify-between">
+        <div class="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
           <span class="text-xs font-medium text-slate-500">
             {{ t('activity.showingEntries', { current: paginatedActivities.length, total: filteredActivities.length }) }}
           </span>

@@ -95,7 +95,7 @@ const handleSaveProfile = () => {
       />
 
       <!-- Profile & Security Form -->
-      <div class="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-2xs flex flex-col gap-6">
+      <div class="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-6 lg:p-8 shadow-2xs flex flex-col gap-6">
         <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">
           {{ t('settings.profileTab') }}
         </h2>
@@ -112,12 +112,12 @@ const handleSaveProfile = () => {
             @change="onAvatarFileSelect"
           />
 
-          <div class="flex items-center gap-4">
-            <div class="relative group">
+          <div class="flex items-center gap-3.5 sm:gap-4">
+            <div class="relative group shrink-0">
               <img
                 :src="profile.avatar"
                 :alt="profile.name"
-                class="w-16 h-16 rounded-2xl object-cover ring-2 ring-emerald-500/20"
+                class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover ring-2 ring-emerald-500/20"
               />
               <button
                 type="button"
@@ -223,7 +223,7 @@ const handleSaveProfile = () => {
           <button
             type="button"
             @click="handleSaveProfile"
-            class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs cursor-pointer"
+            class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs cursor-pointer text-center"
           >
             {{ t('settings.saveSettings') }}
           </button>

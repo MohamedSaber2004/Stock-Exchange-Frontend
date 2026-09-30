@@ -153,12 +153,12 @@ const handleSave = () => {
       </button>
 
       <!-- User Info Header Card -->
-      <div class="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-2xs flex items-center justify-between gap-4 mb-6">
-        <div class="flex items-center gap-4">
+      <div class="bg-white rounded-3xl border border-slate-200/80 p-5 sm:p-6 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div class="flex items-center gap-3.5 sm:gap-4">
           <img
             :src="user.avatar"
             :alt="user.name"
-            class="w-16 h-16 rounded-2xl object-cover ring-2 ring-emerald-500/20"
+            class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover ring-2 ring-emerald-500/20 shrink-0"
           />
           <div class="flex flex-col">
             <h1 class="text-lg font-black text-slate-900 tracking-tight">{{ user.name }}</h1>
@@ -259,18 +259,18 @@ const handleSave = () => {
       </div>
 
       <!-- Footer Actions -->
-      <div class="mt-8 pt-6 border-t border-slate-100 flex items-center justify-end gap-3">
+      <div class="mt-8 pt-6 border-t border-slate-100 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 sm:gap-3">
         <button
           type="button"
           @click="router.push('/users')"
-          class="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-xs transition-colors cursor-pointer"
+          class="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-xs transition-colors cursor-pointer text-center"
         >
           {{ t('common.cancel') }}
         </button>
         <button
           type="button"
           @click="handleSave"
-          class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs cursor-pointer"
+          class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs cursor-pointer text-center"
         >
           {{ t('common.save') }}
         </button>

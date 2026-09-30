@@ -25,14 +25,14 @@ const { t } = useI18n()
         @click.self="confirmService.handleCancel"
       >
         <div
-          class="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 shadow-2xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200 text-start"
+          class="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-5 sm:p-7 shadow-2xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200 text-start"
         >
           <!-- Header -->
           <div class="flex items-start justify-between gap-3">
             <div class="flex items-center gap-3">
               <div
                 :class="[
-                  'w-11 h-11 rounded-2xl flex items-center justify-center shrink-0',
+                  'w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center shrink-0',
                   state.type === 'danger'
                     ? 'bg-rose-100 text-rose-600'
                     : state.type === 'warning'
@@ -40,16 +40,16 @@ const { t } = useI18n()
                     : 'bg-blue-100 text-blue-600',
                 ]"
               >
-                <AlertCircle v-if="state.type === 'danger'" class="w-6 h-6" />
-                <AlertTriangle v-else-if="state.type === 'warning'" class="w-6 h-6" />
-                <Info v-else class="w-6 h-6" />
+                <AlertCircle v-if="state.type === 'danger'" class="w-5 h-5 sm:w-6 sm:h-6" />
+                <AlertTriangle v-else-if="state.type === 'warning'" class="w-5 h-5 sm:w-6 sm:h-6" />
+                <Info v-else class="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
               <h3 class="text-base font-bold text-slate-900">
                 {{ state.title }}
               </h3>
             </div>
             <button
-              class="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition-colors"
+              class="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
               @click="confirmService.handleCancel"
             >
               <X class="w-4 h-4" />
@@ -57,18 +57,19 @@ const { t } = useI18n()
           </div>
 
           <!-- Body -->
-          <p class="text-sm text-slate-600 leading-relaxed ps-14">
+          <p class="text-xs sm:text-sm text-slate-600 leading-relaxed ps-0 sm:ps-14">
             {{ state.message }}
           </p>
 
           <!-- Footer -->
-          <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
-            <AppButton variant="ghost" size="sm" @click="confirmService.handleCancel">
+          <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-2.5 pt-3 border-t border-slate-100">
+            <AppButton variant="ghost" size="sm" class="w-full sm:w-auto" @click="confirmService.handleCancel">
               {{ state.cancelText || t('common.cancel') }}
             </AppButton>
             <AppButton
               :variant="state.type === 'danger' ? 'danger' : 'primary'"
               size="sm"
+              class="w-full sm:w-auto"
               @click="confirmService.handleConfirm"
             >
               {{ state.confirmText || t('common.confirm') }}

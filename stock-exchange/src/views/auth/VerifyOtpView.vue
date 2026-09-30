@@ -116,7 +116,7 @@ const handleVerify = () => {
     <div class="w-full max-w-4xl bg-white rounded-3xl border border-slate-200/90 shadow-xl overflow-hidden grid grid-cols-1 md:grid-cols-2">
 
       <!-- Left Side: OTP Form -->
-      <div class="p-8 sm:p-12 flex flex-col justify-between">
+      <div class="p-5 sm:p-8 md:p-12 flex flex-col justify-between">
         <!-- Top: Logo -->
         <div>
           <div class="flex items-center gap-2 mb-8">
@@ -144,7 +144,7 @@ const handleVerify = () => {
 
           <!-- 6-digit OTP Inputs -->
           <form @submit.prevent="handleVerify" class="flex flex-col gap-6">
-            <div class="flex items-center justify-between gap-2" dir="ltr" @paste="handlePaste">
+            <div class="flex items-center justify-between gap-1 sm:gap-2" dir="ltr" @paste="handlePaste">
               <input
                 v-for="(_, index) in 6"
                 :key="index"
@@ -154,7 +154,7 @@ const handleVerify = () => {
                 maxlength="1"
                 inputmode="numeric"
                 autocomplete="one-time-code"
-                class="w-11 sm:w-12 h-12 sm:h-13 text-center text-lg font-black text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 transition-all shadow-2xs"
+                class="w-9 sm:w-11 md:w-12 h-11 sm:h-12 md:h-13 text-center text-base sm:text-lg font-black text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 transition-all shadow-2xs"
                 @input="handleInput(index, $event)"
                 @keydown="handleKeyDown(index, $event)"
               />

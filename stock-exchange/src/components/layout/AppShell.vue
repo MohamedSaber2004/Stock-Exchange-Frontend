@@ -20,7 +20,7 @@ withDefaults(defineProps<Props>(), {
     <div class="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
       <AppHeader />
 
-      <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-slate-50/50">
+      <main class="flex-1 overflow-y-auto p-3.5 sm:p-6 lg:p-8 bg-slate-50/50">
         <slot />
       </main>
     </div>

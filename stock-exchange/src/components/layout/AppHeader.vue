@@ -122,24 +122,25 @@ const breadcrumbs = computed(() => {
 <template>
   <header class="h-16 border-b border-slate-200/80 bg-white/95 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 select-none">
     <!-- Left: Hamburger toggle (mobile) & Search Bar & Breadcrumbs -->
-    <div class="flex items-center gap-3 sm:gap-4 flex-1 max-w-xl">
+    <div class="flex items-center gap-2 sm:gap-4 flex-1 min-w-0 max-w-xl">
       <!-- Mobile Sidebar Toggle -->
       <button
         type="button"
         @click="toggle"
         class="lg:hidden p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
         title="Open Navigation Menu"
+        aria-label="Open Navigation Menu"
       >
         <Menu class="w-5 h-5" />
       </button>
 
       <!-- Search anything bar as in mockup -->
-      <div class="relative w-full max-w-xs sm:max-w-sm md:max-w-md">
+      <div class="relative w-full max-w-[160px] xs:max-w-[200px] sm:max-w-xs md:max-w-md">
         <Search class="w-4 h-4 text-slate-400 absolute start-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
         <input
           type="text"
           :placeholder="t('common.searchPlaceholder')"
-          class="w-full bg-slate-50/80 border border-slate-200 rounded-xl ps-10 pe-4 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 transition-all"
+          class="w-full bg-slate-50/80 border border-slate-200 rounded-xl ps-9 sm:ps-10 pe-3 sm:pe-4 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 transition-all"
         />
       </div>
 
@@ -211,7 +212,7 @@ const breadcrumbs = computed(() => {
         >
           <div
             v-if="isMenuOpen"
-            class="absolute end-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-200/80 p-2 z-50 overflow-hidden"
+            class="absolute end-0 mt-2 w-64 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-xl border border-slate-200/80 p-2 z-50 overflow-hidden"
           >
             <!-- User Mini Profile Header -->
             <div class="p-3 bg-slate-50/80 rounded-xl mb-2 flex items-center gap-3 border border-slate-100">

@@ -91,7 +91,7 @@ const getTypeLabel = (type: string) => {
     </div>
 
     <div class="overflow-x-auto">
-      <table class="w-full text-start text-xs">
+      <table class="w-full text-start text-xs min-w-[500px]">
         <thead>
           <tr class="text-[11px] font-bold text-slate-400 border-b border-slate-100 uppercase tracking-wider bg-slate-50/40">
             <th class="py-2.5 px-4 text-start">{{ t('dashboard.userCol') }}</th>

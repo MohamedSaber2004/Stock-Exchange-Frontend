@@ -42,8 +42,8 @@ const handlePublish = () => {
         :description="t('news.subtitle')"
       />
 
-      <div class="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-2xs">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div class="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-6 lg:p-8 shadow-2xs">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
           
           <!-- Left Main Form: 2 cols -->
           <div class="lg:col-span-2 flex flex-col gap-5">
@@ -126,20 +126,20 @@ const handlePublish = () => {
         </div>
 
         <!-- Footer Actions -->
-        <div class="mt-8 pt-6 border-t border-slate-100 flex items-center justify-end gap-3">
+        <div class="mt-8 pt-6 border-t border-slate-100 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 sm:gap-3">
           <button
             type="button"
             @click="router.push('/news')"
-            class="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-xs transition-colors cursor-pointer"
+            class="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-xs transition-colors cursor-pointer text-center"
           >
-            Cancel
+            {{ t('common.cancel') }}
           </button>
           <button
             type="button"
             @click="handlePublish"
-            class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs cursor-pointer"
+            class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs cursor-pointer text-center"
           >
-            Publish News
+            {{ isAr ? 'نشر الخبر' : 'Publish News' }}
           </button>
         </div>
       </div>

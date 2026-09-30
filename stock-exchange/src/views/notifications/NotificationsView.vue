@@ -394,8 +394,8 @@ const handleCreate = () => {
                   </span>
                 </div>
 
-                <!-- Action Buttons -->
-                <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <!-- Action Buttons: always visible on touch/mobile, hover on desktop -->
+                <div class="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
                   <button
                     type="button"
                     @click="openPreview(item)"
@@ -425,12 +425,12 @@ const handleCreate = () => {
               </div>
 
               <!-- Body -->
-              <p class="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-1">
+              <p class="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-2">
                 {{ isAr ? item.bodyAr : item.body }}
               </p>
 
               <!-- Meta Row -->
-              <div class="flex items-center gap-4 mt-2.5 flex-wrap">
+              <div class="flex items-center gap-3 sm:gap-4 mt-2.5 flex-wrap">
                 <!-- Target -->
                 <div class="flex items-center gap-1 text-xs text-slate-500">
                   <Users class="w-3.5 h-3.5" />
@@ -450,7 +450,7 @@ const handleCreate = () => {
                 </div>
 
                 <!-- Read Rate (only for sent) -->
-                <div v-if="item.status === 'sent' && item.reach > 0" class="flex items-center gap-2 ms-auto">
+                <div v-if="item.status === 'sent' && item.reach > 0" class="flex items-center gap-2 flex-wrap sm:ms-auto">
                   <div class="flex items-center gap-1 text-xs text-slate-500">
                     <CheckCheck class="w-3.5 h-3.5 text-emerald-500" />
                     <span class="font-semibold text-slate-700">{{ readRate(item) }}%</span>

@@ -169,7 +169,7 @@ const saveEditModal = () => {
 
         <!-- Data Table -->
         <div class="overflow-x-auto">
-          <table class="w-full text-start text-xs">
+          <table class="w-full text-start text-xs min-w-[650px]">
             <thead>
               <tr class="text-[11px] font-bold text-slate-400 border-b border-slate-100 uppercase tracking-wider bg-slate-50/50">
                 <th class="py-3 px-4 text-start">{{ t('news.headlineCol') }}</th>
@@ -253,7 +253,7 @@ const saveEditModal = () => {
             />
           </div>
 
-          <div class="grid grid-cols-2 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div class="flex flex-col gap-1">
               <label class="text-xs font-bold text-slate-700">{{ t('news.badgeCol') }}</label>
               <select
@@ -277,18 +277,18 @@ const saveEditModal = () => {
           </div>
         </div>
 
-        <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 mt-2">
+        <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 mt-2 flex-wrap">
           <button
             type="button"
             @click="isEditModalOpen = false"
-            class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 cursor-pointer"
+            class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 cursor-pointer flex-1 sm:flex-initial text-center"
           >
             {{ t('common.cancel') }}
           </button>
           <button
             type="button"
             @click="saveEditModal"
-            class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs cursor-pointer"
+            class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs cursor-pointer flex-1 sm:flex-initial text-center"
           >
             {{ t('common.save') }}
           </button>
@@ -338,18 +338,18 @@ const saveEditModal = () => {
           </p>
         </div>
 
-        <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+        <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 flex-wrap">
           <button
             type="button"
             @click="isPreviewModalOpen = false"
-            class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 cursor-pointer"
+            class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 cursor-pointer flex-1 sm:flex-initial text-center"
           >
             {{ t('common.close') }}
           </button>
           <button
             type="button"
             @click="isEditModalOpen = true; editingItem = { ...previewingItem }; isPreviewModalOpen = false"
-            class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs cursor-pointer"
+            class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs cursor-pointer flex-1 sm:flex-initial text-center"
           >
             {{ t('news.editNews') }}
           </button>

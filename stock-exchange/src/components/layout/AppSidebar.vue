@@ -134,7 +134,9 @@ const handleLogout = async () => {
   <aside
     :class="[
       'fixed lg:static top-0 start-0 h-full w-64 border-e border-slate-200/80 bg-white flex flex-col justify-between shrink-0 select-none z-50 transition-transform duration-300 ease-in-out lg:translate-x-0 lg:rtl:translate-x-0 lg:transform-none',
-      isOpen ? 'translate-x-0 shadow-2xl lg:shadow-none' : 'max-lg:-translate-x-full max-lg:rtl:translate-x-full'
+      isOpen 
+        ? 'translate-x-0 shadow-2xl lg:shadow-none' 
+        : (isAr ? 'max-lg:translate-x-full' : 'max-lg:-translate-x-full')
     ]"
     aria-label="Main Navigation"
   >

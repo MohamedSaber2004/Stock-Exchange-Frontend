@@ -181,7 +181,7 @@ const handleAction = async (actionId: string, vid: VideoLesson) => {
 
         <!-- Data Table -->
         <div class="overflow-x-auto">
-          <table class="w-full text-start text-xs">
+          <table class="w-full text-start text-xs min-w-[650px]">
             <thead>
               <tr class="text-[11px] font-bold text-slate-400 border-b border-slate-100 uppercase tracking-wider bg-slate-50/50">
                 <th class="py-3 px-4 text-start">{{ t('videos.thumbnailCol') }}</th>
@@ -318,11 +318,11 @@ const handleAction = async (actionId: string, vid: VideoLesson) => {
             </div>
 
             <!-- Modal Footer -->
-            <div class="flex items-center justify-between pt-2">
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
               <div class="flex items-center gap-2">
                 <StatusBadge :status="previewVideo.status" />
               </div>
-              <div class="flex items-center gap-2">
+              <div class="flex items-center justify-end gap-2">
                 <button
                   type="button"
                   @click="isPreviewOpen = false"

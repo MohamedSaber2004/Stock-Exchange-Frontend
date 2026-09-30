@@ -25,7 +25,7 @@ const setPage = (page: number) => {
 </script>
 
 <template>
-  <div class="flex items-center justify-end gap-1.5 py-4 select-none">
+  <div class="flex items-center justify-center sm:justify-end flex-wrap gap-1.5 py-4 select-none">
     <button
       type="button"
       :disabled="currentPage <= 1"

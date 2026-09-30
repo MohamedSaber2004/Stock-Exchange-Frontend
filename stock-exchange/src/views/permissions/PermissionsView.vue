@@ -122,11 +122,11 @@ const toggleAllInCategory = (category: FeatureCategory, plan: PlanTier, enable: 
         :description="isAr ? 'التحكم الدقيق في الميزات والصلاحيات المتاحة لكل خطة اشتراك (المجانية، الأساسية، والاحترافية). التعديلات تسمع فوراً في صفحة خطط الاشتراكات.' : 'Configure feature availability and permissions across Free, Basic, and Pro subscription tiers. Changes sync instantly with the Subscription Plans page.'"
       >
         <template #actions>
-          <div class="flex items-center gap-2.5">
+          <div class="flex items-center gap-2.5 flex-wrap">
             <button
               type="button"
               @click="handleReset"
-              class="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-colors flex items-center gap-2 cursor-pointer shadow-2xs"
+              class="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-colors flex items-center gap-2 cursor-pointer shadow-2xs flex-1 sm:flex-initial justify-center"
             >
               <RotateCcw class="w-3.5 h-3.5 text-slate-400" />
               <span>{{ isAr ? 'استعادة الافتراضي' : 'Reset Defaults' }}</span>
@@ -135,7 +135,7 @@ const toggleAllInCategory = (category: FeatureCategory, plan: PlanTier, enable: 
             <button
               type="button"
               @click="router.push('/subscriptions')"
-              class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs flex items-center gap-2 cursor-pointer"
+              class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs flex items-center gap-2 cursor-pointer flex-1 sm:flex-initial justify-center"
             >
               <CreditCard class="w-4 h-4" />
               <span>{{ isAr ? 'عرض خطط الاشتراكات' : 'View Subscription Plans' }}</span>
@@ -161,16 +161,16 @@ const toggleAllInCategory = (category: FeatureCategory, plan: PlanTier, enable: 
         </div>
 
         <!-- Plan Feature Counters -->
-        <div class="flex items-center gap-2 shrink-0">
-          <div class="px-3 py-1.5 rounded-xl bg-white border border-slate-200 shadow-2xs flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0">
+          <div class="px-3 py-1.5 rounded-xl bg-white border border-slate-200 shadow-2xs flex items-center gap-2 flex-1 sm:flex-initial justify-center">
             <span class="text-[11px] font-bold text-slate-600">{{ isAr ? 'مجانية' : 'FREE' }}:</span>
             <span class="text-xs font-black text-slate-900">{{ planFeatureCounts.FREE }}</span>
           </div>
-          <div class="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 shadow-2xs flex items-center gap-2">
+          <div class="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 shadow-2xs flex items-center gap-2 flex-1 sm:flex-initial justify-center">
             <span class="text-[11px] font-bold text-emerald-800">{{ isAr ? 'أساسية' : 'BASIC' }}:</span>
             <span class="text-xs font-black text-emerald-700">{{ planFeatureCounts.BASIC }}</span>
           </div>
-          <div class="px-3 py-1.5 rounded-xl bg-emerald-600 text-white shadow-2xs flex items-center gap-2">
+          <div class="px-3 py-1.5 rounded-xl bg-emerald-600 text-white shadow-2xs flex items-center gap-2 flex-1 sm:flex-initial justify-center">
             <span class="text-[11px] font-bold text-emerald-100">{{ isAr ? 'احترافية' : 'PRO' }}:</span>
             <span class="text-xs font-black text-white">{{ planFeatureCounts.PRO }}</span>
           </div>
@@ -252,7 +252,7 @@ const toggleAllInCategory = (category: FeatureCategory, plan: PlanTier, enable: 
             </div>
 
             <!-- Quick Batch Selectors -->
-            <div class="flex items-center gap-3 text-[11px] text-slate-500 font-bold">
+            <div class="flex items-center gap-2 sm:gap-3 text-[11px] text-slate-500 font-bold flex-wrap">
               <span>{{ isAr ? 'تفعيل للكل:' : 'Batch enable:' }}</span>
               <button
                 type="button"
@@ -282,7 +282,7 @@ const toggleAllInCategory = (category: FeatureCategory, plan: PlanTier, enable: 
 
           <!-- Features Table -->
           <div class="overflow-x-auto">
-            <table class="w-full text-start text-xs border-collapse">
+            <table class="w-full text-start text-xs border-collapse min-w-[580px]">
               <thead>
                 <tr class="border-b border-slate-100 bg-slate-50/40 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
                   <th class="ps-6 pe-4 py-3 text-start w-1/2">

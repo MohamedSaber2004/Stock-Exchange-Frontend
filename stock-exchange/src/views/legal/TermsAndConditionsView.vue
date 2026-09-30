@@ -121,12 +121,12 @@ const handleSaveDocument = () => {
       </PageHeader>
 
       <!-- Document Tabs -->
-      <div class="flex items-center gap-2 border-b border-slate-200">
+      <div class="flex items-center gap-2 border-b border-slate-200 overflow-x-auto pb-px">
         <button
           type="button"
           @click="activeDoc = 'terms'"
           :class="[
-            'px-4 py-3 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-2',
+            'px-4 py-3 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-2 shrink-0',
             activeDoc === 'terms'
               ? 'border-emerald-600 text-emerald-700'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -140,7 +140,7 @@ const handleSaveDocument = () => {
           type="button"
           @click="activeDoc = 'privacy'"
           :class="[
-            'px-4 py-3 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-2',
+            'px-4 py-3 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-2 shrink-0',
             activeDoc === 'privacy'
               ? 'border-emerald-600 text-emerald-700'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -154,7 +154,7 @@ const handleSaveDocument = () => {
           type="button"
           @click="activeDoc = 'disclaimer'"
           :class="[
-            'px-4 py-3 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-2',
+            'px-4 py-3 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-2 shrink-0',
             activeDoc === 'disclaimer'
               ? 'border-emerald-600 text-emerald-700'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -169,7 +169,7 @@ const handleSaveDocument = () => {
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         
         <!-- Left: Rich Content Editor (2 cols) -->
-        <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200/80 p-6 shadow-2xs flex flex-col gap-4">
+        <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-6 shadow-2xs flex flex-col gap-4">
           <div class="flex items-center justify-between pb-3 border-b border-slate-100">
             <div>
               <h2 class="text-sm font-bold text-slate-900">{{ documents[activeDoc].title }}</h2>
