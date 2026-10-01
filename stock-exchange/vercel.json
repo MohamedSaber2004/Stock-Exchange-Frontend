@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://stock-exchange.runasp.net/api/$1"
+    },
+    {
+      "source": "/files/(.*)",
+      "destination": "https://stock-exchange.runasp.net/files/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
