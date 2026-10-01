@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import AppHeader from './AppHeader.vue'
 import AppSidebar from './AppSidebar.vue'
-import ToastContainer from '../ui/ToastContainer.vue'
-import ConfirmModal from '../ui/ConfirmModal.vue'
 
 interface Props {
   withSidebar?: boolean
@@ -24,9 +22,6 @@ withDefaults(defineProps<Props>(), {
         <slot />
       </main>
     </div>
-
-    <!-- Global Feedback Modals -->
-    <ToastContainer />
-    <ConfirmModal />
   </div>
 </template>
+

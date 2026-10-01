@@ -7,6 +7,7 @@ import PageHeader from '@/components/ui/PageHeader.vue'
 import RichTextEditor from '@/components/forms/RichTextEditor.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { useI18n } from 'vue-i18n'
+import { resolveAttachmentUrl, handleImageError } from '@/utils/attachment'
 
 const router = useRouter()
 const { toast } = useFeedback()
@@ -158,8 +159,9 @@ const handleSave = () => {
               <label class="text-xs font-bold text-slate-700">{{ isAr ? 'المعاينة / الصورة المصغرة' : 'Thumbnail / Preview' }}</label>
               <div class="relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-900 group aspect-video">
                 <img
-                  :src="form.thumbnail"
+                  :src="resolveAttachmentUrl(form.thumbnail, 'image')"
                   alt="Video Preview"
+                  @error="handleImageError($event, 'image')"
                   class="w-full h-full object-cover opacity-80"
                 />
                 <!-- Play Button Center Overlay -->

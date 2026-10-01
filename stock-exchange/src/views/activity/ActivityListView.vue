@@ -2,7 +2,6 @@
 import { ref, computed } from 'vue'
 import AppShell from '@/components/layout/AppShell.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
-import StatusBadge from '@/components/ui/StatusBadge.vue'
 import AppPagination from '@/components/ui/AppPagination.vue'
 import { 
   Activity, 
@@ -13,14 +12,11 @@ import {
   X, 
   CreditCard, 
   UserCheck, 
-  FileText, 
-  Video, 
-  ShieldAlert,
-  Calendar,
   Layers
 } from 'lucide-vue-next'
 import { useFeedback } from '@/composables/useFeedback'
 import { useI18n } from 'vue-i18n'
+import { resolveAttachmentUrl, handleImageError } from '@/utils/attachment'
 
 const { toast } = useFeedback()
 const { t, locale } = useI18n()
@@ -41,7 +37,7 @@ export interface ActivityRecord {
   timestamp: string
   timestampAr?: string
   fullDate: string
-  details?: Record<string, any>
+  details?: Record<string, unknown>
 }
 
 const activities = ref<ActivityRecord[]>([
@@ -404,14 +400,11 @@ const getTypeLabel = (type: string) => {
                 <td class="py-3.5 px-5 text-start">
                   <div class="flex items-center gap-2.5">
                     <img 
-                      v-if="act.avatar" 
-                      :src="act.avatar" 
+                      :src="resolveAttachmentUrl(act.avatar, 'avatar')" 
                       :alt="act.user"
+                      @error="handleImageError($event, 'avatar')"
                       class="w-7 h-7 rounded-full object-cover ring-1 ring-slate-200 shrink-0"
                     />
-                    <div v-else class="w-7 h-7 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-[10px] shrink-0">
-                      {{ act.user.charAt(0) }}
-                    </div>
                     <div class="flex flex-col min-w-0">
                       <span class="font-bold text-slate-900 truncate">{{ isAr && act.userAr ? act.userAr : act.user }}</span>
                       <span class="text-[10px] text-slate-400 font-medium truncate">{{ act.email }}</span>

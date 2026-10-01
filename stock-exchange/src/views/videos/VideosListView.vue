@@ -10,6 +10,7 @@ import ActionMenu from '@/components/ui/ActionMenu.vue'
 import AppPagination from '@/components/ui/AppPagination.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { useI18n } from 'vue-i18n'
+import { resolveAttachmentUrl, handleImageError } from '@/utils/attachment'
 
 const router = useRouter()
 const { confirm, toast } = useFeedback()
@@ -202,8 +203,9 @@ const handleAction = async (actionId: string, vid: VideoLesson) => {
                 <!-- Thumbnail Image -->
                 <td class="py-3 px-4 text-start">
                   <img
-                    :src="vid.thumbnail"
+                    :src="resolveAttachmentUrl(vid.thumbnail, 'image')"
                     :alt="vid.title"
+                    @error="handleImageError($event, 'image')"
                     class="w-12 h-9 rounded-lg object-cover border border-slate-200"
                   />
                 </td>
@@ -291,8 +293,9 @@ const handleAction = async (actionId: string, vid: VideoLesson) => {
             <!-- Video Player Mockup -->
             <div class="relative w-full aspect-video rounded-xl overflow-hidden bg-slate-950 group flex items-center justify-center shadow-inner">
               <img
-                :src="previewVideo.thumbnail"
+                :src="resolveAttachmentUrl(previewVideo.thumbnail, 'image')"
                 :alt="previewVideo.title"
+                @error="handleImageError($event, 'image')"
                 class="w-full h-full object-cover opacity-75 group-hover:scale-105 transition-transform duration-300"
               />
               <div class="absolute inset-0 bg-slate-950/40 group-hover:bg-slate-950/30 transition-colors"></div>

@@ -1,48 +1,110 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter, RouterLink } from 'vue-router'
-import { TrendingUp, Lock, Mail, ArrowRight, ShieldCheck } from 'lucide-vue-next'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter, useRoute, RouterLink } from 'vue-router'
+import {
+  TrendingUp,
+  Lock,
+  Mail,
+  ArrowRight,
+  ShieldCheck,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  AlertTriangle,
+  Loader2,
+} from 'lucide-vue-next'
 import { useFeedback } from '@/composables/useFeedback'
 import { coreServices } from '@/di'
 import { useI18n } from 'vue-i18n'
 import LanguageSwitcher from '@/components/ui/LanguageSwitcher.vue'
+import { extractApiErrors } from '@/domain/models/common.model'
 
 const router = useRouter()
+const route = useRoute()
 const { toast } = useFeedback()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
-const email = ref('admin@gmail.com')
-const password = ref('admin@123')
+const isAr = computed(() => locale.value === 'ar')
+const email = ref('')
+const password = ref('')
+const showPassword = ref(false)
 const isLoading = ref(false)
 
+const fieldErrors = ref<Record<string, string>>({})
+const generalError = ref<string | null>(null)
+const isSessionExpired = ref(false)
+
+onMounted(() => {
+  if (route.query.session_expired === 'true') {
+    isSessionExpired.value = true
+    toast.warning(
+      isAr.value
+        ? 'انتهت صلاحية الجلسة، يرجى تسجيل الدخول مجدداً للمتابعة.'
+        : 'Your session has expired. Please sign in again.',
+      isAr.value ? 'جلسة منتهية' : 'Session Expired'
+    )
+  }
+
+  if (route.query.forbidden === 'true') {
+    generalError.value = isAr.value
+      ? 'عفواً، لا تملك الصلاحيات الكافية للوصول إلى لوحة التحكم.'
+      : 'You do not have administrative privileges to access this dashboard.'
+  }
+})
+
+const clearFieldError = (field: string) => {
+  if (fieldErrors.value[field]) {
+    delete fieldErrors.value[field]
+  }
+  generalError.value = null
+}
+
 const handleLogin = async () => {
-  if (!email.value || !password.value) {
-    toast.error(t('auth.fillBothFields'))
+  fieldErrors.value = {}
+  generalError.value = null
+
+  if (!email.value.trim()) {
+    fieldErrors.value.email = isAr.value
+      ? 'يرجى إدخال البريد الإلكتروني'
+      : 'Please enter your email address'
+  }
+  if (!password.value) {
+    fieldErrors.value.password = isAr.value
+      ? 'يرجى إدخال كلمة المرور'
+      : 'Please enter your password'
+  }
+
+  if (Object.keys(fieldErrors.value).length > 0) {
     return
   }
 
   isLoading.value = true
 
-  // Simulate authentication
-  setTimeout(() => {
-    coreServices.tokenStore.setTokens({
-      accessToken: 'finwise_admin_token_mock',
-      refreshToken: 'finwise_admin_refresh_mock',
-      expiresIn: 86400
+  try {
+    const authData = await coreServices.auth.login({
+      email: email.value.trim(),
+      password: password.value,
     })
 
-    coreServices.tokenStore.setUser({
-      id: 'usr_admin_1',
-      name: 'Admin',
-      email: email.value,
-      role: 'ADMIN',
-      createdAt: new Date().toISOString()
-    })
+    toast.success(
+      isAr.value ? `مرحباً بعودتك، ${authData.fullName}` : `Welcome back, ${authData.fullName}`,
+      isAr.value ? 'تم تسجيل الدخول بنجاح' : 'Signed In Successfully'
+    )
 
-    toast.success(t('auth.loginSuccess'))
+    const redirectPath = (route.query.redirect as string) || '/'
+    router.push(redirectPath)
+  } catch (err: unknown) {
+    const extracted = extractApiErrors(err)
+    fieldErrors.value = extracted.fieldErrors
+    generalError.value = extracted.generalMessage
+
+    toast.error(
+      extracted.generalMessage,
+      isAr.value ? 'تعذر تسجيل الدخول' : 'Sign In Failed'
+    )
+  } finally {
     isLoading.value = false
-    router.push('/')
-  }, 400)
+  }
 }
 </script>
 
@@ -69,13 +131,31 @@ const handleLogin = async () => {
             </div>
           </div>
 
-          <div class="mb-8">
+          <div class="mb-6">
             <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
               {{ t('auth.welcomeBack') }}
             </h1>
             <p class="text-xs text-slate-500 mt-1 font-medium">
               {{ t('auth.signInSubtitle') }}
             </p>
+          </div>
+
+          <!-- Session Expired Alert Banner -->
+          <div
+            v-if="isSessionExpired"
+            class="mb-4 p-3 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-900 text-xs font-medium flex items-center gap-2.5 animate-fadeIn"
+          >
+            <AlertTriangle class="w-4 h-4 shrink-0 text-amber-600" />
+            <span>{{ isAr ? 'انتهت جلستك لأسباب أمنية، يرجى تسجيل الدخول مجدداً للمتابعة.' : 'Your session expired. Please sign in again.' }}</span>
+          </div>
+
+          <!-- General Backend Error Banner -->
+          <div
+            v-if="generalError"
+            class="mb-4 p-3 rounded-xl bg-rose-50/90 border border-rose-200 text-rose-800 text-xs font-medium flex items-center gap-2.5 animate-fadeIn"
+          >
+            <AlertCircle class="w-4 h-4 shrink-0 text-rose-600" />
+            <span class="leading-relaxed">{{ generalError }}</span>
           </div>
 
           <form @submit.prevent="handleLogin" class="flex flex-col gap-4">
@@ -87,11 +167,21 @@ const handleLogin = async () => {
                 <input
                   v-model="email"
                   type="email"
+                  autocomplete="email"
                   required
                   placeholder="admin@finwise.com"
-                  class="w-full bg-slate-50 border border-slate-200 rounded-xl ps-10 pe-4 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 transition-all"
+                  :class="[
+                    'w-full bg-slate-50 border rounded-xl ps-10 pe-4 py-2.5 text-xs text-slate-900 transition-all focus:outline-none focus:bg-white',
+                    fieldErrors.email
+                      ? 'border-rose-300 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/10'
+                      : 'border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10'
+                  ]"
+                  @input="clearFieldError('email')"
                 />
               </div>
+              <p v-if="fieldErrors.email" class="text-[11px] text-rose-600 font-bold mt-0.5">
+                {{ fieldErrors.email }}
+              </p>
             </div>
 
             <!-- Password -->
@@ -109,20 +199,40 @@ const handleLogin = async () => {
                 <Lock class="w-4 h-4 text-slate-400 absolute start-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   v-model="password"
-                  type="password"
+                  :type="showPassword ? 'text' : 'password'"
+                  autocomplete="current-password"
                   required
                   placeholder="••••••••"
-                  class="w-full bg-slate-50 border border-slate-200 rounded-xl ps-10 pe-4 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 transition-all"
+                  :class="[
+                    'w-full bg-slate-50 border rounded-xl ps-10 pe-10 py-2.5 text-xs text-slate-900 transition-all focus:outline-none focus:bg-white',
+                    fieldErrors.password
+                      ? 'border-rose-300 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/10'
+                      : 'border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10'
+                  ]"
+                  @input="clearFieldError('password')"
                 />
+                <button
+                  type="button"
+                  tabindex="-1"
+                  @click="showPassword = !showPassword"
+                  class="absolute end-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <EyeOff v-if="showPassword" class="w-4 h-4" />
+                  <Eye v-else class="w-4 h-4" />
+                </button>
               </div>
+              <p v-if="fieldErrors.password" class="text-[11px] text-rose-600 font-bold mt-0.5">
+                {{ fieldErrors.password }}
+              </p>
             </div>
 
             <!-- Sign In Button -->
             <button
               type="submit"
               :disabled="isLoading"
-              class="w-full mt-2 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              class="w-full mt-2 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
             >
+              <Loader2 v-if="isLoading" class="w-4 h-4 animate-spin" />
               <span>{{ isLoading ? t('auth.signingIn') : t('auth.signIn') }}</span>
               <ArrowRight v-if="!isLoading" class="w-3.5 h-3.5 rtl:rotate-180" />
             </button>

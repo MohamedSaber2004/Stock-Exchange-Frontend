@@ -1,10 +1,22 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute, RouterLink } from 'vue-router'
-import { TrendingUp, Lock, Eye, EyeOff, ArrowRight, ShieldCheck, Check, Key, Shield } from 'lucide-vue-next'
+import {
+  TrendingUp,
+  Lock,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  ShieldCheck,
+  Check,
+  AlertCircle,
+  Loader2,
+} from 'lucide-vue-next'
 import { useFeedback } from '@/composables/useFeedback'
+import { coreServices } from '@/di'
 import { useI18n } from 'vue-i18n'
 import LanguageSwitcher from '@/components/ui/LanguageSwitcher.vue'
+import { extractApiErrors } from '@/domain/models/common.model'
 
 const router = useRouter()
 const route = useRoute()
@@ -12,12 +24,30 @@ const { toast } = useFeedback()
 const { t, locale } = useI18n()
 const isAr = computed(() => locale.value === 'ar')
 
-const email = ref((route.query.email as string) || 'admin@gmail.com')
+const email = ref((route.query.email as string) || '')
+const resetToken = ref(
+  (route.query.token as string) || (route.query.otp as string) || ''
+)
+
 const newPassword = ref('')
 const confirmPassword = ref('')
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 const isLoading = ref(false)
+
+const fieldErrors = ref<Record<string, string>>({})
+const generalError = ref<string | null>(null)
+
+onMounted(() => {
+  if (!email.value || !resetToken.value) {
+    toast.warning(
+      isAr.value
+        ? 'رمز إعادة التعيين مفقود، يرجى إعادة طلب رمز التحقق'
+        : 'Reset token is missing. Please request a verification code again.'
+    )
+    router.replace('/forgot-password')
+  }
+})
 
 // Strength criteria
 const hasMinLength = computed(() => newPassword.value.length >= 8)
@@ -35,41 +65,83 @@ const strengthScore = computed(() => {
 })
 
 const strengthLabel = computed(() => {
-  if (strengthScore.value <= 1) return { text: t('auth.weak'), color: 'bg-rose-500', textClass: 'text-rose-600' }
-  if (strengthScore.value <= 3) return { text: t('auth.moderate'), color: 'bg-amber-500', textClass: 'text-amber-600' }
+  if (strengthScore.value <= 1)
+    return { text: t('auth.weak'), color: 'bg-rose-500', textClass: 'text-rose-600' }
+  if (strengthScore.value <= 3)
+    return { text: t('auth.moderate'), color: 'bg-amber-500', textClass: 'text-amber-600' }
   return { text: t('auth.strong'), color: 'bg-emerald-500', textClass: 'text-emerald-600' }
 })
 
 const passwordsMatch = computed(() => {
-  return newPassword.value && confirmPassword.value && newPassword.value === confirmPassword.value
+  return (
+    newPassword.value &&
+    confirmPassword.value &&
+    newPassword.value === confirmPassword.value
+  )
 })
 
-const handleResetPassword = () => {
+const clearFieldError = (field: string) => {
+  if (fieldErrors.value[field]) {
+    delete fieldErrors.value[field]
+  }
+  generalError.value = null
+}
+
+const handleResetPassword = async () => {
+  fieldErrors.value = {}
+  generalError.value = null
+
   if (!newPassword.value || !confirmPassword.value) {
-    toast.error(isAr.value ? 'يرجى إدخال وتأكيد كلمة المرور الجديدة' : 'Please enter and confirm your new password')
+    toast.error(
+      isAr.value ? 'يرجى إدخال وتأكيد كلمة المرور الجديدة' : 'Please enter and confirm your new password'
+    )
     return
   }
 
   if (newPassword.value !== confirmPassword.value) {
-    toast.error(isAr.value ? 'كلمتا المرور غير متطابقتين' : 'Passwords do not match')
+    fieldErrors.value.confirmPassword = isAr.value
+      ? 'كلمتا المرور غير متطابقتين'
+      : 'Passwords do not match'
     return
   }
 
   if (newPassword.value.length < 8) {
-    toast.error(isAr.value ? 'يجب أن تتكون كلمة المرور من 8 أحرف على الأقل' : 'Password must be at least 8 characters long')
+    fieldErrors.value.newPassword = isAr.value
+      ? 'يجب أن تتكون كلمة المرور من 8 أحرف على الأقل'
+      : 'Password must be at least 8 characters long'
     return
   }
 
   isLoading.value = true
 
-  setTimeout(() => {
-    isLoading.value = false
+  try {
+    await coreServices.auth.resetPassword({
+      email: email.value,
+      otpCode: resetToken.value,
+      newPassword: newPassword.value,
+      confirmPassword: confirmPassword.value,
+    })
+
     toast.success(
-      isAr.value ? 'تمت إعادة تعيين كلمة المرور بنجاح! يمكنك الآن تسجيل الدخول.' : 'Your password has been reset successfully! You can now sign in.',
+      isAr.value
+        ? 'تمت إعادة تعيين كلمة المرور بنجاح! يمكنك الآن تسجيل الدخول.'
+        : 'Your password has been reset successfully! You can now sign in.',
       isAr.value ? 'تم تحديث كلمة المرور' : 'Password Updated'
     )
+
     router.push('/login')
-  }, 600)
+  } catch (err: unknown) {
+    const extracted = extractApiErrors(err)
+    fieldErrors.value = extracted.fieldErrors
+    generalError.value = extracted.generalMessage
+
+    toast.error(
+      extracted.generalMessage,
+      isAr.value ? 'فشل إعادة التعيين' : 'Reset Failed'
+    )
+  } finally {
+    isLoading.value = false
+  }
 }
 </script>
 
@@ -97,7 +169,7 @@ const handleResetPassword = () => {
           </div>
 
           <!-- Heading with Identity Icon -->
-          <div class="mb-8">
+          <div class="mb-6">
             <div class="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100/80 text-emerald-600 flex items-center justify-center mb-4 shadow-sm">
               <Lock class="w-6 h-6 stroke-[2.2]" />
             </div>
@@ -105,8 +177,17 @@ const handleResetPassword = () => {
               {{ t('auth.resetPasswordTitle') }}
             </h1>
             <p class="text-xs text-slate-500 mt-1.5 font-medium leading-relaxed">
-              {{ t('auth.resetPasswordDesc') }} <strong class="text-slate-800 dir-ltr">{{ email }}</strong>.
+              {{ t('auth.resetPasswordDesc') }} <strong class="text-slate-800 dir-ltr">{{ email }}</strong>
             </p>
+          </div>
+
+          <!-- General Backend Error Banner -->
+          <div
+            v-if="generalError"
+            class="mb-4 p-3 rounded-xl bg-rose-50/90 border border-rose-200 text-rose-800 text-xs font-medium flex items-center gap-2.5 animate-fadeIn"
+          >
+            <AlertCircle class="w-4 h-4 shrink-0 text-rose-600" />
+            <span class="leading-relaxed">{{ generalError }}</span>
           </div>
 
           <!-- Form -->
@@ -119,12 +200,20 @@ const handleResetPassword = () => {
                 <input
                   v-model="newPassword"
                   :type="showPassword ? 'text' : 'password'"
+                  autocomplete="new-password"
                   required
                   placeholder="••••••••"
-                  class="w-full bg-slate-50 border border-slate-200 rounded-xl ps-10 pe-10 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 transition-all"
+                  :class="[
+                    'w-full bg-slate-50 border rounded-xl ps-10 pe-10 py-2.5 text-xs text-slate-900 transition-all focus:outline-none focus:bg-white',
+                    fieldErrors.newPassword
+                      ? 'border-rose-300 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/10'
+                      : 'border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10'
+                  ]"
+                  @input="clearFieldError('newPassword')"
                 />
                 <button
                   type="button"
+                  tabindex="-1"
                   @click="showPassword = !showPassword"
                   class="absolute end-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                 >
@@ -132,6 +221,9 @@ const handleResetPassword = () => {
                   <Eye v-else class="w-4 h-4" />
                 </button>
               </div>
+              <p v-if="fieldErrors.newPassword" class="text-[11px] text-rose-600 font-bold mt-0.5">
+                {{ fieldErrors.newPassword }}
+              </p>
 
               <!-- Password Strength Bar -->
               <div v-if="newPassword" class="mt-1 flex flex-col gap-1">
@@ -140,9 +232,9 @@ const handleResetPassword = () => {
                   <span :class="strengthLabel.textClass">{{ strengthLabel.text }}</span>
                 </div>
                 <div class="grid grid-cols-4 gap-1 h-1 rounded-full bg-slate-100 overflow-hidden">
-                  <div 
-                    v-for="idx in 4" 
-                    :key="idx" 
+                  <div
+                    v-for="idx in 4"
+                    :key="idx"
                     :class="[
                       'h-full rounded-full transition-all duration-300',
                       idx <= strengthScore ? strengthLabel.color : 'bg-slate-200'
@@ -160,12 +252,20 @@ const handleResetPassword = () => {
                 <input
                   v-model="confirmPassword"
                   :type="showConfirmPassword ? 'text' : 'password'"
+                  autocomplete="new-password"
                   required
                   placeholder="••••••••"
-                  class="w-full bg-slate-50 border border-slate-200 rounded-xl ps-10 pe-10 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 transition-all"
+                  :class="[
+                    'w-full bg-slate-50 border rounded-xl ps-10 pe-10 py-2.5 text-xs text-slate-900 transition-all focus:outline-none focus:bg-white',
+                    fieldErrors.confirmPassword
+                      ? 'border-rose-300 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/10'
+                      : 'border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10'
+                  ]"
+                  @input="clearFieldError('confirmPassword')"
                 />
                 <button
                   type="button"
+                  tabindex="-1"
                   @click="showConfirmPassword = !showConfirmPassword"
                   class="absolute end-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                 >
@@ -173,6 +273,9 @@ const handleResetPassword = () => {
                   <Eye v-else class="w-4 h-4" />
                 </button>
               </div>
+              <p v-if="fieldErrors.confirmPassword" class="text-[11px] text-rose-600 font-bold mt-0.5">
+                {{ fieldErrors.confirmPassword }}
+              </p>
 
               <div v-if="confirmPassword" class="flex items-center gap-1.5 mt-0.5 text-[10px]">
                 <Check v-if="passwordsMatch" class="w-3.5 h-3.5 text-emerald-600" />
@@ -186,8 +289,9 @@ const handleResetPassword = () => {
             <button
               type="submit"
               :disabled="isLoading || !passwordsMatch || newPassword.length < 8"
-              class="w-full mt-2 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              class="w-full mt-2 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
             >
+              <Loader2 v-if="isLoading" class="w-4 h-4 animate-spin" />
               <span>{{ isLoading ? t('auth.savingPassword') : t('auth.saveSignIn') }}</span>
               <ArrowRight v-if="!isLoading" class="w-3.5 h-3.5 rtl:rotate-180" />
             </button>

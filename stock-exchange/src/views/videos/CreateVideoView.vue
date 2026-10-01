@@ -52,7 +52,6 @@ const formatDuration = (seconds: number): string => {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
 
-// Automatically captures the first frame of the video into form.thumbnail
 const captureVideoThumbnail = () => {
   const video = videoPlayerRef.value
   if (!video) return
@@ -75,8 +74,7 @@ const captureVideoThumbnail = () => {
         isThumbnailAuto.value = true
       }
     }
-  } catch (err) {
-    console.warn('Canvas export warning (e.g. cross-origin video):', err)
+  } catch {
     if (!form.value.thumbnail) {
       form.value.thumbnail = 'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=800&auto=format&fit=crop&q=80'
       isThumbnailAuto.value = true
@@ -111,8 +109,8 @@ const extractThumbnailFromFile = (file: File) => {
           isThumbnailAuto.value = true
         }
       }
-    } catch (e) {
-      console.warn('Background thumbnail extraction error:', e)
+    } catch {
+      // Ignore background thumbnail extraction error gracefully
     } finally {
       URL.revokeObjectURL(tempUrl)
     }
@@ -285,7 +283,7 @@ const handleSave = () => {
 
       <div class="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-6 lg:p-8 shadow-2xs">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
-          
+
           <!-- Left Main Column: 2 cols -->
           <div class="lg:col-span-2 flex flex-col gap-5">
             <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">

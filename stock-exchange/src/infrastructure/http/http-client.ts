@@ -1,4 +1,6 @@
-import type { AppError } from '@/domain/models/common.model'
+import type { ApiResponse, AppError } from '@/domain/models/common.model'
+import { extractApiErrors } from '@/domain/models/common.model'
+import type { RefreshTokenResponseDto } from '@/domain/models/user.model'
 import type { TokenStore } from '../storage/token-store'
 
 export interface RequestOptions extends RequestInit {
@@ -7,24 +9,80 @@ export interface RequestOptions extends RequestInit {
   cancelKey?: string
 }
 
+/** Interceptor called before every fetch — receives the mutable Headers object and the request path. */
+export type RequestInterceptor = (headers: Headers, path: string, requiresAuth: boolean) => void | Promise<void>
+
 export class HttpClient {
   private baseUrl: string
   private tokenStore: TokenStore
   private activeControllers = new Map<string, AbortController>()
   private isRefreshing = false
-  private refreshSubscribers: Array<(token: string) => void> = []
+  private failedQueue: Array<{
+    resolve: (token: string) => void
+    reject: (error: unknown) => void
+  }> = []
+  private interceptors: RequestInterceptor[] = []
 
-  constructor(tokenStore: TokenStore, baseUrl: string = '/api') {
+  constructor(
+    tokenStore: TokenStore,
+    baseUrl: string = import.meta.env?.VITE_API_URL || '/api/v1'
+  ) {
     this.tokenStore = tokenStore
-    this.baseUrl = baseUrl
+    this.baseUrl = baseUrl.replace(/\/+$/, '')
+    // Register the global auth interceptor — injects Bearer token on every authenticated request
+    this.addInterceptor(this.authInterceptor.bind(this))
+  }
+
+  /**
+   * Registers a request interceptor that runs before every fetch call.
+   * Interceptors are called in registration order and can mutate the Headers object.
+   */
+  addInterceptor(interceptor: RequestInterceptor): void {
+    this.interceptors.push(interceptor)
+  }
+
+  /** Built-in auth interceptor: always injects `Authorization: Bearer <token>` when requiresAuth=true. */
+  private authInterceptor(headers: Headers, _path: string, requiresAuth: boolean): void {
+    if (!requiresAuth) return
+    const token = this.tokenStore.getAccessToken()
+    if (token) {
+      // Always overwrite to ensure we use the freshest token, not a stale one from customHeaders
+      headers.set('Authorization', `Bearer ${token}`)
+    }
+  }
+
+  /** Runs all registered interceptors in order on the given headers. */
+  private async runInterceptors(headers: Headers, path: string, requiresAuth: boolean): Promise<void> {
+    for (const interceptor of this.interceptors) {
+      await interceptor(headers, path, requiresAuth)
+    }
+  }
+
+  getBaseUrl(): string {
+    return this.baseUrl
+  }
+
+  getServerBaseUrl(): string {
+    if (this.baseUrl.startsWith('http://') || this.baseUrl.startsWith('https://')) {
+      try {
+        const url = new URL(this.baseUrl)
+        return url.origin
+      } catch {
+        return this.baseUrl.replace(/\/api(\/v\d+)?\/?$/, '')
+      }
+    }
+    return ''
   }
 
   setBaseUrl(url: string): void {
-    this.baseUrl = url
+    this.baseUrl = url.replace(/\/+$/, '')
   }
 
   private buildUrl(path: string, params?: RequestOptions['params']): string {
-    const cleanPath = path.startsWith('http') ? path : `${this.baseUrl}${path.startsWith('/') ? path : `/${path}`}`
+    const cleanPath = path.startsWith('http')
+      ? path
+      : `${this.baseUrl}${path.startsWith('/') ? path : `/${path}`}`
+
     if (!params) return cleanPath
 
     const url = new URL(cleanPath, window.location.origin)
@@ -42,6 +100,101 @@ export class HttpClient {
       controller.abort()
       this.activeControllers.delete(key)
     }
+  }
+
+  private isAuthBypassUrl(path: string): boolean {
+    return (
+      path.includes('/authentication/login') ||
+      path.includes('/authentication/refresh-token') ||
+      path.includes('/authentication/forget-password') ||
+      path.includes('/authentication/verify-otp') ||
+      path.includes('/authentication/reset-password')
+    )
+  }
+
+  private processQueue(error: unknown, token: string | null = null): void {
+    this.failedQueue.forEach((promise) => {
+      if (token) {
+        promise.resolve(token)
+      } else {
+        promise.reject(error)
+      }
+    })
+    this.failedQueue = []
+  }
+
+  private handleForceLogout(): void {
+    this.tokenStore.clear()
+    if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+      window.location.href = '/login?session_expired=true'
+    }
+  }
+
+  private async handle401(): Promise<string | null> {
+    const refreshToken = this.tokenStore.getRefreshToken()
+    if (!refreshToken) {
+      this.handleForceLogout()
+      return null
+    }
+
+    if (this.isRefreshing) {
+      return new Promise<string>((resolve, reject) => {
+        this.failedQueue.push({ resolve, reject })
+      })
+    }
+
+    this.isRefreshing = true
+
+    try {
+      const refreshUrl = this.buildUrl('/authentication/refresh-token')
+
+      const res = await fetch(refreshUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'Accept-Language': this.getCurrentLanguage(),
+        },
+        body: JSON.stringify({ refreshToken }),
+      })
+
+      const payload = (await res.json().catch(() => null)) as ApiResponse<RefreshTokenResponseDto> | null
+
+      if (res.ok && payload?.success && payload.data?.accessToken) {
+        const { accessToken, refreshToken: newRefreshToken } = payload.data
+
+        // Token Rotation: تحديث التخزين بالتوكن الجديد فوراً
+        this.tokenStore.setTokens({
+          accessToken,
+          refreshToken: newRefreshToken || refreshToken,
+        })
+
+        this.processQueue(null, accessToken)
+        return accessToken
+      } else {
+        throw new Error(payload?.message || 'Token refresh failed')
+      }
+    } catch (refreshErr) {
+      this.processQueue(refreshErr, null)
+      this.handleForceLogout()
+      return null
+    } finally {
+      this.isRefreshing = false
+    }
+  }
+
+  private getCurrentLanguage(): 'ar' | 'en' {
+    if (typeof window !== 'undefined') {
+      const stored =
+        localStorage.getItem('app_user_locale') ||
+        localStorage.getItem('app_locale') ||
+        localStorage.getItem('app_lang') ||
+        document.documentElement.getAttribute('lang')
+      if (stored === 'en' || stored?.startsWith('en')) {
+        return 'en'
+      }
+    }
+    return 'ar'
   }
 
   private async request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -62,12 +215,13 @@ export class HttpClient {
       headers.set('Accept', 'application/json')
     }
 
-    if (requiresAuth) {
-      const token = this.tokenStore.getAccessToken()
-      if (token) {
-        headers.set('Authorization', `Bearer ${token}`)
-      }
+    // دعم اللغات التلقائي والديناميكي بناء على اللغة المختارة للمستخدم
+    if (!headers.has('Accept-Language')) {
+      headers.set('Accept-Language', this.getCurrentLanguage())
     }
+
+    // تطبيق كل الـ interceptors (بما فيها الـ auth interceptor المدمج الذي يضع Bearer token)
+    await this.runInterceptors(headers, path, requiresAuth)
 
     const targetUrl = this.buildUrl(path, params)
 
@@ -81,9 +235,11 @@ export class HttpClient {
         this.activeControllers.delete(cancelKey)
       }
 
-      if (response.status === 401 && requiresAuth) {
+      // إذا انتهت صلاحية التوكن (401) والطلب محمي وليس مسار مصادقة
+      if (response.status === 401 && requiresAuth && !this.isAuthBypassUrl(path)) {
         const refreshedToken = await this.handle401()
-        if (refreshedToken) {
+        // FormData لا يمكن إعادة إرساله بعد أول استهلاك — نكتفي بتجديد التوكن فقط
+        if (refreshedToken && !(restOptions.body instanceof FormData)) {
           headers.set('Authorization', `Bearer ${refreshedToken}`)
           const retryRes = await fetch(targetUrl, { ...restOptions, headers })
           return this.handleResponse<T>(retryRes)
@@ -95,23 +251,40 @@ export class HttpClient {
       if (cancelKey) {
         this.activeControllers.delete(cancelKey)
       }
-      if (err instanceof Error && err.name === 'AbortError') {
-        throw { code: 'REQUEST_ABORTED', message: 'Request was cancelled' } as AppError
-      }
       throw this.normalizeError(err)
     }
   }
 
   private async handleResponse<T>(response: Response): Promise<T> {
     const isJson = response.headers.get('content-type')?.includes('application/json')
-    const payload = isJson ? await response.json() : await response.text()
+    const payload = isJson ? await response.json().catch(() => null) : await response.text().catch(() => '')
 
+    // إذا فشل الطلب على مستوى HTTP
     if (!response.ok) {
+      const extracted = extractApiErrors(payload)
       const error: AppError = {
         code: `HTTP_${response.status}`,
-        message: payload?.message || response.statusText || 'An unexpected error occurred',
+        message: extracted.generalMessage || response.statusText || 'An unexpected error occurred',
         status: response.status,
-        details: isJson ? payload : undefined,
+        statusCode: response.status,
+        errors: (payload && typeof payload === 'object' && payload.errors) || undefined,
+        fieldErrors: extracted.fieldErrors,
+        details: payload,
+      }
+      throw error
+    }
+
+    // إذا أعاد السيرفر HTTP 200 ولكن success = false داخل الـ ApiResponse
+    if (payload && typeof payload === 'object' && 'success' in payload && payload.success === false) {
+      const extracted = extractApiErrors(payload)
+      const error: AppError = {
+        code: `API_ERROR_${payload.statusCode || 400}`,
+        message: extracted.generalMessage || 'Operation failed',
+        status: payload.statusCode || 400,
+        statusCode: payload.statusCode || 400,
+        errors: payload.errors,
+        fieldErrors: extracted.fieldErrors,
+        details: payload,
       }
       throw error
     }
@@ -119,60 +292,32 @@ export class HttpClient {
     return payload as T
   }
 
-  private async handle401(): Promise<string | null> {
-    const refreshToken = this.tokenStore.getRefreshToken()
-    if (!refreshToken) {
-      this.tokenStore.clear()
-      return null
-    }
-
-    if (this.isRefreshing) {
-      return new Promise<string>((resolve) => {
-        this.refreshSubscribers.push(resolve)
-      })
-    }
-
-    this.isRefreshing = true
-    try {
-      const res = await fetch(`${this.baseUrl}/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken }),
-      })
-
-      if (!res.ok) {
-        this.tokenStore.clear()
-        return null
-      }
-
-      const data = await res.json()
-      if (data?.accessToken) {
-        this.tokenStore.setTokens({
-          accessToken: data.accessToken,
-          refreshToken: data.refreshToken || refreshToken,
-          expiresIn: data.expiresIn || 3600,
-        })
-        this.refreshSubscribers.forEach((callback) => callback(data.accessToken))
-        this.refreshSubscribers = []
-        return data.accessToken
-      }
-      return null
-    } catch {
-      this.tokenStore.clear()
-      return null
-    } finally {
-      this.isRefreshing = false
-    }
-  }
-
   private normalizeError(err: unknown): AppError {
     if (typeof err === 'object' && err !== null && 'code' in err && 'message' in err) {
       return err as AppError
     }
     if (err instanceof Error) {
-      return { code: 'UNEXPECTED_ERROR', message: err.message }
+      if (err.name === 'AbortError') {
+        return {
+          code: 'REQUEST_ABORTED',
+          message: 'تم إلغاء الطلب',
+          statusCode: 0,
+        }
+      }
+      return {
+        code: 'NETWORK_ERROR',
+        message:
+          err.message === 'Failed to fetch'
+            ? 'تعذر الاتصال بالخادم، يرجى التأكد من اتصال الإنترنت أو عمل السيرفر'
+            : err.message,
+        statusCode: 0,
+      }
     }
-    return { code: 'UNKNOWN_ERROR', message: 'An unknown network error occurred' }
+    return {
+      code: 'UNKNOWN_ERROR',
+      message: 'حدث خطأ غير معروف في الاتصال بالشبكة',
+      statusCode: 0,
+    }
   }
 
   get<T>(path: string, options?: RequestOptions): Promise<T> {

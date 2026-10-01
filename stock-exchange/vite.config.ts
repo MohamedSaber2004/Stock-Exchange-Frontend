@@ -26,5 +26,17 @@ export default defineConfig({
     headers: {
       'Cache-Control': 'no-store',
     },
+    proxy: {
+      '/api': {
+        target: 'https://stock-exchange.runasp.net',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/files': {
+        target: 'https://stock-exchange.runasp.net',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
 })

@@ -101,7 +101,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside)
-  window.removeEventListener('scroll', handleScrollOrResize, { capture: true } as any)
+  window.removeEventListener('scroll', handleScrollOrResize, true)
   window.removeEventListener('resize', handleScrollOrResize)
 })
 </script>

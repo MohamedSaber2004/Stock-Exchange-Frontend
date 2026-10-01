@@ -106,30 +106,22 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Post Market News', requiresAuth: true },
   },
 
-  // 11. Subscription Plans
+  // Redirect removed subscription routes to dashboard
   {
     path: '/subscriptions',
-    name: 'subscriptions',
-    component: () => import('@/views/subscriptions/SubscriptionPlansView.vue'),
-    meta: { title: 'Subscription Plans', requiresAuth: true },
+    redirect: '/',
   },
-
-  // 12. Create Plan
   {
     path: '/subscriptions/create',
-    name: 'create-plan',
-    component: () => import('@/views/subscriptions/CreatePlanView.vue'),
-    meta: { title: 'Create Subscription Plan', requiresAuth: true },
-  },
-
-  // Redirect obsolete permissions routes to subscriptions
-  {
-    path: '/permissions',
-    redirect: '/subscriptions',
+    redirect: '/',
   },
   {
     path: '/subscriptions/permissions',
-    redirect: '/subscriptions',
+    redirect: '/',
+  },
+  {
+    path: '/permissions',
+    redirect: '/',
   },
 
   // 13. Users List

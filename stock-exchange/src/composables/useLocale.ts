@@ -12,6 +12,8 @@ export function useLocale() {
   const setLocale = (lang: 'ar' | 'en') => {
     i18n.locale.value = lang
     localStorage.setItem(LOCALE_KEY, lang)
+    localStorage.setItem('app_locale', lang)
+    localStorage.setItem('app_lang', lang)
     if (typeof document !== 'undefined') {
       document.documentElement.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr')
       document.documentElement.setAttribute('lang', lang)

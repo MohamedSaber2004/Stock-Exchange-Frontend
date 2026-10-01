@@ -1,23 +1,19 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { 
-  Mail, 
-  Globe, 
   Plus, 
   Trash2, 
   Building2, 
   Sparkles, 
   Save, 
   Users, 
-  Award, 
-  Layers,
-  Phone,
   Share2
 } from 'lucide-vue-next'
 import AppShell from '@/components/layout/AppShell.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { useI18n } from 'vue-i18n'
+import { resolveAttachmentUrl, handleImageError } from '@/utils/attachment'
 
 const { toast } = useFeedback()
 const { t } = useI18n()
@@ -345,8 +341,9 @@ const handleSave = () => {
           class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-2xs flex flex-col items-center text-center gap-3"
         >
           <img
-            :src="tm.avatar"
+            :src="resolveAttachmentUrl(tm.avatar, 'avatar')"
             :alt="tm.name"
+            @error="handleImageError($event, 'avatar')"
             class="w-16 h-16 rounded-full object-cover ring-2 ring-emerald-500/20"
           />
           <div>

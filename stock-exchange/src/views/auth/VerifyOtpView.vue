@@ -1,10 +1,21 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute, RouterLink } from 'vue-router'
-import { TrendingUp, ArrowRight, ArrowLeft, ShieldCheck, CheckCircle2, RotateCw, Smartphone, Shield } from 'lucide-vue-next'
+import {
+  TrendingUp,
+  ArrowRight,
+  ArrowLeft,
+  ShieldCheck,
+  RotateCw,
+  Smartphone,
+  AlertCircle,
+  Loader2,
+} from 'lucide-vue-next'
 import { useFeedback } from '@/composables/useFeedback'
+import { coreServices } from '@/di'
 import { useI18n } from 'vue-i18n'
 import LanguageSwitcher from '@/components/ui/LanguageSwitcher.vue'
+import { extractApiErrors } from '@/domain/models/common.model'
 
 const router = useRouter()
 const route = useRoute()
@@ -12,26 +23,36 @@ const { toast } = useFeedback()
 const { t, locale } = useI18n()
 const isAr = computed(() => locale.value === 'ar')
 
-const email = ref((route.query.email as string) || 'admin@gmail.com')
+const email = ref((route.query.email as string) || '')
 const digits = ref(['', '', '', '', '', ''])
 const inputRefs = ref<HTMLInputElement[]>([])
 const isLoading = ref(false)
+const isResending = ref(false)
 const resendTimer = ref(60)
-let timerInterval: any = null
+const errorMessage = ref<string | null>(null)
+let timerInterval: ReturnType<typeof setInterval> | undefined = undefined
 
 const startTimer = () => {
   resendTimer.value = 60
-  clearInterval(timerInterval)
+  if (timerInterval) clearInterval(timerInterval)
   timerInterval = setInterval(() => {
     if (resendTimer.value > 0) {
       resendTimer.value--
     } else {
-      clearInterval(timerInterval)
+      if (timerInterval) clearInterval(timerInterval)
     }
   }, 1000)
 }
 
 onMounted(() => {
+  if (!email.value) {
+    toast.warning(
+      isAr.value ? 'يرجى إدخال البريد الإلكتروني أولاً' : 'Please enter your email first'
+    )
+    router.replace('/forgot-password')
+    return
+  }
+
   startTimer()
   setTimeout(() => {
     inputRefs.value[0]?.focus()
@@ -39,10 +60,11 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  clearInterval(timerInterval)
+  if (timerInterval) clearInterval(timerInterval)
 })
 
 const handleInput = (index: number, event: Event) => {
+  errorMessage.value = null
   const target = event.target as HTMLInputElement
   const value = target.value
 
@@ -57,16 +79,18 @@ const handleInput = (index: number, event: Event) => {
 }
 
 const handleKeyDown = (index: number, event: KeyboardEvent) => {
+  errorMessage.value = null
   if (event.key === 'Backspace' && !digits.value[index] && index > 0) {
     inputRefs.value[index - 1]?.focus()
   }
 }
 
 const handlePaste = (event: ClipboardEvent) => {
+  errorMessage.value = null
   event.preventDefault()
   const pasted = event.clipboardData?.getData('text') || ''
   const cleanDigits = pasted.replace(/\D/g, '').slice(0, 6).split('')
-  
+
   cleanDigits.forEach((d, idx) => {
     if (idx < 6) digits.value[idx] = d
   })
@@ -77,32 +101,80 @@ const handlePaste = (event: ClipboardEvent) => {
   }
 }
 
-const handleResend = () => {
-  if (resendTimer.value > 0) return
-  toast.success(isAr.value ? 'تم إرسال رمز تحقق جديد مكون من 6 أرقام!' : 'A new 6-digit OTP code has been dispatched!')
-  startTimer()
+const handleResend = async () => {
+  if (resendTimer.value > 0 || isResending.value) return
+
+  isResending.value = true
+  errorMessage.value = null
+
+  try {
+    await coreServices.auth.forgetPassword({ email: email.value })
+    toast.success(
+      isAr.value
+        ? 'تم إرسال رمز تحقق جديد مكون من 6 أرقام!'
+        : 'A new 6-digit OTP code has been dispatched!',
+      isAr.value ? 'تم إعادة الإرسال' : 'OTP Resent'
+    )
+    startTimer()
+  } catch (err: unknown) {
+    const extracted = extractApiErrors(err)
+    errorMessage.value = extracted.generalMessage
+    toast.error(
+      extracted.generalMessage,
+      isAr.value ? 'فشل إعادة الإرسال' : 'Resend Failed'
+    )
+  } finally {
+    isResending.value = false
+  }
 }
 
-const handleVerify = () => {
+const handleVerify = async () => {
+  errorMessage.value = null
   const code = digits.value.join('')
+
   if (code.length < 6) {
-    toast.error(isAr.value ? 'يرجى إدخال جميع الأرقام الستة لرمز التحقق' : 'Please enter all 6 digits of the OTP code')
+    errorMessage.value = isAr.value
+      ? 'يرجى إدخال جميع الأرقام الستة لرمز التحقق'
+      : 'Please enter all 6 digits of the OTP code'
     return
   }
 
   isLoading.value = true
 
-  setTimeout(() => {
-    isLoading.value = false
+  try {
+    // يستلم الـ Reset Token من استجابة verify-otp
+    const resetToken = await coreServices.auth.verifyOtp({
+      email: email.value,
+      otpCode: code,
+    })
+
     toast.success(
       isAr.value ? 'تم التحقق من الرمز بنجاح!' : 'Code verified successfully!',
       isAr.value ? 'تم التحقق' : 'Verified'
     )
+
     router.push({
       path: '/reset-password',
-      query: { email: email.value, otp: code }
+      query: {
+        email: email.value,
+        token: resetToken || code,
+        otp: code,
+      },
     })
-  }, 500)
+  } catch (err: unknown) {
+    const extracted = extractApiErrors(err)
+    errorMessage.value =
+      extracted.fieldErrors.otpCode ||
+      extracted.generalMessage ||
+      (isAr.value ? 'رمز التحقق غير صالح أو منتهي الصلاحية' : 'Invalid or expired OTP')
+
+    toast.error(
+      errorMessage.value,
+      isAr.value ? 'رمز غير صحيح' : 'Verification Failed'
+    )
+  } finally {
+    isLoading.value = false
+  }
 }
 </script>
 
@@ -130,7 +202,7 @@ const handleVerify = () => {
           </div>
 
           <!-- Heading with Identity Icon -->
-          <div class="mb-8">
+          <div class="mb-6">
             <div class="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100/80 text-emerald-600 flex items-center justify-center mb-4 shadow-sm">
               <Smartphone class="w-6 h-6 stroke-[2.2]" />
             </div>
@@ -140,6 +212,15 @@ const handleVerify = () => {
             <p class="text-xs text-slate-500 mt-1.5 font-medium leading-relaxed">
               {{ t('auth.verifyOtpDesc') }} <strong class="text-slate-800 dir-ltr">{{ email }}</strong>
             </p>
+          </div>
+
+          <!-- Error Alert Banner -->
+          <div
+            v-if="errorMessage"
+            class="mb-4 p-3 rounded-xl bg-rose-50/90 border border-rose-200 text-rose-800 text-xs font-medium flex items-center gap-2.5 animate-fadeIn"
+          >
+            <AlertCircle class="w-4 h-4 shrink-0 text-rose-600" />
+            <span class="leading-relaxed">{{ errorMessage }}</span>
           </div>
 
           <!-- 6-digit OTP Inputs -->
@@ -154,7 +235,12 @@ const handleVerify = () => {
                 maxlength="1"
                 inputmode="numeric"
                 autocomplete="one-time-code"
-                class="w-9 sm:w-11 md:w-12 h-11 sm:h-12 md:h-13 text-center text-base sm:text-lg font-black text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 transition-all shadow-2xs"
+                :class="[
+                  'w-9 sm:w-11 md:w-12 h-11 sm:h-12 md:h-13 text-center text-base sm:text-lg font-black text-slate-900 bg-slate-50 border rounded-xl transition-all focus:outline-none focus:bg-white',
+                  errorMessage
+                    ? 'border-rose-300 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/10'
+                    : 'border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10'
+                ]"
                 @input="handleInput(index, $event)"
                 @keydown="handleKeyDown(index, $event)"
               />
@@ -165,12 +251,20 @@ const handleVerify = () => {
               <span class="text-slate-500 font-medium">{{ t('auth.didntReceiveCode') }}</span>
               <button
                 type="button"
-                :disabled="resendTimer > 0"
+                :disabled="resendTimer > 0 || isResending"
                 @click="handleResend"
-                class="font-bold inline-flex items-center gap-1 transition-colors cursor-pointer disabled:text-slate-400 disabled:cursor-not-allowed text-emerald-600 hover:text-emerald-700"
+                class="font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer disabled:text-slate-400 disabled:cursor-not-allowed text-emerald-600 hover:text-emerald-700"
               >
-                <RotateCw class="w-3 h-3" />
-                <span>{{ resendTimer > 0 ? `${t('auth.resendIn')} ${resendTimer}s` : t('auth.resendCode') }}</span>
+                <RotateCw class="w-3.5 h-3.5" :class="{ 'animate-spin': isResending }" />
+                <span>
+                  {{
+                    isResending
+                      ? (isAr ? 'جاري الإرسال...' : 'Resending...')
+                      : resendTimer > 0
+                      ? `${t('auth.resendIn')} ${resendTimer}s`
+                      : t('auth.resendCode')
+                  }}
+                </span>
               </button>
             </div>
 
@@ -178,8 +272,9 @@ const handleVerify = () => {
             <button
               type="submit"
               :disabled="isLoading || digits.join('').length < 6"
-              class="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              class="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
             >
+              <Loader2 v-if="isLoading" class="w-4 h-4 animate-spin" />
               <span>{{ isLoading ? t('auth.verifyingOtp') : t('auth.verifyContinue') }}</span>
               <ArrowRight v-if="!isLoading" class="w-3.5 h-3.5 rtl:rotate-180" />
             </button>

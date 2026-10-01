@@ -13,22 +13,38 @@ export function setupRouterGuards(router: Router): void {
 
     const tokenStore = coreServices.tokenStore
     const isAuthenticated = tokenStore.hasValidToken()
+    const isAdmin = tokenStore.isAdmin()
 
     // Dynamic document title
     const appName = 'FinWise Admin'
     document.title = to.meta.title ? `${String(to.meta.title)} | ${appName}` : appName
 
-    // If route requires authentication and user is not logged in -> redirect to /login
-    if (to.meta.requiresAuth && !isAuthenticated) {
-      if (to.path !== '/login') {
-        return next('/login')
+    // 1. If route requires authentication:
+    if (to.meta.requiresAuth) {
+      if (!isAuthenticated) {
+        if (to.path !== '/login') {
+          return next({ path: '/login', query: { redirect: to.fullPath } })
+        }
+      } else if (!isAdmin) {
+        // Authenticated user is NOT an admin
+        tokenStore.clear()
+        coreServices.toast.error(
+          'عفواً، لا تملك الصلاحيات الكافية للوصول إلى لوحة التحكم.',
+          'غير مصرح'
+        )
+        return next('/login?forbidden=true')
       }
     }
 
-    // If route is guest only (e.g. login) and user is already logged in -> redirect to dashboard /
+    // 2. If route is guest only (e.g. login) and user is already logged in as Admin -> redirect to /
     if (to.meta.guestOnly && isAuthenticated) {
-      if (to.path !== '/') {
-        return next('/')
+      if (isAdmin) {
+        if (to.path !== '/') {
+          return next('/')
+        }
+      } else {
+        // Clear invalid non-admin session
+        tokenStore.clear()
       }
     }
 

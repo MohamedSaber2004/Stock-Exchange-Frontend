@@ -1,38 +1,77 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
-import { TrendingUp, Mail, ArrowRight, ArrowLeft, ShieldCheck, KeyRound } from 'lucide-vue-next'
+import {
+  TrendingUp,
+  Mail,
+  ArrowRight,
+  ArrowLeft,
+  ShieldCheck,
+  KeyRound,
+  AlertCircle,
+  Loader2,
+} from 'lucide-vue-next'
 import { useFeedback } from '@/composables/useFeedback'
+import { coreServices } from '@/di'
 import { useI18n } from 'vue-i18n'
 import LanguageSwitcher from '@/components/ui/LanguageSwitcher.vue'
+import { extractApiErrors } from '@/domain/models/common.model'
 
 const router = useRouter()
 const { toast } = useFeedback()
 const { t, locale } = useI18n()
 const isAr = computed(() => locale.value === 'ar')
 
-const email = ref('admin@gmail.com')
+const email = ref('')
 const isLoading = ref(false)
+const fieldErrors = ref<Record<string, string>>({})
+const generalError = ref<string | null>(null)
 
-const handleSendOtp = () => {
-  if (!email.value) {
-    toast.error(isAr.value ? 'يرجى إدخال عنوان بريدك الإلكتروني المسجل' : 'Please enter your registered email address')
+const clearError = () => {
+  fieldErrors.value = {}
+  generalError.value = null
+}
+
+const handleSendOtp = async () => {
+  clearError()
+
+  if (!email.value.trim()) {
+    fieldErrors.value.email = isAr.value
+      ? 'يرجى إدخال عنوان بريدك الإلكتروني المسجل'
+      : 'Please enter your registered email address'
     return
   }
 
   isLoading.value = true
 
-  setTimeout(() => {
-    isLoading.value = false
+  try {
+    await coreServices.auth.forgetPassword({
+      email: email.value.trim(),
+    })
+
     toast.success(
-      isAr.value ? `تم إرسال رمز التحقق إلى ${email.value}` : `Verification code sent to ${email.value}`,
-      isAr.value ? 'تم إرسال رمز التحقق' : 'OTP Dispatched'
+      isAr.value
+        ? `تم إرسال رمز التحقق المكون من 6 أرقام إلى ${email.value}`
+        : `A 6-digit verification code was sent to ${email.value}`,
+      isAr.value ? 'تم إرسال الرمز' : 'OTP Dispatched'
     )
+
     router.push({
       path: '/verify-otp',
-      query: { email: email.value }
+      query: { email: email.value.trim() },
     })
-  }, 500)
+  } catch (err: unknown) {
+    const extracted = extractApiErrors(err)
+    fieldErrors.value = extracted.fieldErrors
+    generalError.value = extracted.generalMessage
+
+    toast.error(
+      extracted.generalMessage,
+      isAr.value ? 'تعذر إرسال الرمز' : 'Request Failed'
+    )
+  } finally {
+    isLoading.value = false
+  }
 }
 </script>
 
@@ -60,7 +99,7 @@ const handleSendOtp = () => {
           </div>
 
           <!-- Heading with Identity Icon -->
-          <div class="mb-8">
+          <div class="mb-6">
             <div class="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100/80 text-emerald-600 flex items-center justify-center mb-4 shadow-sm">
               <KeyRound class="w-6 h-6 stroke-[2.2]" />
             </div>
@@ -72,6 +111,15 @@ const handleSendOtp = () => {
             </p>
           </div>
 
+          <!-- General Error Banner -->
+          <div
+            v-if="generalError"
+            class="mb-4 p-3 rounded-xl bg-rose-50/90 border border-rose-200 text-rose-800 text-xs font-medium flex items-center gap-2.5 animate-fadeIn"
+          >
+            <AlertCircle class="w-4 h-4 shrink-0 text-rose-600" />
+            <span class="leading-relaxed">{{ generalError }}</span>
+          </div>
+
           <!-- Form -->
           <form @submit.prevent="handleSendOtp" class="flex flex-col gap-4">
             <div class="flex flex-col gap-1.5">
@@ -81,18 +129,29 @@ const handleSendOtp = () => {
                 <input
                   v-model="email"
                   type="email"
+                  autocomplete="email"
                   required
                   placeholder="admin@finwise.com"
-                  class="w-full bg-slate-50 border border-slate-200 rounded-xl ps-10 pe-4 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 transition-all"
+                  :class="[
+                    'w-full bg-slate-50 border rounded-xl ps-10 pe-4 py-2.5 text-xs text-slate-900 transition-all focus:outline-none focus:bg-white',
+                    fieldErrors.email
+                      ? 'border-rose-300 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/10'
+                      : 'border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10'
+                  ]"
+                  @input="clearError"
                 />
               </div>
+              <p v-if="fieldErrors.email" class="text-[11px] text-rose-600 font-bold mt-0.5">
+                {{ fieldErrors.email }}
+              </p>
             </div>
 
             <button
               type="submit"
               :disabled="isLoading"
-              class="w-full mt-2 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              class="w-full mt-2 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
             >
+              <Loader2 v-if="isLoading" class="w-4 h-4 animate-spin" />
               <span>{{ isLoading ? t('auth.sendingOtp') : t('auth.sendOtp') }}</span>
               <ArrowRight v-if="!isLoading" class="w-3.5 h-3.5 rtl:rotate-180" />
             </button>

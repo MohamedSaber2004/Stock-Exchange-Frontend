@@ -8,9 +8,6 @@ import {
   Image as ImageIcon,
   File,
   X,
-  CheckCircle2,
-  AlertCircle,
-  Paperclip,
   Download
 } from 'lucide-vue-next'
 import { useLocale } from '@/composables/useLocale'
@@ -82,11 +79,22 @@ const formatBytes = (bytes: number): string => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-const activeUploadIntervals = new Map<string, ReturnType<typeof setInterval>>()
+import { coreServices } from '@/di'
+import { MediaType } from '@/domain/models/attachment.model'
+import { extractApiErrors } from '@/domain/models/common.model'
+import { resolveAttachmentUrl } from '@/utils/attachment'
 
-const uploadFileSimulate = (file: File) => {
+const getMediaTypeFromFile = (file: File): MediaType => {
+  const type = file.type
+  if (type.startsWith('image/')) return MediaType.Image
+  if (type.startsWith('video/')) return MediaType.Video
+  if (type.startsWith('audio/')) return MediaType.Audio
+  return MediaType.File
+}
+
+const uploadFileReal = async (file: File) => {
   const fileId = `att_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
-  
+
   if (file.size > props.maxSizeBytes) {
     const errorItem: AttachmentItem = {
       id: fileId,
@@ -96,7 +104,7 @@ const uploadFileSimulate = (file: File) => {
       status: 'error',
       errorMessage: isAr.value
         ? `حجم الملف يتجاوز ${(props.maxSizeBytes / (1024 * 1024)).toFixed(0)} ميجابايت`
-        : `File exceeds ${(props.maxSizeBytes / (1024 * 1024)).toFixed(0)} MB limit`
+        : `File exceeds ${(props.maxSizeBytes / (1024 * 1024)).toFixed(0)} MB limit`,
     }
     const currentList = props.multiple ? [...props.modelValue, errorItem] : [errorItem]
     emit('update:modelValue', currentList)
@@ -108,69 +116,58 @@ const uploadFileSimulate = (file: File) => {
     id: fileId,
     name: file.name,
     size: file.size,
-    progress: 10,
-    status: 'uploading'
+    progress: 25,
+    status: 'uploading',
   }
 
   const currentList = props.multiple ? [...props.modelValue, newItem] : [newItem]
   emit('update:modelValue', currentList)
   uploadAnnounce.value = isAr.value ? `بدأ رفع المرفق: ${file.name}` : `Upload started: ${file.name}`
 
-  // Simulate progress
-  const interval = setInterval(() => {
+  try {
+    const mediaType = getMediaTypeFromFile(file)
+    const storedFileName = await coreServices.attachments.upload({
+      file,
+      mediaType,
+      place: 0,
+    })
+
     const items = [...props.modelValue]
     const idx = items.findIndex((i) => i.id === fileId)
-    if (idx === -1) {
-      clearInterval(interval)
-      activeUploadIntervals.delete(fileId)
-      return
-    }
-
-    const currentItem = items[idx]
-    if (!currentItem) {
-      clearInterval(interval)
-      activeUploadIntervals.delete(fileId)
-      return
-    }
-
-    const currentProg = currentItem.progress || 0
-    if (currentProg < 85) {
+    if (idx !== -1 && items[idx]) {
+      const current = items[idx]!
       items[idx] = {
-        ...currentItem,
-        progress: currentProg + Math.floor(Math.random() * 18) + 12
-      }
-      emit('update:modelValue', items)
-    } else if (currentProg < 95) {
-      items[idx] = {
-        ...currentItem,
-        progress: currentProg + 5,
-        status: 'processing'
-      }
-      emit('update:modelValue', items)
-    } else {
-      clearInterval(interval)
-      activeUploadIntervals.delete(fileId)
-      items[idx] = {
-        ...currentItem,
+        id: current.id,
+        name: storedFileName || current.name,
+        size: current.size,
         progress: 100,
         status: 'success',
-        url: URL.createObjectURL(file)
+        url: resolveAttachmentUrl(storedFileName),
       }
       emit('update:modelValue', items)
       emit('file-added', file)
       uploadAnnounce.value = isAr.value ? `اكتمل رفع المرفق: ${file.name}` : `Upload finished: ${file.name}`
     }
-  }, 120)
-
-  activeUploadIntervals.set(fileId, interval)
+  } catch (err: unknown) {
+    const extracted = extractApiErrors(err)
+    const items = [...props.modelValue]
+    const idx = items.findIndex((i) => i.id === fileId)
+    if (idx !== -1 && items[idx]) {
+      const current = items[idx]!
+      items[idx] = {
+        id: current.id,
+        name: current.name,
+        size: current.size,
+        progress: 0,
+        status: 'error',
+        errorMessage: extracted.generalMessage || (isAr.value ? 'فشل الرفع' : 'Upload failed'),
+      }
+      emit('update:modelValue', items)
+    }
+  }
 }
 
 const cancelUpload = (id: string) => {
-  const timer = activeUploadIntervals.get(id)
-  if (timer) {
-    clearInterval(timer)
-    activeUploadIntervals.delete(id)
-  }
   const item = props.modelValue.find((i) => i.id === id)
   const remaining = props.modelValue.filter((i) => i.id !== id)
   emit('update:modelValue', remaining)
@@ -180,14 +177,33 @@ const cancelUpload = (id: string) => {
   }
 }
 
+const handleDownload = async (item: AttachmentItem) => {
+  const downloadUrl = item.url || resolveAttachmentUrl(item.name)
+  if (downloadUrl) {
+    window.open(downloadUrl, '_blank')
+  } else {
+    try {
+      const blob = await coreServices.attachments.download({ fileName: item.name })
+      const blobUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = item.name
+      a.click()
+      URL.revokeObjectURL(blobUrl)
+    } catch {
+      window.open(resolveAttachmentUrl(item.name), '_blank')
+    }
+  }
+}
+
 const handleFileSelect = (event: Event) => {
   const target = event.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
     const files = Array.from(target.files)
     if (props.multiple) {
-      files.forEach((file) => uploadFileSimulate(file))
+      files.forEach((file) => uploadFileReal(file))
     } else if (files[0]) {
-      uploadFileSimulate(files[0])
+      uploadFileReal(files[0])
     }
     target.value = ''
   }
@@ -198,9 +214,9 @@ const handleDrop = (event: DragEvent) => {
   if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
     const files = Array.from(event.dataTransfer.files)
     if (props.multiple) {
-      files.forEach((file) => uploadFileSimulate(file))
+      files.forEach((file) => uploadFileReal(file))
     } else if (files[0]) {
-      uploadFileSimulate(files[0])
+      uploadFileReal(files[0])
     }
   }
 }
@@ -336,6 +352,15 @@ const handleKeydown = (event: KeyboardEvent) => {
 
           <!-- Actions -->
           <div class="flex items-center gap-1 shrink-0">
+            <button
+              v-if="item.status === 'success'"
+              type="button"
+              @click="handleDownload(item)"
+              class="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none cursor-pointer"
+              :aria-label="isAr ? `تحميل المرفق ${item.name}` : `Download attachment ${item.name}`"
+            >
+              <Download class="w-4 h-4" />
+            </button>
             <button
               type="button"
               @click="cancelUpload(item.id)"

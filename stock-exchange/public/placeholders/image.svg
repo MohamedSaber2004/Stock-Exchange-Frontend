@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+  <defs>
+    <linearGradient id="imgBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f8fafc" />
+      <stop offset="100%" stop-color="#e2e8f0" />
+    </linearGradient>
+  </defs>
+  <rect width="400" height="300" rx="16" fill="url(#imgBg)" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="6 6" />
+  <g transform="translate(160, 100)" fill="none" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="80" height="64" rx="8" />
+    <circle cx="24" cy="22" r="7" fill="#94a3b8" />
+    <path d="M6 56 L30 32 L46 48 L56 38 L74 56" />
+  </g>
+  <text x="200" y="200" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#94a3b8">
+    No Image Available
+  </text>
+</svg>

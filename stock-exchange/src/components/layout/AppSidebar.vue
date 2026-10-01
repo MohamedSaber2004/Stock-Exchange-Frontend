@@ -4,7 +4,6 @@ import {
   FileText, 
   Video, 
   Newspaper, 
-  CreditCard, 
   Users, 
   Globe,
   ShieldCheck, 
@@ -62,12 +61,6 @@ const navSections = computed<NavSection[]>(() => [
     ]
   },
   {
-    title: t('nav.monetization'),
-    items: [
-      { id: 'subscriptions', label: t('nav.subscriptions'), to: '/subscriptions', icon: CreditCard }
-    ]
-  },
-  {
     title: t('nav.usersAndRegions'),
     items: [
       { id: 'users', label: t('nav.users'), to: '/users', icon: Users },
@@ -95,19 +88,26 @@ const isItemActive = (to: string) => {
 const handleLogout = async () => {
   const confirmed = await confirm({
     title: t('common.logout'),
-    message: isAr.value ? 'هل أنت متأكد من رغبتك في تسجيل الخروج من لوحة التحكم؟' : 'Are you sure you want to sign out from FinWise Admin?',
+    message: isAr.value
+      ? 'هل أنت متأكد من رغبتك في تسجيل الخروج من لوحة التحكم؟'
+      : 'Are you sure you want to sign out from FinWise Admin?',
     confirmText: t('common.logout'),
     cancelText: t('common.cancel'),
-    type: 'warning'
+    type: 'warning',
   })
 
   if (confirmed) {
-    coreServices.tokenStore.clear()
+    try {
+      await coreServices.auth.logout()
+    } catch {
+      coreServices.tokenStore.clear()
+    }
     toast.info(isAr.value ? 'تم تسجيل الخروج بنجاح' : 'Logged out successfully')
     close()
     router.push('/login')
   }
 }
+
 </script>
 
 <template>

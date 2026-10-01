@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus, Check, X, Sparkles } from 'lucide-vue-next'
+import { Plus, Check, X } from 'lucide-vue-next'
 import AppShell from '@/components/layout/AppShell.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import StatusBadge from '@/components/ui/StatusBadge.vue'

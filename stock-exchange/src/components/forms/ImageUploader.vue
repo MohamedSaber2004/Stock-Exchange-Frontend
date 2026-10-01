@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { UploadCloud, X, RefreshCw, Image as ImageIcon } from 'lucide-vue-next'
+import { UploadCloud, X, RefreshCw } from 'lucide-vue-next'
 import { ref, computed } from 'vue'
 import { useLocale } from '@/composables/useLocale'
 import UploadProgressBar from './UploadProgressBar.vue'
+import { coreServices } from '@/di'
+import { MediaType, FilePlace } from '@/domain/models/attachment.model'
+import { extractApiErrors } from '@/domain/models/common.model'
+import { resolveAttachmentUrl } from '@/utils/attachment'
 
 interface Props {
   modelValue?: string
@@ -10,6 +14,8 @@ interface Props {
   hint?: string
   aspectRatio?: string
   maxSizeBytes?: number // e.g. 5MB default
+  autoUpload?: boolean // default true
+  oldFileName?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -17,12 +23,15 @@ const props = withDefaults(defineProps<Props>(), {
   label: '',
   hint: '',
   aspectRatio: 'aspect-video',
-  maxSizeBytes: 5 * 1024 * 1024 // 5 MB
+  maxSizeBytes: 5 * 1024 * 1024, // 5 MB
+  autoUpload: true,
+  oldFileName: ''
 })
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void
   (e: 'file-selected', file: File): void
+  (e: 'upload-success', payload: { fileName: string; previewUrl: string; file: File }): void
 }>()
 
 const { isAr } = useLocale()
@@ -37,8 +46,14 @@ const uploadFileName = ref('')
 const uploadFileSize = ref(0)
 const uploadStatus = ref<'uploading' | 'processing' | 'success' | 'error'>('uploading')
 const uploadError = ref('')
-let uploadInterval: ReturnType<typeof setInterval> | null = null
-let pendingDataUrl = ''
+const localPreviewUrl = ref('')
+let progressTimer: ReturnType<typeof setInterval> | null = null
+
+const resolvedPreviewUrl = computed(() => {
+  if (localPreviewUrl.value) return localPreviewUrl.value
+  if (!props.modelValue) return ''
+  return resolveAttachmentUrl(props.modelValue)
+})
 
 const triggerUpload = () => {
   fileInput.value?.click()
@@ -53,55 +68,19 @@ const defaultHint = computed(() => {
 })
 
 const cancelUpload = () => {
-  if (uploadInterval) {
-    clearInterval(uploadInterval)
-    uploadInterval = null
+  if (progressTimer) {
+    clearInterval(progressTimer)
+    progressTimer = null
   }
   isUploading.value = false
   uploadProgress.value = 0
   uploadFileName.value = ''
   uploadFileSize.value = 0
-  pendingDataUrl = ''
+  localPreviewUrl.value = ''
   if (fileInput.value) fileInput.value.value = ''
 }
 
-const startUploadSimulation = (file: File, dataUrl: string) => {
-  isUploading.value = true
-  uploadStatus.value = 'uploading'
-  uploadProgress.value = 8
-  uploadFileName.value = file.name
-  uploadFileSize.value = file.size
-  uploadError.value = ''
-  pendingDataUrl = dataUrl
-
-  if (uploadInterval) clearInterval(uploadInterval)
-
-  uploadInterval = setInterval(() => {
-    if (uploadProgress.value < 85) {
-      uploadProgress.value += Math.floor(Math.random() * 18) + 10
-    } else if (uploadProgress.value < 95) {
-      uploadProgress.value += 4
-      uploadStatus.value = 'processing'
-    } else {
-      // Completed
-      if (uploadInterval) {
-        clearInterval(uploadInterval)
-        uploadInterval = null
-      }
-      uploadProgress.value = 100
-      uploadStatus.value = 'success'
-
-      setTimeout(() => {
-        emit('update:modelValue', pendingDataUrl)
-        emit('file-selected', file)
-        isUploading.value = false
-        uploadProgress.value = 0
-      }, 450)
-    }
-  }, 90)
-}
-
-const processFile = (file: File) => {
+const processFile = async (file: File) => {
   if (!file.type.startsWith('image/')) {
     uploadStatus.value = 'error'
     uploadError.value = isAr.value ? 'الملف المحدد ليس صورة صالحة' : 'Selected file is not a valid image'
@@ -122,13 +101,79 @@ const processFile = (file: File) => {
     return
   }
 
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    if (e.target?.result) {
-      startUploadSimulation(file, e.target.result as string)
-    }
+  // Create immediate local object URL for preview
+  const objectUrl = URL.createObjectURL(file)
+  localPreviewUrl.value = objectUrl
+
+  emit('file-selected', file)
+
+  if (!props.autoUpload) {
+    emit('update:modelValue', objectUrl)
+    return
   }
-  reader.readAsDataURL(file)
+
+  // Real backend upload flow
+  isUploading.value = true
+  uploadStatus.value = 'uploading'
+  uploadProgress.value = 15
+  uploadFileName.value = file.name
+  uploadFileSize.value = file.size
+  uploadError.value = ''
+
+  if (progressTimer) clearInterval(progressTimer)
+  progressTimer = setInterval(() => {
+    if (uploadProgress.value < 85) {
+      uploadProgress.value += 12
+    } else {
+      uploadStatus.value = 'processing'
+    }
+  }, 100)
+
+  try {
+    let savedFileName = ''
+    if (props.oldFileName) {
+      savedFileName = await coreServices.attachments.update({
+        file,
+        oldFileName: props.oldFileName,
+        mediaType: MediaType.Image,
+        place: FilePlace.General
+      })
+    } else {
+      savedFileName = await coreServices.attachments.upload({
+        file,
+        mediaType: MediaType.Image,
+        place: FilePlace.General
+      })
+    }
+
+    if (progressTimer) {
+      clearInterval(progressTimer)
+      progressTimer = null
+    }
+
+    uploadProgress.value = 100
+    uploadStatus.value = 'success'
+
+    emit('update:modelValue', savedFileName)
+    emit('upload-success', {
+      fileName: savedFileName,
+      previewUrl: objectUrl,
+      file
+    })
+
+    setTimeout(() => {
+      isUploading.value = false
+      uploadProgress.value = 0
+    }, 400)
+  } catch (err: unknown) {
+    if (progressTimer) {
+      clearInterval(progressTimer)
+      progressTimer = null
+    }
+    uploadStatus.value = 'error'
+    const errorDetails = extractApiErrors(err)
+    uploadError.value = errorDetails.generalMessage || (isAr.value ? 'فشل رفع الصورة إلى الخادم' : 'Failed to upload image')
+  }
 }
 
 const handleFileSelect = (event: Event) => {
@@ -154,6 +199,7 @@ const handleKeydown = (event: KeyboardEvent) => {
 
 const removeImage = () => {
   emit('update:modelValue', '')
+  localPreviewUrl.value = ''
   if (fileInput.value) fileInput.value.value = ''
   cancelUpload()
 }
@@ -234,7 +280,7 @@ const removeImage = () => {
     <div v-else class="flex flex-col gap-2">
       <div class="relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-900 group">
         <img
-          :src="modelValue"
+          :src="resolvedPreviewUrl"
           :alt="defaultLabel || 'Uploaded Preview'"
           class="w-full h-44 object-cover transition-transform group-hover:scale-102 duration-300"
         />

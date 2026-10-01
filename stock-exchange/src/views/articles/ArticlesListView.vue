@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus, X, Clock, User, Eye } from 'lucide-vue-next'
+import { Plus, X, Clock, User } from 'lucide-vue-next'
 import AppShell from '@/components/layout/AppShell.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import TableFilterBar from '@/components/data-table/TableFilterBar.vue'
@@ -10,6 +10,7 @@ import ActionMenu from '@/components/ui/ActionMenu.vue'
 import AppPagination from '@/components/ui/AppPagination.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { useI18n } from 'vue-i18n'
+import { resolveAttachmentUrl, handleImageError } from '@/utils/attachment'
 
 const router = useRouter()
 const { confirm, toast } = useFeedback()
@@ -239,8 +240,9 @@ const handleAction = async (actionId: string, article: Article) => {
                 <!-- Cover Image -->
                 <td class="py-3 px-4 text-start">
                   <img
-                    :src="article.cover"
+                    :src="resolveAttachmentUrl(article.cover, 'image')"
                     :alt="article.title"
+                    @error="handleImageError($event, 'image')"
                     class="w-12 h-9 rounded-lg object-cover border border-slate-200"
                   />
                 </td>
@@ -335,8 +337,9 @@ const handleAction = async (actionId: string, article: Article) => {
             <!-- Scrollable Content -->
             <div class="p-4 sm:p-6 overflow-y-auto flex flex-col gap-4 text-xs">
               <img 
-                :src="previewArticle.cover" 
+                :src="resolveAttachmentUrl(previewArticle.cover, 'image')" 
                 :alt="previewArticle.title" 
+                @error="handleImageError($event, 'image')"
                 class="w-full h-44 sm:h-64 rounded-xl object-cover border border-slate-100"
               />
 

@@ -7,6 +7,7 @@ import { useSidebar } from '@/composables/useSidebar'
 import { useLocale } from '@/composables/useLocale'
 import { useI18n } from 'vue-i18n'
 import { coreServices } from '@/di'
+import { resolveAttachmentUrl, handleImageError } from '@/utils/attachment'
 
 const route = useRoute()
 const router = useRouter()
@@ -59,23 +60,38 @@ const selectLocale = (lang: 'ar' | 'en') => {
   setLocale(lang)
 }
 
+const currentUser = computed(() => coreServices.tokenStore.getUser())
+const adminName = computed(() => currentUser.value?.fullName || currentUser.value?.name || 'Admin')
+const adminEmail = computed(() => currentUser.value?.email || 'admin@finwise.com')
+const adminAvatar = computed(() => {
+  const pic = currentUser.value?.profilePictureUrl || currentUser.value?.avatarUrl
+  return resolveAttachmentUrl(pic, 'avatar')
+})
+
 const handleLogout = async () => {
   closeMenu()
   const confirmed = await confirm({
     title: t('common.logout'),
-    message: isAr.value ? 'هل أنت متأكد من رغبتك في تسجيل الخروج من لوحة التحكم؟' : 'Are you sure you want to sign out from FinWise Admin?',
+    message: isAr.value
+      ? 'هل أنت متأكد من رغبتك في تسجيل الخروج من لوحة التحكم؟'
+      : 'Are you sure you want to sign out from FinWise Admin?',
     confirmText: t('common.logout'),
     cancelText: t('common.cancel'),
-    type: 'warning'
+    type: 'warning',
   })
 
   if (confirmed) {
-    coreServices.tokenStore.clear()
+    try {
+      await coreServices.auth.logout()
+    } catch {
+      coreServices.tokenStore.clear()
+    }
     toast.info(isAr.value ? 'تم تسجيل الخروج بنجاح' : 'Logged out successfully')
     closeSidebar()
     router.push('/login')
   }
 }
+
 
 // Dynamic breadcrumb based on route
 const breadcrumbs = computed(() => {
@@ -95,9 +111,6 @@ const breadcrumbs = computed(() => {
   } else if (path.startsWith('/news')) {
     crumbs.push({ label: t('nav.news'), to: '/news' })
     if (path.includes('/create')) crumbs.push({ label: isAr.value ? 'نشر خبر' : 'Post News' })
-  } else if (path.startsWith('/subscriptions')) {
-    crumbs.push({ label: t('nav.subscriptions'), to: '/subscriptions' })
-    if (path.includes('/create')) crumbs.push({ label: isAr.value ? 'إنشاء خطة' : 'Create Plan' })
   } else if (path.startsWith('/users')) {
     crumbs.push({ label: t('nav.users'), to: '/users' })
     if (route.params.id) crumbs.push({ label: isAr.value ? 'تفاصيل المستخدم' : 'User Details' })
@@ -187,11 +200,12 @@ const breadcrumbs = computed(() => {
           <!-- Admin Avatar & Name -->
           <div class="flex items-center gap-1.5">
             <img
-              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
+              :src="adminAvatar"
+              @error="handleImageError($event, 'avatar')"
               alt="Admin Avatar"
               class="w-6 h-6 rounded-full object-cover ring-2 ring-emerald-500/20"
             />
-            <span class="hidden sm:inline text-xs font-bold text-slate-800">Admin</span>
+            <span class="hidden sm:inline text-xs font-bold text-slate-800">{{ adminName }}</span>
             <ChevronDown
               class="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition-transform duration-200"
               :class="{ 'rotate-180': isMenuOpen }"
@@ -215,18 +229,19 @@ const breadcrumbs = computed(() => {
             <!-- User Mini Profile Header -->
             <div class="p-3 bg-slate-50/80 rounded-xl mb-2 flex items-center gap-3 border border-slate-100">
               <img
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
+                :src="adminAvatar"
+                @error="handleImageError($event, 'avatar')"
                 alt="Admin"
                 class="w-10 h-10 rounded-full object-cover ring-2 ring-emerald-500/30"
               />
               <div class="flex flex-col min-w-0 flex-1">
                 <div class="flex items-center justify-between gap-1">
-                  <span class="text-xs font-bold text-slate-900 truncate">Admin</span>
+                  <span class="text-xs font-bold text-slate-900 truncate">{{ adminName }}</span>
                   <span class="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-1.5 py-0.5 rounded-md border border-emerald-200">
                     {{ isAr ? 'المشرف' : 'Super Admin' }}
                   </span>
                 </div>
-                <span class="text-[11px] text-slate-500 truncate">admin@finwise.com</span>
+                <span class="text-[11px] text-slate-500 truncate">{{ adminEmail }}</span>
               </div>
             </div>
 

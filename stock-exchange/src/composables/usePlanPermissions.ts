@@ -107,13 +107,13 @@ function loadStoredPermissions(): FeaturePermission[] {
       try {
         const parsed = JSON.parse(raw)
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return defaultPermissions.map(def => {
-            const found = parsed.find((p: any) => p.id === def.id)
+          return defaultPermissions.map((def) => {
+            const found = (parsed as Partial<FeaturePermission>[]).find((p) => p?.id === def.id)
             return found ? { ...def, plans: { ...def.plans, ...found.plans } } : def
           })
         }
-      } catch (e) {
-        console.error('Failed to parse stored permissions:', e)
+      } catch {
+        // Fallback to default permissions silently
       }
     }
   }

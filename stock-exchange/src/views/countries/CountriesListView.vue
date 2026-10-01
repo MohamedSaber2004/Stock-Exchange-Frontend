@@ -1,183 +1,117 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import AppShell from '@/components/layout/AppShell.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import StatusBadge from '@/components/ui/StatusBadge.vue'
 import AppPagination from '@/components/ui/AppPagination.vue'
-import { 
-  Globe, 
-  Plus, 
-  Search, 
-  Edit3, 
-  Trash2, 
-  X, 
-  Check, 
-  Phone, 
-  Languages, 
-  ToggleLeft, 
+import DataState from '@/components/ui/DataState.vue'
+import {
+  Globe,
+  Plus,
+  Search,
+  Edit3,
+  Trash2,
+  X,
+  Check,
+  Phone,
+  Languages,
+  ToggleLeft,
   ToggleRight,
   ShieldCheck,
-  Building2
+  Building2,
+  RefreshCw
 } from 'lucide-vue-next'
 import { useFeedback } from '@/composables/useFeedback'
 import { useI18n } from 'vue-i18n'
+import { coreServices } from '@/di'
+import type { CountryDto, GetCountriesPaginatedParams } from '@/domain/models/country.model'
+import type { AppError } from '@/domain/models/common.model'
 
 const { toast, confirm } = useFeedback()
 const { t, locale } = useI18n()
 const isAr = computed(() => locale.value === 'ar')
 
-export interface Country {
-  id: string // country_id (ISO)
-  enname: string
-  arname: string
-  phonecode: string
-  flag: string
-  status: 'Active' | 'Inactive'
-  usersCount: number
-}
+// State
+const countries = ref<CountryDto[]>([])
+const isLoading = ref(true)
+const isSubmitting = ref(false)
+const errorMessage = ref<string | null>(null)
 
-const countries = ref<Country[]>([
-  {
-    id: 'EG',
-    enname: 'Egypt',
-    arname: 'مصر',
-    phonecode: '+20',
-    flag: '🇪🇬',
-    status: 'Active',
-    usersCount: 8420
-  },
-  {
-    id: 'SA',
-    enname: 'Saudi Arabia',
-    arname: 'المملكة العربية السعودية',
-    phonecode: '+966',
-    flag: '🇸🇦',
-    status: 'Active',
-    usersCount: 3190
-  },
-  {
-    id: 'AE',
-    enname: 'United Arab Emirates',
-    arname: 'الإمارات العربية المتحدة',
-    phonecode: '+971',
-    flag: '🇦🇪',
-    status: 'Active',
-    usersCount: 1840
-  },
-  {
-    id: 'KW',
-    enname: 'Kuwait',
-    arname: 'الكويت',
-    phonecode: '+965',
-    flag: '🇰🇼',
-    status: 'Active',
-    usersCount: 940
-  },
-  {
-    id: 'QA',
-    enname: 'Qatar',
-    arname: 'قطر',
-    phonecode: '+974',
-    flag: '🇶🇦',
-    status: 'Active',
-    usersCount: 620
-  },
-  {
-    id: 'BH',
-    enname: 'Bahrain',
-    arname: 'البحرين',
-    phonecode: '+973',
-    flag: '🇧🇭',
-    status: 'Active',
-    usersCount: 410
-  },
-  {
-    id: 'OM',
-    enname: 'Oman',
-    arname: 'سلطنة عمان',
-    phonecode: '+968',
-    flag: '🇴🇲',
-    status: 'Active',
-    usersCount: 380
-  },
-  {
-    id: 'JO',
-    enname: 'Jordan',
-    arname: 'الأردن',
-    phonecode: '+962',
-    flag: '🇯🇴',
-    status: 'Active',
-    usersCount: 510
-  },
-  {
-    id: 'US',
-    enname: 'United States',
-    arname: 'الولايات المتحدة الأمريكية',
-    phonecode: '+1',
-    flag: '🇺🇸',
-    status: 'Active',
-    usersCount: 1250
-  },
-  {
-    id: 'GB',
-    enname: 'United Kingdom',
-    arname: 'المملكة المتحدة',
-    phonecode: '+44',
-    flag: '🇬🇧',
-    status: 'Inactive',
-    usersCount: 190
-  }
-])
-
-// Search & Filter
+// Search & Filter State
 const searchQuery = ref('')
-const selectedStatus = ref('All')
+const selectedStatus = ref<'All' | 'Active' | 'Inactive'>('All')
 const currentPage = ref(1)
-const itemsPerPage = ref(6)
-
-const filteredCountries = computed(() => {
-  return countries.value.filter(c => {
-    const query = searchQuery.value.toLowerCase().trim()
-    const matchesSearch = 
-      !query ||
-      c.enname.toLowerCase().includes(query) ||
-      c.arname.toLowerCase().includes(query) ||
-      c.id.toLowerCase().includes(query) ||
-      c.phonecode.includes(query)
-      
-    const matchesStatus = selectedStatus.value === 'All' || c.status === selectedStatus.value
-
-    return matchesSearch && matchesStatus
-  })
-})
-
-const totalPages = computed(() => Math.ceil(filteredCountries.value.length / itemsPerPage.value) || 1)
-
-const paginatedCountries = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value
-  return filteredCountries.value.slice(start, start + itemsPerPage.value)
-})
+const itemsPerPage = ref(10)
+const totalCount = ref(0)
+const totalPages = ref(1)
 
 // Metrics
-const totalCount = computed(() => countries.value.length)
-const activeCount = computed(() => countries.value.filter(c => c.status === 'Active').length)
-const totalUsers = computed(() => countries.value.reduce((acc, c) => acc + c.usersCount, 0))
+const activeCount = computed(() => countries.value.filter(c => c.isActive !== false).length)
+const totalUsers = computed(() => countries.value.reduce((acc, c) => acc + (c.usersCount || 0), 0))
+
+// Fetch Paginated Countries
+const fetchCountries = async (showLoading = true) => {
+  if (showLoading) isLoading.value = true
+  errorMessage.value = null
+
+  try {
+    const params: GetCountriesPaginatedParams = {
+      pageNumber: currentPage.value,
+      pageSize: itemsPerPage.value,
+      searchTerm: searchQuery.value.trim() || undefined,
+      isActive: selectedStatus.value === 'All' ? undefined : selectedStatus.value === 'Active'
+    }
+
+    const response = await coreServices.countries.getAllPaginated(params)
+    countries.value = response.items || []
+    totalCount.value = response.totalCount || 0
+    totalPages.value = response.totalPages || 1
+  } catch (err: unknown) {
+    const appErr = err as AppError
+    errorMessage.value = appErr?.message || (isAr.value ? 'تعذر تحميل قائمة الدول' : 'Failed to load countries')
+    toast.error(errorMessage.value)
+  } finally {
+    if (showLoading) isLoading.value = false
+  }
+}
+
+// Watchers
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
+watch(searchQuery, () => {
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => {
+    currentPage.value = 1
+    fetchCountries()
+  }, 350)
+})
+
+watch(selectedStatus, () => {
+  currentPage.value = 1
+  fetchCountries()
+})
+
+watch(currentPage, () => {
+  fetchCountries()
+})
+
+onMounted(() => {
+  fetchCountries()
+})
 
 // Modal State
 const isModalOpen = ref(false)
 const modalMode = ref<'create' | 'edit'>('create')
 const formData = ref<{
   id?: string
-  enname: string
-  arname: string
-  phonecode: string
-  flag?: string
-  status: 'Active' | 'Inactive'
+  countryEnName: string
+  countryArName: string
+  code: string
+  isActive: boolean
 }>({
-  enname: '',
-  arname: '',
-  phonecode: '+',
-  status: 'Active'
+  countryEnName: '',
+  countryArName: '',
+  code: '+',
+  isActive: true
 })
 
 const formErrors = ref<Record<string, string>>({})
@@ -185,24 +119,23 @@ const formErrors = ref<Record<string, string>>({})
 const openCreateModal = () => {
   modalMode.value = 'create'
   formData.value = {
-    enname: '',
-    arname: '',
-    phonecode: '+',
-    status: 'Active'
+    countryEnName: '',
+    countryArName: '',
+    code: '+',
+    isActive: true
   }
   formErrors.value = {}
   isModalOpen.value = true
 }
 
-const openEditModal = (country: Country) => {
+const openEditModal = (country: CountryDto) => {
   modalMode.value = 'edit'
   formData.value = {
     id: country.id,
-    enname: country.enname,
-    arname: country.arname,
-    phonecode: country.phonecode,
-    flag: country.flag,
-    status: country.status
+    countryEnName: country.countryEnName,
+    countryArName: country.countryArName,
+    code: country.code,
+    isActive: country.isActive ?? true
   }
   formErrors.value = {}
   isModalOpen.value = true
@@ -215,93 +148,112 @@ const closeModal = () => {
 const validateForm = () => {
   const errors: Record<string, string> = {}
 
-  if (!formData.value.enname.trim()) {
-    errors.enname = 'English name is required'
+  if (!formData.value.countryEnName.trim()) {
+    errors.countryEnName = isAr.value ? 'الاسم باللغة الإنجليزية مطلوب' : 'English name is required'
   }
 
-  if (!formData.value.arname.trim()) {
-    errors.arname = 'Arabic name is required'
+  if (!formData.value.countryArName.trim()) {
+    errors.countryArName = isAr.value ? 'الاسم باللغة العربية مطلوب' : 'Arabic name is required'
   }
 
-  if (!formData.value.phonecode.trim() || formData.value.phonecode === '+') {
-    errors.phonecode = 'International phone code is required (e.g. +20)'
+  const cleanCode = formData.value.code.trim()
+  if (!cleanCode || cleanCode === '+') {
+    errors.code = isAr.value ? 'رمز الاتصال الدولي مطلوب (مثال: +20)' : 'International phone code is required (e.g. +20)'
   }
 
   formErrors.value = errors
   return Object.keys(errors).length === 0
 }
 
-const handleSaveCountry = () => {
+const handleSaveCountry = async () => {
   if (!validateForm()) return
 
-  if (modalMode.value === 'create') {
-    const generatedId = (formData.value.enname.trim().slice(0, 3).toUpperCase() + Math.floor(10 + Math.random() * 90)).replace(/[^A-Z0-9]/g, '')
-    countries.value.unshift({
-      id: generatedId,
-      enname: formData.value.enname.trim(),
-      arname: formData.value.arname.trim(),
-      phonecode: formData.value.phonecode.trim().startsWith('+') ? formData.value.phonecode.trim() : `+${formData.value.phonecode.trim()}`,
-      flag: '🌐',
-      status: formData.value.status,
-      usersCount: 0
-    })
-    toast.success(
-      isAr.value
-        ? `تمت إضافة الدولة "${formData.value.arname || formData.value.enname}" بنجاح!`
-        : `Country ${formData.value.enname} added successfully!`,
-      isAr.value ? 'تم الإنشاء' : 'Created'
-    )
-  } else {
-    const idx = countries.value.findIndex(c => c.id === formData.value.id)
-    if (idx !== -1) {
-      const existing = countries.value[idx]!
-      countries.value[idx] = {
-        id: existing.id,
-        flag: existing.flag,
-        usersCount: existing.usersCount,
-        enname: formData.value.enname.trim(),
-        arname: formData.value.arname.trim(),
-        phonecode: formData.value.phonecode.trim().startsWith('+') ? formData.value.phonecode.trim() : `+${formData.value.phonecode.trim()}`,
-        status: formData.value.status
-      }
+  isSubmitting.value = true
+  const cleanCode = formData.value.code.trim().startsWith('+')
+    ? formData.value.code.trim()
+    : `+${formData.value.code.trim()}`
+
+  try {
+    if (modalMode.value === 'create') {
+      await coreServices.countries.create({
+        countryEnName: formData.value.countryEnName.trim(),
+        countryArName: formData.value.countryArName.trim(),
+        code: cleanCode,
+        isActive: formData.value.isActive
+      })
       toast.success(
         isAr.value
-          ? `تم تحديث الدولة "${formData.value.arname || formData.value.enname}" بنجاح!`
-          : `Country ${formData.value.enname} updated successfully!`,
-        isAr.value ? 'تم التحديث' : 'Updated'
+          ? `تمت إضافة الدولة "${formData.value.countryArName}" بنجاح!`
+          : `Country "${formData.value.countryEnName}" added successfully!`
+      )
+    } else if (formData.value.id) {
+      await coreServices.countries.update(formData.value.id, {
+        countryEnName: formData.value.countryEnName.trim(),
+        countryArName: formData.value.countryArName.trim(),
+        code: cleanCode,
+        isActive: formData.value.isActive
+      })
+      toast.success(
+        isAr.value
+          ? `تم تحديث بيانات الدولة "${formData.value.countryArName}" بنجاح!`
+          : `Country "${formData.value.countryEnName}" updated successfully!`
       )
     }
+
+    closeModal()
+    fetchCountries(false)
+  } catch (err: unknown) {
+    const appErr = err as AppError
+    if (appErr.fieldErrors) {
+      formErrors.value = appErr.fieldErrors
+    }
+    toast.error(appErr?.message || (isAr.value ? 'فشل حفظ بيانات الدولة' : 'Failed to save country'))
+  } finally {
+    isSubmitting.value = false
   }
-
-  closeModal()
 }
 
-const toggleStatus = (country: Country) => {
-  const newStatus = country.status === 'Active' ? 'Inactive' : 'Active'
-  country.status = newStatus
-  const statusLabel = newStatus === 'Active' ? t('common.active') : t('common.inactive')
-  toast.info(isAr.value ? `حالة ${country.arname || country.enname} الآن: ${statusLabel}` : `${country.enname} is now ${newStatus}`)
+const toggleStatus = async (country: CountryDto) => {
+  const newStatus = !(country.isActive ?? true)
+  try {
+    await coreServices.countries.update(country.id, {
+      countryEnName: country.countryEnName,
+      countryArName: country.countryArName,
+      code: country.code,
+      isActive: newStatus
+    })
+    country.isActive = newStatus
+    const statusLabel = newStatus ? t('common.active') : t('common.inactive')
+    toast.info(isAr.value ? `حالة ${country.countryArName} الآن: ${statusLabel}` : `${country.countryEnName} is now ${statusLabel}`)
+  } catch (err: unknown) {
+    const appErr = err as AppError
+    toast.error(appErr?.message || (isAr.value ? 'فشل تغيير حالة الدولة' : 'Failed to toggle country status'))
+  }
 }
 
-const handleDeleteCountry = async (country: Country) => {
-  const countryName = isAr.value ? (country.arname || country.enname) : country.enname
+const handleDeleteCountry = async (country: CountryDto) => {
+  const countryName = isAr.value ? (country.countryArName || country.countryEnName) : country.countryEnName
   const confirmed = await confirm({
-    title: isAr.value ? `${t('countries.deleteConfirmTitle')} "${countryName}"؟` : `${t('countries.deleteConfirmTitle')} "${countryName}"?`,
+    title: isAr.value ? `${t('countries.deleteConfirmTitle')} "${countryName}"` : `${t('countries.deleteConfirmTitle')} "${countryName}"?`,
     message: isAr.value
-      ? `${t('countries.deleteConfirmDesc')} (${country.arname || country.enname})`
-      : `${t('countries.deleteConfirmDesc')} (${country.enname} / ${country.arname})`,
+      ? `${t('countries.deleteConfirmDesc')} (${country.countryArName} / ${country.countryEnName})`
+      : `${t('countries.deleteConfirmDesc')} (${country.countryEnName} / ${country.countryArName})`,
     confirmText: t('common.delete'),
     cancelText: t('common.cancel'),
     type: 'danger'
   })
 
   if (confirmed) {
-    countries.value = countries.value.filter(c => c.id !== country.id)
-    toast.success(
-      isAr.value
-        ? `تم حذف دولة "${countryName}" بنجاح`
-        : `Country ${country.enname} was deleted successfully`
-    )
+    try {
+      await coreServices.countries.delete(country.id)
+      toast.success(
+        isAr.value ? `تم حذف دولة "${countryName}" بنجاح` : `Country "${countryName}" was deleted successfully`
+      )
+      fetchCountries(false)
+    } catch (err: unknown) {
+      const appErr = err as AppError
+      toast.error(appErr?.message || (isAr.value ? 'فشل حذف الدولة' : 'Failed to delete country'))
+    }
   }
 }
 
@@ -320,14 +272,16 @@ const clearFilters = () => {
         :title="t('countries.title')"
         :description="t('countries.subtitle')"
       >
-        <button
-          type="button"
-          @click="openCreateModal"
-          class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 transition-colors shadow-sm shadow-emerald-600/20 cursor-pointer"
-        >
-          <Plus class="w-4 h-4" />
-          <span>{{ t('countries.addCountry') }}</span>
-        </button>
+        <template #actions>
+          <button
+            type="button"
+            @click="openCreateModal"
+            class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 transition-colors shadow-sm shadow-emerald-600/20 cursor-pointer"
+          >
+            <Plus class="w-4 h-4" />
+            <span>{{ t('countries.addCountry') }}</span>
+          </button>
+        </template>
       </PageHeader>
 
       <!-- Stat Badges -->
@@ -397,111 +351,127 @@ const clearFilters = () => {
         </div>
       </div>
 
-      <!-- Country Table -->
-      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full text-start text-xs min-w-[650px]">
-            <thead>
-              <tr class="text-[11px] font-bold text-slate-400 border-b border-slate-100 uppercase tracking-wider bg-slate-50/50">
-                <th class="py-3 px-5 text-start">{{ t('countries.enName') }}</th>
-                <th class="py-3 px-5 text-start">{{ t('countries.arName') }}</th>
-                <th class="py-3 px-5 text-start">{{ t('countries.phoneCode') }}</th>
-                <th class="py-3 px-5 text-start">{{ t('countries.status') }}</th>
-                <th class="py-3 px-5 text-start">{{ t('countries.users') }}</th>
-                <th class="py-3 px-5 text-end">{{ t('common.actions') }}</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-              <tr 
-                v-for="country in paginatedCountries" 
-                :key="country.id"
-                class="hover:bg-slate-50/70 transition-colors group"
-              >
-                <!-- English Name with Flag -->
-                <td class="py-3.5 px-5 text-start">
-                  <div class="flex items-center gap-2.5">
-                    <span class="text-xl shrink-0 leading-none">{{ country.flag }}</span>
-                    <span class="font-bold text-slate-900 text-xs">{{ country.enname }}</span>
-                  </div>
-                </td>
+      <!-- Country Table Container with DataState -->
+      <DataState
+        :loading="isLoading"
+        :error="errorMessage"
+        @retry="fetchCountries"
+      >
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-start text-xs min-w-[650px]">
+              <thead>
+                <tr class="text-[11px] font-bold text-slate-400 border-b border-slate-100 uppercase tracking-wider bg-slate-50/50">
+                  <th class="py-3 px-5 text-start">{{ t('countries.enName') }}</th>
+                  <th class="py-3 px-5 text-start">{{ t('countries.arName') }}</th>
+                  <th class="py-3 px-5 text-start">{{ t('countries.phoneCode') }}</th>
+                  <th class="py-3 px-5 text-start">{{ t('countries.status') }}</th>
+                  <th class="py-3 px-5 text-start">{{ t('countries.users') }}</th>
+                  <th class="py-3 px-5 text-end">{{ t('common.actions') }}</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                <tr
+                  v-for="country in countries"
+                  :key="country.id"
+                  class="hover:bg-slate-50/70 transition-colors group"
+                >
+                  <!-- English Name -->
+                  <td class="py-3.5 px-5 text-start">
+                    <div class="flex items-center gap-2.5">
+                      <div class="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
+                        <Globe class="w-3.5 h-3.5 text-emerald-600" />
+                      </div>
+                      <span class="font-bold text-slate-900 text-xs">{{ country.countryEnName }}</span>
+                    </div>
+                  </td>
 
-                <!-- Arabic Name -->
-                <td class="py-3.5 px-5 text-start" dir="rtl">
-                  <span class="font-bold text-slate-900 text-xs block text-start">{{ country.arname }}</span>
-                </td>
+                  <!-- Arabic Name -->
+                  <td class="py-3.5 px-5 text-start" dir="rtl">
+                    <span class="font-bold text-slate-900 text-xs block text-start">{{ country.countryArName }}</span>
+                  </td>
 
-                <!-- Phone Code -->
-                <td class="py-3.5 px-5 text-start">
-                  <div class="flex items-center gap-1.5 font-mono text-emerald-700 font-bold bg-emerald-50 w-fit px-2 py-0.5 rounded-md" dir="ltr">
-                    <Phone class="w-3 h-3 text-emerald-600" />
-                    <span>{{ country.phonecode }}</span>
-                  </div>
-                </td>
+                  <!-- Phone Code -->
+                  <td class="py-3.5 px-5 text-start">
+                    <div class="flex items-center gap-1.5 font-mono text-emerald-700 font-bold bg-emerald-50 border border-emerald-200/80 w-fit px-2 py-0.5 rounded-md" dir="ltr">
+                      <Phone class="w-3 h-3 text-emerald-600" />
+                      <span>{{ country.code }}</span>
+                    </div>
+                  </td>
 
-                <!-- Status -->
-                <td class="py-3.5 px-5 text-start">
-                  <button
-                    type="button"
-                    @click="toggleStatus(country)"
-                    class="cursor-pointer"
-                    title="Click to toggle status"
-                  >
-                    <StatusBadge :status="country.status">
-                      {{ country.status === 'Active' ? t('common.active') : t('common.inactive') }}
-                    </StatusBadge>
-                  </button>
-                </td>
-
-                <!-- User Count -->
-                <td class="py-3.5 px-5 text-start">
-                  <span class="font-semibold text-slate-600">{{ country.usersCount.toLocaleString() }}</span>
-                </td>
-
-                <!-- Actions -->
-                <td class="py-3.5 px-5 text-end">
-                  <div class="flex items-center justify-end gap-1.5">
+                  <!-- Status -->
+                  <td class="py-3.5 px-5 text-start">
                     <button
                       type="button"
-                      @click="openEditModal(country)"
-                      class="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer"
-                      title="Edit Country"
+                      @click="toggleStatus(country)"
+                      class="cursor-pointer transition-opacity hover:opacity-80"
+                      title="Click to toggle status"
                     >
-                      <Edit3 class="w-4 h-4" />
+                      <StatusBadge :status="country.isActive ? 'ACTIVE' : 'INACTIVE'">
+                        {{ country.isActive ? t('common.active') : t('common.inactive') }}
+                      </StatusBadge>
                     </button>
+                  </td>
+
+                  <!-- User Count -->
+                  <td class="py-3.5 px-5 text-start">
+                    <span class="font-semibold text-slate-700 font-mono">{{ (country.usersCount || 0).toLocaleString() }}</span>
+                  </td>
+
+                  <!-- Actions -->
+                  <td class="py-3.5 px-5 text-end">
+                    <div class="flex items-center justify-end gap-1.5">
+                      <button
+                        type="button"
+                        @click="openEditModal(country)"
+                        class="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer"
+                        :title="t('countries.editCountry')"
+                      >
+                        <Edit3 class="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        @click="handleDeleteCountry(country)"
+                        class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                        :title="t('common.delete')"
+                      >
+                        <Trash2 class="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <tr v-if="countries.length === 0">
+                  <td colspan="6" class="py-12 text-center text-slate-400">
+                    <Globe class="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                    <p class="font-bold text-slate-700 text-sm">{{ isAr ? 'لا توجد دول مضافة' : 'No countries found' }}</p>
+                    <p class="text-xs text-slate-400 mt-0.5 mb-4">{{ isAr ? 'جرّب البحث بكلمة أخرى أو قم بإضافة دولة جديدة.' : 'Try a different search keyword or add a new country.' }}</p>
                     <button
                       type="button"
-                      @click="handleDeleteCountry(country)"
-                      class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                      title="Delete Country"
+                      @click="openCreateModal"
+                      class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors shadow-xs cursor-pointer"
                     >
-                      <Trash2 class="w-4 h-4" />
+                      <Plus class="w-4 h-4" />
+                      <span>{{ t('countries.addCountry') }}</span>
                     </button>
-                  </div>
-                </td>
-              </tr>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-              <tr v-if="filteredCountries.length === 0">
-                <td colspan="6" class="py-12 text-center text-slate-400">
-                  <Globe class="w-8 h-8 mx-auto text-slate-300 mb-2" />
-                  <p class="font-bold text-slate-700 text-sm">No countries found</p>
-                  <p class="text-xs text-slate-400 mt-0.5">Try a different search keyword or status filter.</p>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <!-- Pagination -->
+          <div class="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <span class="text-xs font-medium text-slate-500">
+              {{ isAr ? `عرض ${countries.length} من إجمالي ${totalCount} دولة` : `Showing ${countries.length} of ${totalCount} countries` }}
+            </span>
+            <AppPagination
+              v-model:current-page="currentPage"
+              :total-pages="totalPages"
+            />
+          </div>
         </div>
-
-        <!-- Pagination -->
-        <div class="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <span class="text-xs font-medium text-slate-500">
-            Showing <strong class="text-slate-800">{{ paginatedCountries.length }}</strong> of <strong class="text-slate-800">{{ filteredCountries.length }}</strong> countries
-          </span>
-          <AppPagination
-            v-model:current-page="currentPage"
-            :total-pages="totalPages"
-          />
-        </div>
-      </div>
+      </DataState>
     </div>
 
     <!-- Create / Edit Country Modal -->
@@ -513,11 +483,12 @@ const clearFilters = () => {
       leave-from-class="opacity-100 scale-100"
       leave-to-class="opacity-0 scale-95"
     >
-      <div 
+      <div
         v-if="isModalOpen"
-        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+        @click.self="closeModal"
       >
-        <div class="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in">
+        <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-slate-200 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
           <!-- Header -->
           <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
             <div class="flex items-center gap-2.5">
@@ -542,51 +513,54 @@ const clearFilters = () => {
 
           <!-- Form -->
           <form @submit.prevent="handleSaveCountry" class="p-6 flex flex-col gap-4 text-xs">
-            <!-- English Name (enname) -->
+            <!-- English Name -->
             <div class="flex flex-col gap-1">
               <label class="font-bold text-slate-700 flex items-center gap-1">
                 <Languages class="w-3.5 h-3.5 text-slate-400" />
                 <span>{{ t('countries.enName') }} *</span>
               </label>
               <input
-                v-model="formData.enname"
+                v-model="formData.countryEnName"
                 type="text"
                 placeholder="e.g. Egypt, Saudi Arabia"
                 class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all"
+                :class="{ 'border-rose-400 bg-rose-50/30': formErrors.countryEnName }"
               />
-              <span v-if="formErrors.enname" class="text-rose-500 text-[10px] font-bold">{{ formErrors.enname }}</span>
+              <span v-if="formErrors.countryEnName" class="text-rose-500 text-[10px] font-bold">{{ formErrors.countryEnName }}</span>
             </div>
 
-            <!-- Arabic Name (arname) -->
+            <!-- Arabic Name -->
             <div class="flex flex-col gap-1">
               <label class="font-bold text-slate-700 flex items-center gap-1">
                 <Languages class="w-3.5 h-3.5 text-slate-400" />
                 <span>{{ t('countries.arName') }} *</span>
               </label>
               <input
-                v-model="formData.arname"
+                v-model="formData.countryArName"
                 type="text"
                 dir="rtl"
                 placeholder="مثلاً: مصر، المملكة العربية السعودية"
                 class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 text-start font-bold focus:outline-none focus:border-emerald-500 focus:bg-white transition-all"
+                :class="{ 'border-rose-400 bg-rose-50/30': formErrors.countryArName }"
               />
-              <span v-if="formErrors.arname" class="text-rose-500 text-[10px] font-bold">{{ formErrors.arname }}</span>
+              <span v-if="formErrors.countryArName" class="text-rose-500 text-[10px] font-bold">{{ formErrors.countryArName }}</span>
             </div>
 
-            <!-- Phone Code (phonecode) -->
+            <!-- Phone Code -->
             <div class="flex flex-col gap-1">
               <label class="font-bold text-slate-700 flex items-center gap-1">
                 <Phone class="w-3.5 h-3.5 text-slate-400" />
                 <span>{{ t('countries.phoneCode') }} *</span>
               </label>
               <input
-                v-model="formData.phonecode"
+                v-model="formData.code"
                 type="text"
                 dir="ltr"
                 placeholder="e.g. +20, +966, +971"
                 class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all"
+                :class="{ 'border-rose-400 bg-rose-50/30': formErrors.code }"
               />
-              <span v-if="formErrors.phonecode" class="text-rose-500 text-[10px] font-bold">{{ formErrors.phonecode }}</span>
+              <span v-if="formErrors.code" class="text-rose-500 text-[10px] font-bold">{{ formErrors.code }}</span>
             </div>
 
             <!-- Status Switch -->
@@ -597,10 +571,10 @@ const clearFilters = () => {
               </div>
               <button
                 type="button"
-                @click="formData.status = formData.status === 'Active' ? 'Inactive' : 'Active'"
+                @click="formData.isActive = !formData.isActive"
                 class="cursor-pointer"
               >
-                <ToggleRight v-if="formData.status === 'Active'" class="w-7 h-7 text-emerald-600" />
+                <ToggleRight v-if="formData.isActive" class="w-7 h-7 text-emerald-600" />
                 <ToggleLeft v-else class="w-7 h-7 text-slate-400" />
               </button>
             </div>
@@ -610,15 +584,18 @@ const clearFilters = () => {
               <button
                 type="button"
                 @click="closeModal"
-                class="px-4 py-2 rounded-xl font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 cursor-pointer shadow-2xs"
+                :disabled="isSubmitting"
+                class="px-4 py-2 rounded-xl font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 cursor-pointer shadow-2xs disabled:opacity-50"
               >
                 {{ t('common.cancel') }}
               </button>
               <button
                 type="submit"
-                class="px-4 py-2 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 cursor-pointer shadow-sm shadow-emerald-600/20 flex items-center gap-1.5"
+                :disabled="isSubmitting"
+                class="px-4 py-2 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 cursor-pointer shadow-sm shadow-emerald-600/20 flex items-center gap-1.5 disabled:opacity-50"
               >
-                <Check class="w-3.5 h-3.5" />
+                <RefreshCw v-if="isSubmitting" class="w-3.5 h-3.5 animate-spin" />
+                <Check v-else class="w-3.5 h-3.5" />
                 <span>{{ modalMode === 'create' ? t('countries.saveCountry') : t('countries.updateCountry') }}</span>
               </button>
             </div>
