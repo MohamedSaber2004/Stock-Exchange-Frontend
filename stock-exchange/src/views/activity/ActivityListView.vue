@@ -10,8 +10,6 @@ import {
   RefreshCw, 
   Eye, 
   X, 
-  UserCheck, 
-  Layers,
   Users
 } from 'lucide-vue-next'
 import { coreServices } from '@/di'
@@ -65,9 +63,20 @@ const fetchLogs = async (showLoading = true) => {
       pageSize: pageSize.value
     })
 
-    logs.value = response.logs.items
-    totalPages.value = response.logs.totalPages || 1
-    totalCount.value = response.logs.totalCount || 0
+    const currentUser = coreServices.tokenStore.getUser()
+    const currentUserId = currentUser?.id
+    const currentUserEmail = currentUser?.email?.toLowerCase().trim()
+
+    // Filter out current user's own logs so they only see logs of other users
+    const items = response.logs?.items || []
+    logs.value = items.filter(item => {
+      if (currentUserId && item.userId === currentUserId) return false
+      if (currentUserEmail && item.userEmail && item.userEmail.toLowerCase().trim() === currentUserEmail) return false
+      return true
+    })
+
+    totalPages.value = response.logs?.totalPages || 1
+    totalCount.value = response.logs?.totalCount || 0
     summary.value = response.summary
   } catch (err: unknown) {
     const appErr = err as AppError
@@ -205,8 +214,8 @@ const getResourceTypeBadgeClass = (type: ActivityResourceType | number) => {
         </div>
       </PageHeader>
 
-      <!-- Stat Summary Badges (Real Backend Metrics) -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+      <!-- Stat Summary Badges (Total Logs and Users Count Only) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
         <!-- Total Logs Card -->
         <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
           <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700 shrink-0">
@@ -218,29 +227,7 @@ const getResourceTypeBadgeClass = (type: ActivityResourceType | number) => {
           </div>
         </div>
 
-        <!-- User Registrations Card -->
-        <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
-          <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-            <UserCheck class="w-5 h-5" />
-          </div>
-          <div>
-            <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">{{ t('activity.userRegistrations') }}</div>
-            <div class="text-lg font-black text-blue-600">{{ summary?.userRegistrationsCount ?? 0 }}</div>
-          </div>
-        </div>
-
-        <!-- Content Operations Card -->
-        <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
-          <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-            <Layers class="w-5 h-5" />
-          </div>
-          <div>
-            <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">{{ t('activity.contentOps') }}</div>
-            <div class="text-lg font-black text-amber-600">{{ summary?.contentOperationsCount ?? 0 }}</div>
-          </div>
-        </div>
-
-        <!-- User Management Card -->
+        <!-- Users Count Card -->
         <div class="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
           <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
             <Users class="w-5 h-5" />
