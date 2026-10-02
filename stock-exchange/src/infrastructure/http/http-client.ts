@@ -271,6 +271,7 @@ export class HttpClient {
         status: originalStatus,
         statusCode: originalStatus,
         errors: (payload && typeof payload === 'object' && payload.errors) || undefined,
+        allErrors: extracted.allErrors,
         fieldErrors: extracted.fieldErrors,
         details: payload,
       }
@@ -286,6 +287,7 @@ export class HttpClient {
         status: payload.statusCode || 400,
         statusCode: payload.statusCode || 400,
         errors: payload.errors,
+        allErrors: extracted.allErrors,
         fieldErrors: extracted.fieldErrors,
         details: payload,
       }
