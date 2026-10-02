@@ -4,15 +4,33 @@ import './assets/main.css'
 if (typeof window !== 'undefined') {
   const noop = () => {}
   try {
-    const methods = ['log', 'info', 'warn', 'error', 'debug', 'trace', 'table', 'dir', 'assert'] as const
+    const methods = [
+      'log', 'info', 'warn', 'error', 'debug', 'trace', 'table',
+      'dir', 'dirxml', 'assert', 'group', 'groupCollapsed',
+      'groupEnd', 'clear', 'count', 'time', 'timeEnd'
+    ] as const
     methods.forEach((method) => {
-      window.console[method] = noop
+      try {
+        ;(window.console as any)[method] = noop
+      } catch {}
     })
   } catch {}
+
+  window.onerror = () => true
+  window.onunhandledrejection = (event) => {
+    event.preventDefault()
+    return true
+  }
 
   // Suppress unhandled promise rejections (including API errors) from printing in browser console
   window.addEventListener('unhandledrejection', (event) => {
     event.preventDefault()
+    event.stopPropagation?.()
+  })
+
+  window.addEventListener('error', (event) => {
+    event.preventDefault()
+    event.stopPropagation?.()
   })
 }
 

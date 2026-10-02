@@ -5,12 +5,50 @@
     <link rel="icon" href="/favicon.ico">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FinWise Admin Dashboard</title>
-    <!-- Define fallback for stale browser module caches -->
+    <!-- Complete Console & Error Suppression -->
     <script>
-      if (typeof window !== 'undefined') {
+      (function() {
+        var noop = function() {};
+        var methods = [
+          'log', 'debug', 'info', 'warn', 'error', 'table', 'trace',
+          'dir', 'dirxml', 'group', 'groupCollapsed', 'groupEnd',
+          'clear', 'count', 'countReset', 'assert', 'profile',
+          'profileEnd', 'time', 'timeLog', 'timeEnd', 'timeStamp'
+        ];
+        if (typeof window !== 'undefined' && window.console) {
+          for (var i = 0; i < methods.length; i++) {
+            try {
+              window.console[methods[i]] = noop;
+            } catch (e) {}
+          }
+        }
+
+        // Suppress uncaught exceptions from printing to console
+        window.onerror = function() {
+          return true;
+        };
+
+        // Suppress unhandled promise rejections
+        window.onunhandledrejection = function(e) {
+          if (e && e.preventDefault) e.preventDefault();
+          return true;
+        };
+
+        window.addEventListener('error', function(e) {
+          if (e && e.preventDefault) e.preventDefault();
+          if (e && e.stopPropagation) e.stopPropagation();
+          return true;
+        }, true);
+
+        window.addEventListener('unhandledrejection', function(e) {
+          if (e && e.preventDefault) e.preventDefault();
+          if (e && e.stopPropagation) e.stopPropagation();
+          return true;
+        }, true);
+
         window.__DEFINES__ = window.__DEFINES__ || {};
         window.process = window.process || { env: {} };
-      }
+      })();
     </script>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
