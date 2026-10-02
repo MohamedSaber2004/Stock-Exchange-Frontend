@@ -5,7 +5,6 @@
     <link rel="icon" href="/favicon.ico">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FinWise Admin Dashboard</title>
-    <!-- Complete Console & Error Suppression -->
     <script>
       (function() {
         var noop = function() {};
@@ -23,12 +22,10 @@
           }
         }
 
-        // Suppress uncaught exceptions from printing to console
         window.onerror = function() {
           return true;
         };
 
-        // Suppress unhandled promise rejections
         window.onunhandledrejection = function(e) {
           if (e && e.preventDefault) e.preventDefault();
           return true;
@@ -48,6 +45,11 @@
 
         window.__DEFINES__ = window.__DEFINES__ || {};
         window.process = window.process || { env: {} };
+
+        // Register Service Worker to neutralize HTTP error codes from Chrome DevTools console
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function() {});
+        }
       })();
     </script>
     <!-- Google Fonts -->

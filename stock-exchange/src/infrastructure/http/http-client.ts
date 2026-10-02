@@ -235,8 +235,10 @@ export class HttpClient {
         this.activeControllers.delete(cancelKey)
       }
 
+      const originalStatus = Number(response.headers.get('x-original-status')) || response.status
+
       // إذا انتهت صلاحية التوكن (401) والطلب محمي وليس مسار مصادقة
-      if (response.status === 401 && requiresAuth && !this.isAuthBypassUrl(path)) {
+      if (originalStatus === 401 && requiresAuth && !this.isAuthBypassUrl(path)) {
         const refreshedToken = await this.handle401()
         // FormData لا يمكن إعادة إرساله بعد أول استهلاك — نكتفي بتجديد التوكن فقط
         if (refreshedToken && !(restOptions.body instanceof FormData)) {
@@ -256,17 +258,18 @@ export class HttpClient {
   }
 
   private async handleResponse<T>(response: Response): Promise<T> {
+    const originalStatus = Number(response.headers.get('x-original-status')) || response.status
     const isJson = response.headers.get('content-type')?.includes('application/json')
     const payload = isJson ? await response.json().catch(() => null) : await response.text().catch(() => '')
 
     // إذا فشل الطلب على مستوى HTTP
-    if (!response.ok) {
+    if (!response.ok || originalStatus >= 400) {
       const extracted = extractApiErrors(payload)
       const error: AppError = {
-        code: `HTTP_${response.status}`,
+        code: `HTTP_${originalStatus}`,
         message: extracted.generalMessage || response.statusText || 'An unexpected error occurred',
-        status: response.status,
-        statusCode: response.status,
+        status: originalStatus,
+        statusCode: originalStatus,
         errors: (payload && typeof payload === 'object' && payload.errors) || undefined,
         fieldErrors: extracted.fieldErrors,
         details: payload,
