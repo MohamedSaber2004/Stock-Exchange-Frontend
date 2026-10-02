@@ -265,7 +265,7 @@ const handleAction = async (actionId: string, vid: VideoLesson) => {
           class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
           @click.self="isPreviewOpen = false"
         >
-          <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 flex flex-col gap-4 overflow-hidden">
+          <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 shadow-2xl border border-slate-100 flex flex-col gap-4">
             <!-- Modal Header -->
             <div class="flex items-center justify-between pb-3 border-b border-slate-100">
               <div class="flex items-center gap-2.5">
@@ -284,7 +284,7 @@ const handleAction = async (actionId: string, vid: VideoLesson) => {
               <button
                 type="button"
                 @click="isPreviewOpen = false"
-                class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors"
+                class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors cursor-pointer"
               >
                 <X class="w-4 h-4" />
               </button>
@@ -329,14 +329,14 @@ const handleAction = async (actionId: string, vid: VideoLesson) => {
                 <button
                   type="button"
                   @click="isPreviewOpen = false"
-                  class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                  class="flex-1 sm:flex-initial text-center px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
                 >
                   {{ t('common.close') }}
                 </button>
                 <button
                   type="button"
                   @click="router.push(`/videos/${previewVideo.id}/edit`)"
-                  class="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shadow-xs cursor-pointer"
+                  class="flex-1 sm:flex-initial text-center px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shadow-xs cursor-pointer"
                 >
                   {{ t('videos.editVideo') }}
                 </button>

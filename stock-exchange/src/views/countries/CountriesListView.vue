@@ -318,8 +318,8 @@ const clearFilters = () => {
       </div>
 
       <!-- Filter Bar -->
-      <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-3">
-        <div class="relative w-full md:w-80">
+      <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div class="relative w-full sm:w-80">
           <Search class="w-4 h-4 text-slate-400 absolute start-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             v-model="searchQuery"
@@ -329,11 +329,11 @@ const clearFilters = () => {
           />
         </div>
 
-        <div class="flex items-center gap-2.5 w-full md:w-auto">
+        <div class="flex items-center gap-2.5 w-full sm:w-auto">
           <!-- Status Filter -->
           <select
             v-model="selectedStatus"
-            class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:border-emerald-500 cursor-pointer"
+            class="w-full sm:w-auto flex-1 sm:flex-none bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:border-emerald-500 cursor-pointer"
           >
             <option value="All">{{ t('common.all') }} {{ t('countries.status') }}</option>
             <option value="Active">{{ t('common.active') }}</option>
@@ -580,19 +580,19 @@ const clearFilters = () => {
             </div>
 
             <!-- Modal Actions -->
-            <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+            <div class="pt-3 border-t border-slate-100 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2">
               <button
                 type="button"
                 @click="closeModal"
                 :disabled="isSubmitting"
-                class="px-4 py-2 rounded-xl font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 cursor-pointer shadow-2xs disabled:opacity-50"
+                class="w-full sm:w-auto px-4 py-2.5 rounded-xl font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 cursor-pointer shadow-2xs disabled:opacity-50 text-center"
               >
                 {{ t('common.cancel') }}
               </button>
               <button
                 type="submit"
                 :disabled="isSubmitting"
-                class="px-4 py-2 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 cursor-pointer shadow-sm shadow-emerald-600/20 flex items-center gap-1.5 disabled:opacity-50"
+                class="w-full sm:w-auto px-4 py-2.5 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 cursor-pointer shadow-sm shadow-emerald-600/20 flex items-center justify-center gap-1.5 disabled:opacity-50"
               >
                 <RefreshCw v-if="isSubmitting" class="w-3.5 h-3.5 animate-spin" />
                 <Check v-else class="w-3.5 h-3.5" />

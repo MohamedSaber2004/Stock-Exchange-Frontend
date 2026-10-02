@@ -236,7 +236,7 @@ const handleVerify = async () => {
                 inputmode="numeric"
                 autocomplete="one-time-code"
                 :class="[
-                  'w-9 sm:w-11 md:w-12 h-11 sm:h-12 md:h-13 text-center text-base sm:text-lg font-black text-slate-900 bg-slate-50 border rounded-xl transition-all focus:outline-none focus:bg-white',
+                  'w-8 xs:w-9 sm:w-11 md:w-12 h-10 sm:h-12 md:h-13 text-center text-sm sm:text-lg font-black text-slate-900 bg-slate-50 border rounded-xl transition-all focus:outline-none focus:bg-white',
                   errorMessage
                     ? 'border-rose-300 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/10'
                     : 'border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10'

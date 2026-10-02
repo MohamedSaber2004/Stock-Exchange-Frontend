@@ -12,7 +12,7 @@ withDefaults(defineProps<Props>(), {
 </script>
 
 <template>
-  <div class="h-screen w-full bg-slate-50/70 text-slate-900 flex overflow-hidden selection:bg-emerald-500/20 selection:text-emerald-900">
+  <div class="h-screen min-h-[100dvh] w-full bg-slate-50/70 text-slate-900 flex overflow-hidden selection:bg-emerald-500/20 selection:text-emerald-900">
     <AppSidebar v-if="withSidebar" />
 
     <div class="flex-1 flex flex-col min-w-0 h-full overflow-hidden">

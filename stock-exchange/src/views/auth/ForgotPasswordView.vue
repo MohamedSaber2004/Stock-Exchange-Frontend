@@ -85,7 +85,7 @@ const handleSendOtp = async () => {
     <div class="w-full max-w-4xl bg-white rounded-3xl border border-slate-200/90 shadow-xl overflow-hidden grid grid-cols-1 md:grid-cols-2">
 
       <!-- Left Side: Form -->
-      <div class="p-6 sm:p-8 md:p-12 flex flex-col justify-between">
+      <div class="p-5 sm:p-8 md:p-12 flex flex-col justify-between">
         <!-- Top: Logo -->
         <div>
           <div class="flex items-center gap-2 mb-8">

@@ -621,21 +621,21 @@ const handleCreate = () => {
         </div>
 
         <!-- Modal Footer -->
-        <div class="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-100">
+        <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 px-6 py-4 border-t border-slate-100">
           <button
             type="button"
             @click="isCreateModalOpen = false"
-            class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 cursor-pointer transition-all"
+            class="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 cursor-pointer transition-all text-center"
           >
             {{ isAr ? 'إلغاء' : 'Cancel' }}
           </button>
           <button
             type="button"
             @click="handleCreate"
-            :class="['px-5 py-2 rounded-xl font-bold text-xs shadow-xs cursor-pointer transition-all active:scale-95', newNotif.scheduleType === 'now' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white']"
+            :class="['w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold text-xs shadow-xs cursor-pointer transition-all active:scale-95 text-center flex items-center justify-center gap-1.5', newNotif.scheduleType === 'now' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white']"
           >
-            <Send class="w-3.5 h-3.5 inline me-1.5" />
-            {{ newNotif.scheduleType === 'now' ? (isAr ? 'إرسال الآن' : 'Send Now') : (isAr ? 'جدولة الإشعار' : 'Schedule') }}
+            <Send class="w-3.5 h-3.5 inline" />
+            <span>{{ newNotif.scheduleType === 'now' ? (isAr ? 'إرسال الآن' : 'Send Now') : (isAr ? 'جدولة الإشعار' : 'Schedule') }}</span>
           </button>
         </div>
       </div>
@@ -647,7 +647,7 @@ const handleCreate = () => {
       class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150"
       @click.self="isPreviewModalOpen = false"
     >
-      <div class="bg-white rounded-3xl border border-slate-200 w-full max-w-md shadow-2xl">
+      <div class="bg-white rounded-3xl border border-slate-200 w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <h3 class="text-sm font-black text-slate-900">{{ isAr ? 'معاينة الإشعار' : 'Notification Preview' }}</h3>
           <button
