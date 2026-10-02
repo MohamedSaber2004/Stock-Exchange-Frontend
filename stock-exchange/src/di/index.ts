@@ -7,6 +7,7 @@ import { AuthRepository } from '@/data/repositories/auth.repository'
 import { AttachmentRepository } from '@/data/repositories/attachment.repository'
 import { CountryRepository } from '@/data/repositories/country.repository'
 import { UserRepository } from '@/data/repositories/user.repository'
+import { ActivityLogRepository } from '@/data/repositories/activity-log.repository'
 
 // Register Core Infrastructure Singletons
 container.register(TokenStore, () => new TokenStore())
@@ -28,6 +29,10 @@ container.register(
 container.register(
   UserRepository,
   () => new UserRepository(container.resolve(HttpClient))
+)
+container.register(
+  ActivityLogRepository,
+  () => new ActivityLogRepository(container.resolve(HttpClient))
 )
 
 export const coreServices = {
@@ -54,6 +59,9 @@ export const coreServices = {
   },
   get users(): UserRepository {
     return container.resolve(UserRepository)
+  },
+  get activityLogs(): ActivityLogRepository {
+    return container.resolve(ActivityLogRepository)
   },
 }
 
