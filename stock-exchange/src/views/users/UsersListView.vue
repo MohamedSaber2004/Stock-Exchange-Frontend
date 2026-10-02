@@ -10,12 +10,10 @@ import {
   KeyRound,
   Eye,
   EyeOff,
-  Globe,
   Phone,
   Mail,
   Lock,
-  X,
-  AlertCircle
+  X
 } from 'lucide-vue-next'
 import AppShell from '@/components/layout/AppShell.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
@@ -171,15 +169,6 @@ onMounted(() => {
 })
 
 // Helpers
-const getInitials = (name: string): string => {
-  if (!name) return 'U'
-  const parts = name.trim().split(/\s+/)
-  const first = parts[0] || 'U'
-  if (parts.length === 1) return first.slice(0, 2).toUpperCase()
-  const last = parts[parts.length - 1] || ''
-  return (first.charAt(0) + last.charAt(0)).toUpperCase() || 'U'
-}
-
 const formatDate = (dateString?: string): string => {
   if (!dateString) return '-'
   try {

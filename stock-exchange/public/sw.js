@@ -1,5 +1,5 @@
 // Silent Service Worker - Prevents DevTools from logging HTTP 4xx/5xx network errors
-self.addEventListener('install', (event) => {
+self.addEventListener('install', () => {
   self.skipWaiting()
 })
 

@@ -1,4 +1,4 @@
-import { resolveAttachmentUrl, getAttachmentUrl } from '@/utils/attachment'
+import { resolveAttachmentUrl } from '@/utils/attachment'
 import { coreServices } from '@/di'
 import type { UploadAttachmentPayload, UpdateAttachmentPayload, DownloadAttachmentPayload } from '@/domain/models/attachment.model'
 

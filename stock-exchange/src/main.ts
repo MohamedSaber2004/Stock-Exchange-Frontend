@@ -11,7 +11,7 @@ if (typeof window !== 'undefined') {
     ] as const
     methods.forEach((method) => {
       try {
-        ;(window.console as any)[method] = noop
+        ;(window.console as unknown as Record<string, unknown>)[method] = noop
       } catch {}
     })
   } catch {}
