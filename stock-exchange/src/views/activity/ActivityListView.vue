@@ -113,9 +113,10 @@ onMounted(() => {
 
 // Helpers
 const formatDate = (dateString?: string | null): string => {
-  if (!dateString) return '-'
+  if (!dateString || dateString.startsWith('0001-01-01')) return '-'
   try {
     const d = new Date(dateString)
+    if (isNaN(d.getTime()) || d.getFullYear() <= 1970) return '-'
     return d.toLocaleString(isAr.value ? 'ar-EG' : 'en-US', {
       year: 'numeric',
       month: 'short',
@@ -357,7 +358,7 @@ const getResourceTypeBadgeClass = (type: ActivityResourceType | number) => {
                   <td class="py-3.5 px-5 text-start">
                     <div class="flex flex-col">
                       <span class="font-semibold text-slate-800">
-                        {{ isAr ? (act.timeAgoArabic || act.timeAgo) : (act.timeAgoEnglish || act.timeAgo) }}
+                        {{ (!act.createdAt || act.createdAt.startsWith('0001-01-01')) ? '-' : (isAr ? (act.timeAgoArabic || act.timeAgo) : (act.timeAgoEnglish || act.timeAgo)) }}
                       </span>
                       <span class="text-[10px] text-slate-400 font-medium">{{ formatDate(act.createdAt) }}</span>
                     </div>
