@@ -9,6 +9,10 @@ import { CountryRepository } from '@/data/repositories/country.repository'
 import { UserRepository } from '@/data/repositories/user.repository'
 import { ActivityLogRepository } from '@/data/repositories/activity-log.repository'
 
+import { AboutUsRepository } from '@/data/repositories/about-us.repository'
+import { LegalRepository } from '@/data/repositories/legal.repository'
+import { HelpCenterRepository } from '@/data/repositories/help-center.repository'
+
 // Register Core Infrastructure Singletons
 container.register(TokenStore, () => new TokenStore())
 container.register(HttpClient, () => new HttpClient(container.resolve(TokenStore)))
@@ -33,6 +37,18 @@ container.register(
 container.register(
   ActivityLogRepository,
   () => new ActivityLogRepository(container.resolve(HttpClient))
+)
+container.register(
+  AboutUsRepository,
+  () => new AboutUsRepository(container.resolve(HttpClient))
+)
+container.register(
+  LegalRepository,
+  () => new LegalRepository(container.resolve(HttpClient))
+)
+container.register(
+  HelpCenterRepository,
+  () => new HelpCenterRepository(container.resolve(HttpClient))
 )
 
 export const coreServices = {
@@ -62,6 +78,15 @@ export const coreServices = {
   },
   get activityLogs(): ActivityLogRepository {
     return container.resolve(ActivityLogRepository)
+  },
+  get aboutUs(): AboutUsRepository {
+    return container.resolve(AboutUsRepository)
+  },
+  get legal(): LegalRepository {
+    return container.resolve(LegalRepository)
+  },
+  get helpCenter(): HelpCenterRepository {
+    return container.resolve(HelpCenterRepository)
   },
 }
 

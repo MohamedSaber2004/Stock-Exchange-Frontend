@@ -1,122 +1,304 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import {
+  FileText,
+  Shield,
+  Save,
+  Plus,
+  Trash2,
+  ExternalLink,
+  RefreshCw,
+  Eye,
+  Languages,
+  ArrowUp,
+  ArrowDown
+} from 'lucide-vue-next'
 import AppShell from '@/components/layout/AppShell.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
-import RichTextEditor from '@/components/forms/RichTextEditor.vue'
-import { 
-  FileText, 
-  Shield, 
-  AlertTriangle, 
-  History, 
-  Save,
-  Clock
-} from 'lucide-vue-next'
 import { useFeedback } from '@/composables/useFeedback'
 import { useI18n } from 'vue-i18n'
+import { coreServices } from '@/di'
+import type { LegalSectionRequest, UpdateLegalDocumentPayload } from '@/domain/models/legal-content.model'
 
-const { toast } = useFeedback()
+const route = useRoute()
+const router = useRouter()
+const { toast, confirm } = useFeedback()
 const { t, locale } = useI18n()
-const isAr = computed(() => locale.value === 'ar')
+const isRtl = computed(() => locale.value === 'ar')
 
-// Active Legal Document Tab
-const activeDoc = ref<'terms' | 'privacy' | 'disclaimer'>('terms')
+// Active Document Tab: 'terms' | 'privacy'
+const activeDoc = ref<'terms' | 'privacy'>(
+  route.query.tab === 'privacy' ? 'privacy' : 'terms'
+)
 
-// Documents Content State
-const documents = ref({
-  terms: {
-    title: 'Terms of Service',
-    version: '2.1.0',
-    lastUpdated: 'September 2025',
-    status: 'Published',
-    content: `## 1. Acceptance of Terms
-By downloading, browsing, or using the FinWise mobile application or website, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our services.
-
-## 2. Educational Purpose Only
-FinWise is strictly an educational platform designed to teach financial market literacy, chart analysis, and trading methodologies. **None of the materials, videos, articles, or market highlights constitute financial advice, investment recommendations, or an offer to buy or sell securities.**
-
-## 3. Subscription & Billing
-- Subscriptions (Basic & Pro) are billed in advance on a recurring monthly basis.
-- You can cancel your subscription at any time through the app settings or app store provider.
-- All digital educational content is delivered immediately upon payment verification.
-
-## 4. User Accounts & Security
-You are responsible for maintaining the confidentiality of your account credentials and password. FinWise is not liable for any loss resulting from unauthorized access to your account.
-
-## 5. Intellectual Property
-All videos, articles, charts, illustrations, and proprietary educational workflows are the copyrighted property of FinWise. Unauthorized duplication, redistribution, or resale is strictly prohibited.`
-  },
-  privacy: {
-    title: 'Privacy Policy',
-    version: '1.8.0',
-    lastUpdated: 'August 2025',
-    status: 'Published',
-    content: `## 1. Information We Collect
-We collect information you provide directly to us when creating an account:
-- Full Name and Email Address.
-- Country of residence and phone number.
-- Learning preferences, course progress, and video watch history.
-
-## 2. How We Use Your Data
-- To deliver personalized educational feeds and progress tracking.
-- To process subscription transactions securely via certified payment gateways.
-- To send security notifications and platform updates.
-
-## 3. Data Protection & Encryption
-We implement industry-standard 256-bit SSL encryption for all data in transit and at rest. We never sell your personal information to third-party brokers or advertisers.
-
-## 4. Your Data Rights
-You have the right to request a copy of your personal data or request permanent deletion of your account at any time through the Profile Settings tab.`
-  },
-  disclaimer: {
-    title: 'Risk & Investment Disclaimer',
-    version: '1.2.0',
-    lastUpdated: 'July 2025',
-    status: 'Published',
-    content: `## Important Financial Notice
-Trading stocks, indices, commodities, currencies, and other financial instruments involves significant risk of loss and is not suitable for every investor.
-
-- **No Guarantee of Profit**: Historical market performances shown in articles or video lessons do not guarantee future results.
-- **Independent Decisions**: All investment decisions you make are solely your own responsibility. We strongly recommend consulting with a licensed financial advisor before allocating real capital.`
+watch(
+  () => route.query.tab,
+  (newTab) => {
+    if (newTab === 'privacy' || newTab === 'terms') {
+      activeDoc.value = newTab
+    }
   }
+)
+
+const setDocTab = (tab: 'terms' | 'privacy') => {
+  activeDoc.value = tab
+  router.replace({ query: { ...route.query, tab } })
+}
+
+// State
+const isLoading = ref(true)
+const isSaving = ref(false)
+const showPreviewModal = ref(false)
+const previewLang = ref<'ar' | 'en'>('ar')
+
+// Document state
+interface DocFormState {
+  id: string
+  titleEn: string
+  titleAr: string
+  descriptionEn: string
+  descriptionAr: string
+  sections: (LegalSectionRequest & { id?: string; displayOrder?: number })[]
+}
+
+const termsDoc = ref<DocFormState>({
+  id: '',
+  titleEn: '',
+  titleAr: '',
+  descriptionEn: '',
+  descriptionAr: '',
+  sections: []
 })
 
-// Version History Log
-const versionHistory = ref([
-  { id: 'v-3', doc: 'Terms of Service', version: 'v2.1.0', author: 'Admin (Compliance)', date: 'Sep 15, 2025', notes: 'Updated subscription cancellation clauses.' },
-  { id: 'v-2', doc: 'Privacy Policy', version: 'v1.8.0', author: 'Admin (Legal)', date: 'Aug 20, 2025', notes: 'Added GDPR data deletion guidelines.' },
-  { id: 'v-1', doc: 'Risk Disclaimer', version: 'v1.2.0', author: 'Admin (Compliance)', date: 'Jul 10, 2025', notes: 'Added explicit Egyptian & Arab market risk warnings.' }
-])
+const privacyDoc = ref<DocFormState>({
+  id: '',
+  titleEn: '',
+  titleAr: '',
+  descriptionEn: '',
+  descriptionAr: '',
+  sections: []
+})
 
-// Save Action
-const handleSaveDocument = () => {
-  const current = documents.value[activeDoc.value]
-  current.lastUpdated = isAr.value ? 'الآن' : 'Just now'
-  const docNameAr = activeDoc.value === 'terms' ? 'شروط الخدمة' : activeDoc.value === 'privacy' ? 'سياسة الخصوصية' : 'إخلاء المسؤولية'
-  toast.success(
-    isAr.value
-      ? `تم حفظ ونشر وثيقة "${docNameAr}" بنجاح!`
-      : `${current.title} published and updated successfully!`
-  )
+// Current active document
+const currentDoc = computed(() => {
+  return activeDoc.value === 'terms' ? termsDoc.value : privacyDoc.value
+})
+
+// Section Modal State
+const showSectionModal = ref(false)
+const editingSectionIndex = ref<number | null>(null)
+const sectionModalData = ref<{
+  id?: string
+  titleEn: string
+  titleAr: string
+  contentEn: string
+  contentAr: string
+}>({
+  titleEn: '',
+  titleAr: '',
+  contentEn: '',
+  contentAr: ''
+})
+
+const backendBaseUrl = computed(() => {
+  return window.location.port === '14033' ? 'http://localhost:5074' : ''
+})
+
+const previewUrl = computed(() => {
+  const path = activeDoc.value === 'terms' ? 'terms-and-conditions' : 'privacy-policy'
+  return `${backendBaseUrl.value}/api/v1/${path}/view?lang=${previewLang.value}`
+})
+
+const loadDocuments = async () => {
+  isLoading.value = true
+  try {
+    const [termsData, privacyData] = await Promise.all([
+      coreServices.legal.getTerms(false),
+      coreServices.legal.getPrivacy(false)
+    ])
+
+    termsDoc.value = {
+      id: termsData.id,
+      titleEn: termsData.titleEn || '',
+      titleAr: termsData.titleAr || '',
+      descriptionEn: termsData.descriptionEn || '',
+      descriptionAr: termsData.descriptionAr || '',
+      sections: (termsData.sections || []).map(s => ({
+        id: s.id,
+        titleEn: s.titleEn,
+        titleAr: s.titleAr,
+        contentEn: s.contentEn,
+        contentAr: s.contentAr,
+        displayOrder: s.displayOrder
+      }))
+    }
+
+    privacyDoc.value = {
+      id: privacyData.id,
+      titleEn: privacyData.titleEn || '',
+      titleAr: privacyData.titleAr || '',
+      descriptionEn: privacyData.descriptionEn || '',
+      descriptionAr: privacyData.descriptionAr || '',
+      sections: (privacyData.sections || []).map(s => ({
+        id: s.id,
+        titleEn: s.titleEn,
+        titleAr: s.titleAr,
+        contentEn: s.contentEn,
+        contentAr: s.contentAr,
+        displayOrder: s.displayOrder
+      }))
+    }
+  } catch {
+    toast.error(isRtl.value ? 'فشل تحميل الوثائق القانونية' : 'Failed to load legal documents')
+  } finally {
+    isLoading.value = false
+  }
+}
+
+onMounted(() => {
+  loadDocuments()
+})
+
+const handleSave = async () => {
+  isSaving.value = true
+  try {
+    const doc = currentDoc.value
+    const payload: UpdateLegalDocumentPayload = {
+      titleEn: doc.titleEn,
+      titleAr: doc.titleAr,
+      descriptionEn: doc.descriptionEn || null,
+      descriptionAr: doc.descriptionAr || null,
+      sections: doc.sections.map(s => ({
+        titleEn: s.titleEn,
+        titleAr: s.titleAr,
+        contentEn: s.contentEn,
+        contentAr: s.contentAr
+      }))
+    }
+
+    if (activeDoc.value === 'terms') {
+      const updated = await coreServices.legal.updateTerms(payload)
+      termsDoc.value.id = updated.id
+      toast.success(isRtl.value ? 'تم حفظ الشروط والأحكام بنجاح' : 'Terms & Conditions saved successfully')
+    } else {
+      const updated = await coreServices.legal.updatePrivacy(payload)
+      privacyDoc.value.id = updated.id
+      toast.success(isRtl.value ? 'تم حفظ سياسة الخصوصية بنجاح' : 'Privacy Policy saved successfully')
+    }
+  } catch {
+    toast.error(isRtl.value ? 'حدث خطأ أثناء حفظ التعديلات' : 'Failed to save document')
+  } finally {
+    isSaving.value = false
+  }
+}
+
+// Section modal controls
+const openAddSectionModal = () => {
+  editingSectionIndex.value = null
+  sectionModalData.value = {
+    titleEn: '',
+    titleAr: '',
+    contentEn: '',
+    contentAr: ''
+  }
+  showSectionModal.value = true
+}
+
+const openEditSectionModal = (index: number) => {
+  const s = currentDoc.value.sections[index]
+  if (!s) return
+  editingSectionIndex.value = index
+  sectionModalData.value = {
+    id: s.id,
+    titleEn: s.titleEn || '',
+    titleAr: s.titleAr || '',
+    contentEn: s.contentEn || '',
+    contentAr: s.contentAr || ''
+  }
+  showSectionModal.value = true
+}
+
+const saveSectionModal = () => {
+  const s = sectionModalData.value
+  if (!s.titleEn?.trim() && !s.titleAr?.trim()) {
+    toast.error(isRtl.value ? 'يجب إدخال عنوان البند بالعربية أو الإنجليزية' : 'Section title is required in at least one language')
+    return
+  }
+  if (!s.contentEn?.trim() && !s.contentAr?.trim()) {
+    toast.error(isRtl.value ? 'يجب إدخال نص البند بالعربية أو الإنجليزية' : 'Section content is required in at least one language')
+    return
+  }
+
+  if (editingSectionIndex.value !== null) {
+    currentDoc.value.sections[editingSectionIndex.value] = { ...s }
+    toast.success(isRtl.value ? 'تم تعديل البند' : 'Section updated')
+  } else {
+    currentDoc.value.sections.push({ ...s })
+    toast.success(isRtl.value ? 'تمت إضافة البند' : 'Section added')
+  }
+  showSectionModal.value = false
+}
+
+const removeSection = async (index: number) => {
+  const confirmed = await confirm({
+    title: isRtl.value ? 'حذف البند' : 'Delete Section',
+    message: isRtl.value ? 'هل أنت متأكد من رغبتك في حذف هذا البند من الوثيقة؟' : 'Are you sure you want to remove this clause/section?',
+    confirmText: isRtl.value ? 'حذف' : 'Delete',
+    cancelText: isRtl.value ? 'إلغاء' : 'Cancel',
+    type: 'danger'
+  })
+
+  if (confirmed) {
+    currentDoc.value.sections.splice(index, 1)
+    toast.info(isRtl.value ? 'تم حذف البند' : 'Section removed')
+  }
+}
+
+const moveSection = (index: number, direction: 'up' | 'down') => {
+  const list = currentDoc.value.sections
+  const targetIndex = direction === 'up' ? index - 1 : index + 1
+  if (targetIndex < 0 || targetIndex >= list.length) return
+  const itemA = list[index]
+  const itemB = list[targetIndex]
+  if (!itemA || !itemB) return
+  list[index] = itemB
+  list[targetIndex] = itemA
 }
 </script>
 
 <template>
   <AppShell>
-    <div class="flex flex-col gap-6 max-w-7xl mx-auto">
+    <div class="flex flex-col gap-6 max-w-7xl mx-auto pb-12">
       <!-- Header -->
       <PageHeader
         :title="t('legal.title')"
         :description="t('legal.subtitle')"
       >
         <template #actions>
-          <button
-            type="button"
-            @click="handleSaveDocument"
-            class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 transition-colors shadow-sm shadow-emerald-600/20 cursor-pointer"
-          >
-            <Save class="w-4 h-4" />
-            <span>{{ t('legal.saveAndPublish') }}</span>
-          </button>
+          <div class="flex items-center gap-2.5">
+            <!-- Mobile Preview Button -->
+            <button
+              type="button"
+              @click="showPreviewModal = true"
+              class="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 transition-colors shadow-2xs cursor-pointer"
+            >
+              <Eye class="w-4 h-4 text-emerald-600" />
+              <span>{{ isRtl ? 'معاينة الموبايل' : 'Mobile Preview' }}</span>
+            </button>
+
+            <!-- Save Button -->
+            <button
+              type="button"
+              @click="handleSave"
+              :disabled="isSaving || isLoading"
+              class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-60 transition-colors shadow-sm shadow-emerald-600/20 cursor-pointer"
+            >
+              <RefreshCw v-if="isSaving" class="w-4 h-4 animate-spin" />
+              <Save v-else class="w-4 h-4" />
+              <span>{{ isSaving ? (isRtl ? 'جاري الحفظ...' : 'Saving...') : t('legal.saveAndPublish') }}</span>
+            </button>
+          </div>
         </template>
       </PageHeader>
 
@@ -124,7 +306,7 @@ const handleSaveDocument = () => {
       <div class="flex items-center gap-2 border-b border-slate-200 overflow-x-auto pb-px">
         <button
           type="button"
-          @click="activeDoc = 'terms'"
+          @click="setDocTab('terms')"
           :class="[
             'px-4 py-3 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-2 shrink-0',
             activeDoc === 'terms'
@@ -138,7 +320,7 @@ const handleSaveDocument = () => {
 
         <button
           type="button"
-          @click="activeDoc = 'privacy'"
+          @click="setDocTab('privacy')"
           :class="[
             'px-4 py-3 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-2 shrink-0',
             activeDoc === 'privacy'
@@ -149,111 +331,333 @@ const handleSaveDocument = () => {
           <Shield class="w-4 h-4" />
           <span>{{ t('legal.privacyTab') }}</span>
         </button>
-
-        <button
-          type="button"
-          @click="activeDoc = 'disclaimer'"
-          :class="[
-            'px-4 py-3 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-2 shrink-0',
-            activeDoc === 'disclaimer'
-              ? 'border-emerald-600 text-emerald-700'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          ]"
-        >
-          <AlertTriangle class="w-4 h-4" />
-          <span>{{ t('legal.disclaimerTab') }}</span>
-        </button>
       </div>
 
-      <!-- Main Editor & Settings Layout -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        
-        <!-- Left: Rich Content Editor (2 cols) -->
-        <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-6 shadow-2xs flex flex-col gap-4">
-          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-            <div>
-              <h2 class="text-sm font-bold text-slate-900">{{ documents[activeDoc].title }}</h2>
-              <span class="text-[11px] text-slate-400 font-medium">Rendered directly inside mobile in-app webview & legal modal</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="font-mono font-bold text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md">
-                v{{ documents[activeDoc].version }}
-              </span>
-              <StatusBadge status="Published" />
-            </div>
-          </div>
+      <!-- Loading State -->
+      <div v-if="isLoading" class="flex flex-col items-center justify-center p-16 bg-white rounded-2xl border border-slate-200/80 shadow-2xs">
+        <RefreshCw class="w-8 h-8 text-emerald-600 animate-spin mb-3" />
+        <span class="text-xs font-bold text-slate-500">{{ isRtl ? 'جاري تحميل الوثائق القانونية...' : 'Loading legal documents...' }}</span>
+      </div>
 
-          <!-- Rich Text Content Editor -->
-          <RichTextEditor
-            v-model="documents[activeDoc].content"
-            label="Document Markdown / Text Content"
-            placeholder="Type legal clauses and terms..."
-          />
-        </div>
-
-        <!-- Right: Document Meta & Version Audit History (1 col) -->
-        <div class="flex flex-col gap-6">
+      <template v-else>
+        <!-- Document Titles & Intro Banner Form -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           
-          <!-- Document Settings Card -->
-          <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs flex flex-col gap-4">
-            <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">
-              Document Meta
-            </h3>
+          <!-- English Title & Intro -->
+          <div class="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-2xs flex flex-col gap-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">English Header & Intro</h3>
+              </div>
+              <span class="text-[10px] font-bold text-slate-400 font-mono">EN</span>
+            </div>
 
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-bold text-slate-700">Version String</label>
+              <label class="text-xs font-bold text-slate-700">Document Title (en)</label>
               <input
-                v-model="documents[activeDoc].version"
+                v-model="currentDoc.titleEn"
                 type="text"
-                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
+                dir="ltr"
+                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
               />
             </div>
 
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-bold text-slate-700">Last Modified</label>
-              <div class="flex items-center gap-2 text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100 font-semibold">
-                <Clock class="w-3.5 h-3.5 text-slate-400" />
-                <span>{{ documents[activeDoc].lastUpdated }}</span>
+              <label class="text-xs font-bold text-slate-700">Introductory Banner / Description (en)</label>
+              <textarea
+                v-model="currentDoc.descriptionEn"
+                rows="3"
+                dir="ltr"
+                placeholder="Intro banner displayed at the top of the mobile screen..."
+                class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white resize-none font-medium leading-relaxed"
+              ></textarea>
+            </div>
+          </div>
+
+          <!-- Arabic Title & Intro -->
+          <div class="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-2xs flex flex-col gap-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">العنوان والمقدمة بالعربية</h3>
               </div>
+              <span class="text-[10px] font-bold text-slate-400 font-mono">AR</span>
+            </div>
+
+            <div class="flex flex-col gap-1.5" dir="rtl">
+              <label class="text-xs font-bold text-slate-700 text-start">عنوان الوثيقة (عربي)</label>
+              <input
+                v-model="currentDoc.titleAr"
+                type="text"
+                dir="rtl"
+                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white text-start"
+              />
+            </div>
+
+            <div class="flex flex-col gap-1.5" dir="rtl">
+              <label class="text-xs font-bold text-slate-700 text-start">المقدمة / البانر التمهيدي (عربي)</label>
+              <textarea
+                v-model="currentDoc.descriptionAr"
+                rows="3"
+                dir="rtl"
+                placeholder="نص تمهيدي يعرض في أعلى شاشة الموبايل..."
+                class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white resize-none font-medium leading-relaxed text-start"
+              ></textarea>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Sections List Management -->
+        <div class="flex flex-col gap-4">
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
+            <div>
+              <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                {{ isRtl ? 'بنود وفقرات الوثيقة' : 'Document Clauses & Sections' }} ({{ currentDoc.sections.length }})
+              </h3>
+              <p class="text-[11px] text-slate-500 font-medium mt-0.5">
+                {{ activeDoc === 'terms'
+                  ? (isRtl ? 'تُعرض البنود مرقمة بالتسلسل (1، 2، 3...) في تطبيق الموبايل.' : 'Sections are rendered as numbered cards (1, 2, 3...) in the mobile app.')
+                  : (isRtl ? 'تُعرض البنود كنقاط محددة في تطبيق الموبايل.' : 'Sections are rendered as distinct bullet cards in the mobile app.')
+                }}
+              </p>
             </div>
 
             <button
               type="button"
-              @click="handleSaveDocument"
-              class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center justify-center gap-2 mt-2"
+              @click="openAddSectionModal"
+              class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors shadow-xs cursor-pointer shrink-0"
             >
-              <Save class="w-3.5 h-3.5" />
-              <span>Update Legal Policy</span>
+              <Plus class="w-4 h-4" />
+              <span>{{ isRtl ? 'إضافة بند جديد' : 'Add Section' }}</span>
             </button>
           </div>
 
-          <!-- Version History Card -->
-          <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs flex flex-col gap-3">
-            <div class="flex items-center gap-2">
-              <History class="w-4 h-4 text-emerald-600" />
-              <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                Version History
-              </h3>
-            </div>
+          <!-- Empty State -->
+          <div v-if="currentDoc.sections.length === 0" class="text-center py-12 bg-white rounded-2xl border border-slate-200/80 shadow-2xs text-slate-400 text-xs font-bold">
+            {{ isRtl ? 'لا توجد بنود مضافة لهذه الوثيقة حالياً.' : 'No sections added yet.' }}
+          </div>
 
-            <div class="flex flex-col divide-y divide-slate-100 text-xs">
-              <div
-                v-for="vh in versionHistory"
-                :key="vh.id"
-                class="py-2.5 flex flex-col gap-1 first:pt-0 last:pb-0"
-              >
-                <div class="flex items-center justify-between">
-                  <span class="font-bold text-slate-800">{{ vh.doc }}</span>
-                  <span class="font-mono font-bold text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">{{ vh.version }}</span>
+          <!-- Section Cards -->
+          <div v-else class="flex flex-col gap-3">
+            <div
+              v-for="(sec, idx) in currentDoc.sections"
+              :key="sec.id || idx"
+              class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs flex flex-col gap-3 hover:border-slate-300 transition-colors"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div class="flex items-center gap-3">
+                  <span class="w-7 h-7 rounded-xl bg-slate-100 text-slate-700 font-mono font-bold text-xs flex items-center justify-center shrink-0">
+                    {{ idx + 1 }}
+                  </span>
+                  <div class="min-w-0">
+                    <h4 class="font-bold text-slate-900 text-xs">
+                      {{ isRtl ? (sec.titleAr || sec.titleEn) : (sec.titleEn || sec.titleAr) }}
+                    </h4>
+                    <span class="text-[10px] text-slate-400 font-mono">
+                      {{ isRtl ? (sec.titleEn ? `EN: ${sec.titleEn}` : '') : (sec.titleAr ? `AR: ${sec.titleAr}` : '') }}
+                    </span>
+                  </div>
                 </div>
-                <p class="text-[11px] text-slate-500 leading-tight">{{ vh.notes }}</p>
-                <span class="text-[10px] text-slate-400">{{ vh.date }} • {{ vh.author }}</span>
+
+                <div class="flex items-center gap-1 shrink-0">
+                  <!-- Reorder buttons -->
+                  <button
+                    type="button"
+                    @click="moveSection(idx, 'up')"
+                    :disabled="idx === 0"
+                    class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 cursor-pointer transition-colors"
+                    title="Move Up"
+                  >
+                    <ArrowUp class="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    @click="moveSection(idx, 'down')"
+                    :disabled="idx === currentDoc.sections.length - 1"
+                    class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 cursor-pointer transition-colors"
+                    title="Move Down"
+                  >
+                    <ArrowDown class="w-4 h-4" />
+                  </button>
+
+                  <!-- Edit -->
+                  <button
+                    type="button"
+                    @click="openEditSectionModal(idx)"
+                    class="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 cursor-pointer transition-colors"
+                    title="Edit"
+                  >
+                    <Languages class="w-4 h-4" />
+                  </button>
+
+                  <!-- Delete -->
+                  <button
+                    type="button"
+                    @click="removeSection(idx)"
+                    class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer transition-colors"
+                    title="Delete"
+                  >
+                    <Trash2 class="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              <!-- Content Preview -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50/70 p-3.5 rounded-xl border border-slate-100 text-xs leading-relaxed">
+                <div>
+                  <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">English Clause</span>
+                  <p class="text-slate-700 font-medium whitespace-pre-line">{{ sec.contentEn || '—' }}</p>
+                </div>
+                <div dir="rtl">
+                  <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1 text-start">النص بالعربية</span>
+                  <p class="text-slate-700 font-medium whitespace-pre-line text-start">{{ sec.contentAr || '—' }}</p>
+                </div>
               </div>
             </div>
           </div>
         </div>
+      </template>
 
+      <!-- Section Add/Edit Modal -->
+      <div v-if="showSectionModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-xl w-full p-6 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <h3 class="text-sm font-bold text-slate-900">
+              {{ editingSectionIndex !== null ? (isRtl ? 'تعديل البند' : 'Edit Section') : (isRtl ? 'إضافة بند جديد' : 'Add New Section') }}
+            </h3>
+            <button
+              type="button"
+              @click="showSectionModal = false"
+              class="text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-bold text-slate-700">Section Title (English)</label>
+              <input
+                v-model="sectionModalData.titleEn"
+                type="text"
+                dir="ltr"
+                placeholder="e.g. Account Responsibilities"
+                class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
+              />
+            </div>
+
+            <div class="flex flex-col gap-1" dir="rtl">
+              <label class="text-xs font-bold text-slate-700 text-start">عنوان البند (بالعربية)</label>
+              <input
+                v-model="sectionModalData.titleAr"
+                type="text"
+                dir="rtl"
+                placeholder="مثال: مسؤوليات الحساب"
+                class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white text-start"
+              />
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-bold text-slate-700">Section Content (English)</label>
+            <textarea
+              v-model="sectionModalData.contentEn"
+              rows="4"
+              dir="ltr"
+              placeholder="Full text of clause in English..."
+              class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white resize-none"
+            ></textarea>
+          </div>
+
+          <div class="flex flex-col gap-1" dir="rtl">
+            <label class="text-xs font-bold text-slate-700 text-start">نص البند (بالعربية)</label>
+            <textarea
+              v-model="sectionModalData.contentAr"
+              rows="4"
+              dir="rtl"
+              placeholder="نص البند الكامل باللغة العربية..."
+              class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white resize-none text-start"
+            ></textarea>
+          </div>
+
+          <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              @click="showSectionModal = false"
+              class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              {{ isRtl ? 'إلغاء' : 'Cancel' }}
+            </button>
+            <button
+              type="button"
+              @click="saveSectionModal"
+              class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors cursor-pointer shadow-xs"
+            >
+              {{ isRtl ? 'حفظ البند' : 'Save Section' }}
+            </button>
+          </div>
+        </div>
       </div>
+
+      <!-- Live Mobile View Modal -->
+      <div v-if="showPreviewModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div class="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-2">
+              <Eye class="w-4 h-4 text-emerald-400" />
+              <span class="text-xs font-bold">
+                {{ activeDoc === 'terms' ? (isRtl ? 'معاينة الشروط والأحكام' : 'Terms Mobile Preview') : (isRtl ? 'معاينة سياسة الخصوصية' : 'Privacy Mobile Preview') }}
+              </span>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <div class="flex items-center bg-slate-800 rounded-lg p-0.5 text-[11px] font-bold">
+                <button
+                  type="button"
+                  @click="previewLang = 'ar'"
+                  :class="['px-2 py-0.5 rounded cursor-pointer', previewLang === 'ar' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white']"
+                >
+                  عربي
+                </button>
+                <button
+                  type="button"
+                  @click="previewLang = 'en'"
+                  :class="['px-2 py-0.5 rounded cursor-pointer', previewLang === 'en' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white']"
+                >
+                  EN
+                </button>
+              </div>
+
+              <a
+                :href="previewUrl"
+                target="_blank"
+                rel="noopener"
+                class="text-slate-400 hover:text-white"
+                title="Open in new window"
+              >
+                <ExternalLink class="w-4 h-4" />
+              </a>
+
+              <button
+                type="button"
+                @click="showPreviewModal = false"
+                class="text-slate-400 hover:text-white text-sm font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+
+          <iframe
+            :src="previewUrl"
+            class="flex-1 w-full border-none bg-slate-50"
+            title="Legal Mobile View"
+          ></iframe>
+        </div>
+      </div>
+
     </div>
   </AppShell>
 </template>
