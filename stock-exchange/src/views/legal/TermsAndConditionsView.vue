@@ -110,6 +110,31 @@ const previewUrl = computed(() => {
   return `${backendBaseUrl.value}/api/v1/${path}/view?lang=${previewLang.value}`
 })
 
+const previewHtml = ref('')
+const isPreviewLoading = ref(false)
+
+const fetchPreviewHtml = async () => {
+  isPreviewLoading.value = true
+  try {
+    const res = await fetch(previewUrl.value)
+    if (res.ok) {
+      previewHtml.value = await res.text()
+    } else {
+      previewHtml.value = `<div style="padding: 2rem; text-align: center; color: #ef4444; font-family: sans-serif;">Failed to load preview (Status ${res.status})</div>`
+    }
+  } catch {
+    previewHtml.value = `<div style="padding: 2rem; text-align: center; color: #ef4444; font-family: sans-serif;">Error connecting to preview endpoint</div>`
+  } finally {
+    isPreviewLoading.value = false
+  }
+}
+
+watch([showPreviewModal, previewLang, activeDoc], ([isOpen]) => {
+  if (isOpen) {
+    fetchPreviewHtml()
+  }
+})
+
 const loadDocuments = async () => {
   isLoading.value = true
   try {
@@ -650,8 +675,16 @@ const moveSection = (index: number, direction: 'up' | 'down') => {
             </div>
           </div>
 
+          <!-- Loading state -->
+          <div v-if="isPreviewLoading" class="flex-1 flex flex-col items-center justify-center bg-slate-50 gap-3">
+            <RefreshCw class="w-8 h-8 text-emerald-600 animate-spin" />
+            <span class="text-sm font-medium text-slate-500">{{ isRtl ? 'جاري تحميل المعاينة...' : 'Loading preview...' }}</span>
+          </div>
+
+          <!-- Iframe loading the live HTML endpoint via srcdoc -->
           <iframe
-            :src="previewUrl"
+            v-else
+            :srcdoc="previewHtml"
             class="flex-1 w-full border-none bg-slate-50"
             title="Legal Mobile View"
           ></iframe>

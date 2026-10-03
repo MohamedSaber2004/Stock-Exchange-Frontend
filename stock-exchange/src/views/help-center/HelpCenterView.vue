@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import {
   HelpCircle,
   FolderPlus,
@@ -87,6 +87,31 @@ const backendBaseUrl = computed(() => {
 
 const previewUrl = computed(() => {
   return `${backendBaseUrl.value}/api/v1/help-center/view?lang=${previewLang.value}`
+})
+
+const previewHtml = ref('')
+const isPreviewLoading = ref(false)
+
+const fetchPreviewHtml = async () => {
+  isPreviewLoading.value = true
+  try {
+    const res = await fetch(previewUrl.value)
+    if (res.ok) {
+      previewHtml.value = await res.text()
+    } else {
+      previewHtml.value = `<div style="padding: 2rem; text-align: center; color: #ef4444; font-family: sans-serif;">Failed to load preview (Status ${res.status})</div>`
+    }
+  } catch {
+    previewHtml.value = `<div style="padding: 2rem; text-align: center; color: #ef4444; font-family: sans-serif;">Error connecting to preview endpoint</div>`
+  } finally {
+    isPreviewLoading.value = false
+  }
+}
+
+watch([showPreviewModal, previewLang], ([isOpen]) => {
+  if (isOpen) {
+    fetchPreviewHtml()
+  }
 })
 
 const loadData = async () => {
@@ -757,8 +782,16 @@ const deleteFaq = async (item: HelpCenterDto) => {
             </div>
           </div>
 
+          <!-- Loading state -->
+          <div v-if="isPreviewLoading" class="flex-1 flex flex-col items-center justify-center bg-slate-50 gap-3">
+            <RefreshCw class="w-8 h-8 text-emerald-600 animate-spin" />
+            <span class="text-sm font-medium text-slate-500">{{ isRtl ? 'جاري تحميل المعاينة...' : 'Loading preview...' }}</span>
+          </div>
+
+          <!-- Iframe loading the live HTML endpoint via srcdoc -->
           <iframe
-            :src="previewUrl"
+            v-else
+            :srcdoc="previewHtml"
             class="flex-1 w-full border-none bg-slate-50"
             title="Help Center Mobile View"
           ></iframe>
