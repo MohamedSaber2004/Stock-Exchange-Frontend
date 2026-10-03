@@ -10,6 +10,10 @@
       "destination": "https://stock-exchange.runasp.net/files/$1"
     },
     {
+      "source": "/pages/(.*)",
+      "destination": "https://stock-exchange.runasp.net/pages/$1"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

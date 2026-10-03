@@ -37,6 +37,11 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/pages': {
+        target: 'https://stock-exchange.runasp.net',
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
 })

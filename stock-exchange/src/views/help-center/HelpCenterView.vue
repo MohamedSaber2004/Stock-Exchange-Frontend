@@ -81,32 +81,14 @@ const categoryForm = ref<{
   titleAr: ''
 })
 
-const backendBaseUrl = computed(() => {
-  return window.location.port === '14033' ? 'http://localhost:5074' : ''
-})
+import { useLivePreview } from '@/composables'
 
 const previewUrl = computed(() => {
-  return `${backendBaseUrl.value}/api/v1/help-center/view?lang=${previewLang.value}`
+  const apiBase = coreServices.httpClient.getBaseUrl().replace(/\/+$/, '')
+  return `${apiBase}/help-center/view?lang=${previewLang.value}`
 })
 
-const previewHtml = ref('')
-const isPreviewLoading = ref(false)
-
-const fetchPreviewHtml = async () => {
-  isPreviewLoading.value = true
-  try {
-    const res = await fetch(previewUrl.value)
-    if (res.ok) {
-      previewHtml.value = await res.text()
-    } else {
-      previewHtml.value = `<div style="padding: 2rem; text-align: center; color: #ef4444; font-family: sans-serif;">Failed to load preview (Status ${res.status})</div>`
-    }
-  } catch {
-    previewHtml.value = `<div style="padding: 2rem; text-align: center; color: #ef4444; font-family: sans-serif;">Error connecting to preview endpoint</div>`
-  } finally {
-    isPreviewLoading.value = false
-  }
-}
+const { previewHtml, isPreviewLoading, fetchPreviewHtml } = useLivePreview(() => previewUrl.value)
 
 watch([showPreviewModal, previewLang], ([isOpen]) => {
   if (isOpen) {
