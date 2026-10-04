@@ -100,7 +100,7 @@ const loadAboutUs = async () => {
       displayOrder: f.displayOrder
     }))
   } catch {
-    toast.error(isRtl.value ? 'فشل تحميل بيانات من نحن' : 'Failed to load About Us content')
+    toast.error(t('about.loadError'))
   } finally {
     isLoading.value = false
   }
@@ -132,9 +132,9 @@ const handleSave = async () => {
 
     const updated = await coreServices.aboutUs.update(payload)
     form.value.id = updated.id
-    toast.success(isRtl.value ? 'تم حفظ التعديلات بنجاح' : 'About Us saved successfully')
+    toast.success(t('about.saveSuccess'))
   } catch {
-    toast.error(isRtl.value ? 'حدث خطأ أثناء حفظ التعديلات' : 'Failed to save About Us')
+    toast.error(t('about.saveError'))
   } finally {
     isSaving.value = false
   }
@@ -170,36 +170,36 @@ const openEditFeatureModal = (index: number) => {
 const saveFeatureModal = () => {
   const f = featureModalData.value
   if (!f.titleEn?.trim() && !f.titleAr?.trim()) {
-    toast.error(isRtl.value ? 'يجب إدخال عنوان الميزة بالعربية أو الإنجليزية' : 'Feature title is required in at least one language')
+    toast.error(t('about.featureTitleRequired'))
     return
   }
   if (!f.descriptionEn?.trim() && !f.descriptionAr?.trim()) {
-    toast.error(isRtl.value ? 'يجب إدخال وصف الميزة بالعربية أو الإنجليزية' : 'Feature description is required in at least one language')
+    toast.error(t('about.featureDescRequired'))
     return
   }
 
   if (editingFeatureIndex.value !== null) {
     features.value[editingFeatureIndex.value] = { ...f }
-    toast.success(isRtl.value ? 'تم تعديل الميزة' : 'Feature updated')
+    toast.success(t('about.featureUpdated'))
   } else {
     features.value.push({ ...f })
-    toast.success(isRtl.value ? 'تمت إضافة الميزة' : 'Feature added')
+    toast.success(t('about.featureAdded'))
   }
   showAddFeatureModal.value = false
 }
 
 const removeFeature = async (index: number) => {
   const confirmed = await confirm({
-    title: isRtl.value ? 'حذف الميزة' : 'Delete Feature',
-    message: isRtl.value ? 'هل أنت متأكد من رغبتك في حذف هذه الميزة من قائمة مميزاتنا؟' : 'Are you sure you want to remove this feature?',
-    confirmText: isRtl.value ? 'حذف' : 'Delete',
-    cancelText: isRtl.value ? 'إلغاء' : 'Cancel',
+    title: t('about.deleteFeature'),
+    message: t('about.deleteFeatureConfirm'),
+    confirmText: t('common.delete'),
+    cancelText: t('common.cancel'),
     type: 'danger'
   })
 
   if (confirmed) {
     features.value.splice(index, 1)
-    toast.info(isRtl.value ? 'تم حذف الميزة' : 'Feature removed')
+    toast.info(t('about.featureRemoved'))
   }
 }
 </script>
@@ -221,7 +221,7 @@ const removeFeature = async (index: number) => {
               class="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 transition-colors shadow-2xs cursor-pointer"
             >
               <Eye class="w-4 h-4 text-emerald-600" />
-              <span>{{ isRtl ? 'معاينة الموبايل' : 'Mobile Preview' }}</span>
+              <span>{{ t('common.mobilePreview') }}</span>
             </button>
 
             <!-- Save Button -->
@@ -233,7 +233,7 @@ const removeFeature = async (index: number) => {
             >
               <RefreshCw v-if="isSaving" class="w-4 h-4 animate-spin" />
               <Save v-else class="w-4 h-4" />
-              <span>{{ isSaving ? (isRtl ? 'جاري الحفظ...' : 'Saving...') : t('about.saveChanges') }}</span>
+              <span>{{ isSaving ? t('about.saving') : t('about.saveChanges') }}</span>
             </button>
           </div>
         </template>
@@ -242,7 +242,7 @@ const removeFeature = async (index: number) => {
       <!-- Loading State -->
       <div v-if="isLoading" class="flex flex-col items-center justify-center p-16 bg-white rounded-2xl border border-slate-200/80 shadow-2xs">
         <RefreshCw class="w-8 h-8 text-emerald-600 animate-spin mb-3" />
-        <span class="text-xs font-bold text-slate-500">{{ isRtl ? 'جاري تحميل محتوى من نحن...' : 'Loading About Us content...' }}</span>
+        <span class="text-xs font-bold text-slate-500">{{ t('about.loading') }}</span>
       </div>
 
       <template v-else>
@@ -259,7 +259,7 @@ const removeFeature = async (index: number) => {
             ]"
           >
             <Building2 class="w-4 h-4" />
-            <span>{{ isRtl ? 'القصة، الرسالة والرؤية' : 'Story, Mission & Vision' }}</span>
+            <span>{{ t('about.storyMissionVision') }}</span>
           </button>
 
           <button
@@ -273,7 +273,7 @@ const removeFeature = async (index: number) => {
             ]"
           >
             <Sparkles class="w-4 h-4" />
-            <span>{{ isRtl ? 'المميزات والركائز' : 'Core Features & Pillars' }} ({{ features.length }})</span>
+            <span>{{ t('about.coreFeatures') }} ({{ features.length }})</span>
           </button>
         </div>
 
@@ -285,43 +285,43 @@ const removeFeature = async (index: number) => {
             <div class="flex items-center justify-between pb-3 border-b border-slate-100">
               <div class="flex items-center gap-2">
                 <span class="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">English Content</h3>
+                <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">{{ t('about.englishContent') }}</h3>
               </div>
               <span class="text-[10px] font-bold text-slate-400 font-mono">EN</span>
             </div>
 
             <!-- Story EN -->
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-bold text-slate-700">Our Story (en)</label>
+              <label class="text-xs font-bold text-slate-700">{{ t('about.ourStoryEn') }}</label>
               <textarea
                 v-model="form.storyEn"
                 rows="4"
                 dir="ltr"
-                placeholder="The founding story of the exchange platform..."
+                :placeholder="t('about.storyPlaceholderEn')"
                 class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white resize-none font-medium leading-relaxed"
               ></textarea>
             </div>
 
             <!-- Mission EN -->
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-bold text-slate-700">Our Mission (en)</label>
+              <label class="text-xs font-bold text-slate-700">{{ t('about.ourMissionEn') }}</label>
               <textarea
                 v-model="form.missionEn"
                 rows="3"
                 dir="ltr"
-                placeholder="Our core purpose and mission..."
+                :placeholder="t('about.missionPlaceholderEn')"
                 class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white resize-none font-medium leading-relaxed"
               ></textarea>
             </div>
 
             <!-- Vision EN -->
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-bold text-slate-700">Our Vision (en)</label>
+              <label class="text-xs font-bold text-slate-700">{{ t('about.ourVisionEn') }}</label>
               <textarea
                 v-model="form.visionEn"
                 rows="3"
                 dir="ltr"
-                placeholder="Our future aspirational vision..."
+                :placeholder="t('about.visionPlaceholderEn')"
                 class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white resize-none font-medium leading-relaxed"
               ></textarea>
             </div>
@@ -332,43 +332,43 @@ const removeFeature = async (index: number) => {
             <div class="flex items-center justify-between pb-3 border-b border-slate-100">
               <div class="flex items-center gap-2">
                 <span class="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">المحتوى باللغة العربية</h3>
+                <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">{{ t('about.arabicContent') }}</h3>
               </div>
               <span class="text-[10px] font-bold text-slate-400 font-mono">AR</span>
             </div>
 
             <!-- Story AR -->
             <div class="flex flex-col gap-1.5" dir="rtl">
-              <label class="text-xs font-bold text-slate-700 text-start">قصتنا (عربي)</label>
+              <label class="text-xs font-bold text-slate-700 text-start">{{ t('about.ourStoryAr') }}</label>
               <textarea
                 v-model="form.storyAr"
                 rows="4"
                 dir="rtl"
-                placeholder="قصة تأسيس المنصة وأهدافها..."
+                :placeholder="t('about.storyPlaceholderAr')"
                 class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white resize-none font-medium leading-relaxed text-start"
               ></textarea>
             </div>
 
             <!-- Mission AR -->
             <div class="flex flex-col gap-1.5" dir="rtl">
-              <label class="text-xs font-bold text-slate-700 text-start">رسالتنا (عربي)</label>
+              <label class="text-xs font-bold text-slate-700 text-start">{{ t('about.ourMissionAr') }}</label>
               <textarea
                 v-model="form.missionAr"
                 rows="3"
                 dir="rtl"
-                placeholder="رسالتنا الأساسية والقيم التي نلتزم بها..."
+                :placeholder="t('about.missionPlaceholderAr')"
                 class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white resize-none font-medium leading-relaxed text-start"
               ></textarea>
             </div>
 
             <!-- Vision AR -->
             <div class="flex flex-col gap-1.5" dir="rtl">
-              <label class="text-xs font-bold text-slate-700 text-start">رؤيتنا (عربي)</label>
+              <label class="text-xs font-bold text-slate-700 text-start">{{ t('about.ourVisionAr') }}</label>
               <textarea
                 v-model="form.visionAr"
                 rows="3"
                 dir="rtl"
-                placeholder="رؤيتنا المستقبلية في الأسواق المالية..."
+                :placeholder="t('about.visionPlaceholderAr')"
                 class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white resize-none font-medium leading-relaxed text-start"
               ></textarea>
             </div>
@@ -381,8 +381,8 @@ const removeFeature = async (index: number) => {
                 <Mail class="w-5 h-5" />
               </div>
               <div>
-                <h4 class="text-xs font-bold text-slate-900">{{ isRtl ? 'بريد الدعم الفني الرسمي' : 'Official Support Email' }}</h4>
-                <p class="text-[11px] text-slate-500 font-medium">{{ isRtl ? 'البريد المعروض للمستخدمين في شاشات الموبايل للتواصل والاستفسارات.' : 'The contact email rendered inside the mobile app connect section.' }}</p>
+                <h4 class="text-xs font-bold text-slate-900">{{ t('about.supportEmail') }}</h4>
+                <p class="text-[11px] text-slate-500 font-medium">{{ t('about.supportEmailDesc') }}</p>
               </div>
             </div>
 
@@ -391,7 +391,7 @@ const removeFeature = async (index: number) => {
                 v-model="form.supportEmail"
                 type="email"
                 dir="ltr"
-                placeholder="support@stockexchange.com"
+                :placeholder="t('about.supportEmailPlaceholder')"
                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
               />
             </div>
@@ -403,8 +403,8 @@ const removeFeature = async (index: number) => {
         <div v-else-if="activeTab === 'features'" class="flex flex-col gap-6">
           <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
             <div>
-              <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">{{ isRtl ? 'مميزات المنصة وركائزها' : 'Exchange Features & Pillars' }}</h3>
-              <p class="text-[11px] text-slate-500 font-medium mt-0.5">{{ isRtl ? 'المميزات المعروضة بعلامة صح في واجهة الموبايل.' : 'Core feature checklist items rendered in the mobile in-app webview.' }}</p>
+              <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">{{ t('about.coreFeatures') }}</h3>
+              <p class="text-[11px] text-slate-500 font-medium mt-0.5">{{ t('about.coreFeaturesDesc') }}</p>
             </div>
 
             <button
@@ -413,13 +413,13 @@ const removeFeature = async (index: number) => {
               class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors shadow-xs cursor-pointer shrink-0"
             >
               <Plus class="w-4 h-4" />
-              <span>{{ isRtl ? 'إضافة ميزة جديدة' : 'Add Feature' }}</span>
+              <span>{{ t('about.addFeature') }}</span>
             </button>
           </div>
 
           <!-- Feature Cards Grid -->
           <div v-if="features.length === 0" class="text-center py-12 bg-white rounded-2xl border border-slate-200/80 shadow-2xs text-slate-400 text-xs font-bold">
-            {{ isRtl ? 'لا توجد مميزات مضافة حالياً.' : 'No features added yet.' }}
+            {{ t('about.noFeatures') }}
           </div>
 
           <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -477,7 +477,7 @@ const removeFeature = async (index: number) => {
         <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200">
           <div class="flex items-center justify-between pb-3 border-b border-slate-100">
             <h3 class="text-sm font-bold text-slate-900">
-              {{ editingFeatureIndex !== null ? (isRtl ? 'تعديل الميزة' : 'Edit Feature') : (isRtl ? 'إضافة ميزة جديدة' : 'Add New Feature') }}
+              {{ editingFeatureIndex !== null ? t('about.editFeature') : t('about.addFeature') }}
             </h3>
             <button
               type="button"
@@ -490,7 +490,7 @@ const removeFeature = async (index: number) => {
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div class="flex flex-col gap-1">
-              <label class="text-xs font-bold text-slate-700">Title (English)</label>
+              <label class="text-xs font-bold text-slate-700">{{ t('about.featureTitleEn') }}</label>
               <input
                 v-model="featureModalData.titleEn"
                 type="text"
@@ -501,7 +501,7 @@ const removeFeature = async (index: number) => {
             </div>
 
             <div class="flex flex-col gap-1" dir="rtl">
-              <label class="text-xs font-bold text-slate-700 text-start">العنوان (بالعربية)</label>
+              <label class="text-xs font-bold text-slate-700 text-start">{{ t('about.featureTitleAr') }}</label>
               <input
                 v-model="featureModalData.titleAr"
                 type="text"
@@ -513,7 +513,7 @@ const removeFeature = async (index: number) => {
           </div>
 
           <div class="flex flex-col gap-1">
-            <label class="text-xs font-bold text-slate-700">Description (English)</label>
+            <label class="text-xs font-bold text-slate-700">{{ t('about.featureDescEn') }}</label>
             <textarea
               v-model="featureModalData.descriptionEn"
               rows="2"
@@ -524,7 +524,7 @@ const removeFeature = async (index: number) => {
           </div>
 
           <div class="flex flex-col gap-1" dir="rtl">
-            <label class="text-xs font-bold text-slate-700 text-start">الوصف (بالعربية)</label>
+            <label class="text-xs font-bold text-slate-700 text-start">{{ t('about.featureDescAr') }}</label>
             <textarea
               v-model="featureModalData.descriptionAr"
               rows="2"
@@ -535,11 +535,11 @@ const removeFeature = async (index: number) => {
           </div>
 
           <div class="flex flex-col gap-1">
-            <label class="text-xs font-bold text-slate-700">{{ isRtl ? 'التصنيف / الفئة (اختياري)' : 'Category Tag (Optional)' }}</label>
+            <label class="text-xs font-bold text-slate-700">{{ t('about.featureCategory') }}</label>
             <input
               v-model="featureModalData.category"
               type="text"
-              placeholder="e.g. Trading, Security, Support"
+              :placeholder="t('about.categoryPlaceholder')"
               class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
             />
           </div>
@@ -550,14 +550,14 @@ const removeFeature = async (index: number) => {
               @click="showAddFeatureModal = false"
               class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
             >
-              {{ isRtl ? 'إلغاء' : 'Cancel' }}
+              {{ t('common.cancel') }}
             </button>
             <button
               type="button"
               @click="saveFeatureModal"
               class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors cursor-pointer shadow-xs"
             >
-              {{ isRtl ? 'حفظ الميزة' : 'Save Feature' }}
+              {{ t('about.saveFeature') }}
             </button>
           </div>
         </div>
@@ -569,7 +569,7 @@ const removeFeature = async (index: number) => {
           <div class="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between shrink-0">
             <div class="flex items-center gap-2">
               <Eye class="w-4 h-4 text-emerald-400" />
-              <span class="text-xs font-bold">{{ isRtl ? 'معاينة شاشة الموبايل' : 'Mobile In-App Preview' }}</span>
+              <span class="text-xs font-bold">{{ t('common.mobilePreview') }}</span>
             </div>
 
             <div class="flex items-center gap-3">
@@ -616,7 +616,7 @@ const removeFeature = async (index: number) => {
           <!-- Loading state -->
           <div v-if="isPreviewLoading" class="flex-1 flex flex-col items-center justify-center bg-slate-50 gap-3">
             <RefreshCw class="w-8 h-8 text-emerald-600 animate-spin" />
-            <span class="text-sm font-medium text-slate-500">{{ isRtl ? 'جاري تحميل المعاينة...' : 'Loading preview...' }}</span>
+            <span class="text-sm font-medium text-slate-500">{{ t('common.loadingPreview') }}</span>
           </div>
 
           <!-- Iframe loading the live HTML endpoint via srcdoc -->

@@ -90,9 +90,7 @@ const isItemActive = (to: string) => {
 const handleLogout = async () => {
   const confirmed = await confirm({
     title: t('common.logout'),
-    message: isAr.value
-      ? 'هل أنت متأكد من رغبتك في تسجيل الخروج من لوحة التحكم؟'
-      : 'Are you sure you want to sign out from FinWise Admin?',
+    message: t('common.logoutConfirm'),
     confirmText: t('common.logout'),
     cancelText: t('common.cancel'),
     type: 'warning',

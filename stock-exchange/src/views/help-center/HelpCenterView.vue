@@ -106,7 +106,7 @@ const loadData = async () => {
     categories.value = cats || []
     faqs.value = items || []
   } catch {
-    toast.error(isRtl.value ? 'فشل تحميل بيانات مركز المساعدة' : 'Failed to load Help Center data')
+    toast.error(t('helpCenter.loadError'))
   } finally {
     isLoading.value = false
   }
@@ -173,7 +173,7 @@ const openEditCategoryModal = (cat: HelpCenterCategoryDto) => {
 const saveCategory = async () => {
   const { id, titleEn, titleAr } = categoryForm.value
   if (!titleEn.trim() && !titleAr.trim()) {
-    toast.error(isRtl.value ? 'يجب إدخال اسم القسم بالعربية أو الإنجليزية' : 'Category title is required in at least one language')
+    toast.error(t('helpCenter.categoryTitleRequired'))
     return
   }
 
@@ -183,16 +183,16 @@ const saveCategory = async () => {
       const updated = await coreServices.helpCenter.updateCategory(id, { id, titleEn, titleAr })
       const idx = categories.value.findIndex(c => c.id === id)
       if (idx !== -1) categories.value[idx] = updated
-      toast.success(isRtl.value ? 'تم تعديل القسم بنجاح' : 'Category updated successfully')
+      toast.success(t('helpCenter.categoryUpdated'))
     } else {
       const payload: CreateHelpCenterCategoryPayload = { titleEn, titleAr }
       const created = await coreServices.helpCenter.createCategory(payload)
       categories.value.push(created)
-      toast.success(isRtl.value ? 'تمت إضافة القسم بنجاح' : 'Category created successfully')
+      toast.success(t('helpCenter.categoryCreated'))
     }
     showCategoryModal.value = false
   } catch {
-    toast.error(isRtl.value ? 'حدث خطأ أثناء حفظ القسم' : 'Failed to save category')
+    toast.error(t('helpCenter.categorySaveError'))
   } finally {
     isSaving.value = false
   }
@@ -202,8 +202,8 @@ const deleteCategory = async (cat: HelpCenterCategoryDto) => {
   const confirmed = await confirm({
     title: t('helpCenter.deleteCategory'),
     message: `${t('helpCenter.deleteCategoryConfirm')} (${isRtl.value ? cat.titleAr || cat.titleEn : cat.titleEn || cat.titleAr})`,
-    confirmText: isRtl.value ? 'حذف' : 'Delete',
-    cancelText: isRtl.value ? 'إلغاء' : 'Cancel',
+    confirmText: t('common.delete'),
+    cancelText: t('common.cancel'),
     type: 'danger'
   })
 
@@ -214,9 +214,9 @@ const deleteCategory = async (cat: HelpCenterCategoryDto) => {
       if (selectedCategoryId.value === cat.id) {
         selectedCategoryId.value = null
       }
-      toast.success(isRtl.value ? 'تم حذف القسم' : 'Category deleted')
+      toast.success(t('helpCenter.categoryDeleted'))
     } catch {
-      toast.error(isRtl.value ? 'فشل حذف القسم' : 'Failed to delete category')
+      toast.error(t('helpCenter.categoryDeleteError'))
     }
   }
 }
@@ -258,11 +258,11 @@ const openEditFaqModal = (item: HelpCenterDto) => {
 const saveFaq = async () => {
   const f = faqForm.value
   if (!f.titleEn.trim() && !f.titleAr.trim()) {
-    toast.error(isRtl.value ? 'يجب إدخال نص السؤال بالعربية أو الإنجليزية' : 'Question is required in at least one language')
+    toast.error(t('helpCenter.questionRequired'))
     return
   }
   if (!f.contentEn.trim() && !f.contentAr.trim()) {
-    toast.error(isRtl.value ? 'يجب إدخال الإجابة بالعربية أو الإنجليزية' : 'Answer is required in at least one language')
+    toast.error(t('helpCenter.answerRequired'))
     return
   }
 
@@ -281,7 +281,7 @@ const saveFaq = async () => {
       const updated = await coreServices.helpCenter.update(f.id, payload)
       const idx = faqs.value.findIndex(item => item.id === f.id)
       if (idx !== -1) faqs.value[idx] = updated
-      toast.success(isRtl.value ? 'تم تعديل السؤال بنجاح' : 'FAQ updated successfully')
+      toast.success(t('helpCenter.faqUpdated'))
     } else {
       const payload: CreateHelpCenterPayload = {
         titleEn: f.titleEn,
@@ -292,11 +292,11 @@ const saveFaq = async () => {
       }
       const created = await coreServices.helpCenter.create(payload)
       faqs.value.push(created)
-      toast.success(isRtl.value ? 'تمت إضافة السؤال بنجاح' : 'FAQ added successfully')
+      toast.success(t('helpCenter.faqAdded'))
     }
     showFaqModal.value = false
   } catch {
-    toast.error(isRtl.value ? 'حدث خطأ أثناء حفظ السؤال' : 'Failed to save FAQ')
+    toast.error(t('helpCenter.faqSaveError'))
   } finally {
     isSaving.value = false
   }
@@ -306,8 +306,8 @@ const deleteFaq = async (item: HelpCenterDto) => {
   const confirmed = await confirm({
     title: t('helpCenter.deleteFaq'),
     message: t('helpCenter.deleteFaqConfirm'),
-    confirmText: isRtl.value ? 'حذف' : 'Delete',
-    cancelText: isRtl.value ? 'إلغاء' : 'Cancel',
+    confirmText: t('common.delete'),
+    cancelText: t('common.cancel'),
     type: 'danger'
   })
 
@@ -315,9 +315,9 @@ const deleteFaq = async (item: HelpCenterDto) => {
     try {
       await coreServices.helpCenter.delete(item.id)
       faqs.value = faqs.value.filter(f => f.id !== item.id)
-      toast.success(isRtl.value ? 'تم حذف السؤال' : 'FAQ deleted')
+      toast.success(t('helpCenter.faqDeleted'))
     } catch {
-      toast.error(isRtl.value ? 'فشل حذف السؤال' : 'Failed to delete FAQ')
+      toast.error(t('helpCenter.faqDeleteError'))
     }
   }
 }
@@ -369,7 +369,7 @@ const deleteFaq = async (item: HelpCenterDto) => {
       <!-- Loading State -->
       <div v-if="isLoading" class="flex flex-col items-center justify-center p-16 bg-white rounded-2xl border border-slate-200/80 shadow-2xs">
         <RefreshCw class="w-8 h-8 text-emerald-600 animate-spin mb-3" />
-        <span class="text-xs font-bold text-slate-500">{{ isRtl ? 'جاري تحميل مركز المساعدة...' : 'Loading Help Center...' }}</span>
+        <span class="text-xs font-bold text-slate-500">{{ t('helpCenter.loading') }}</span>
       </div>
 
       <template v-else>
@@ -387,7 +387,7 @@ const deleteFaq = async (item: HelpCenterDto) => {
           </div>
 
           <div class="flex items-center gap-2 text-xs font-bold text-slate-500 shrink-0">
-            <span>{{ isRtl ? `إجمالي الأسئلة: ${filteredFaqs.length}` : `Total Questions: ${filteredFaqs.length}` }}</span>
+            <span>{{ t('helpCenter.totalQuestions', { count: filteredFaqs.length }) }}</span>
           </div>
         </div>
 
@@ -436,7 +436,7 @@ const deleteFaq = async (item: HelpCenterDto) => {
                 type="button"
                 @click.stop="openEditCategoryModal(cat)"
                 class="p-1 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 cursor-pointer"
-                title="Edit category"
+                :title="t('helpCenter.editCategory')"
               >
                 <FolderEdit class="w-3.5 h-3.5" />
               </button>
@@ -444,7 +444,7 @@ const deleteFaq = async (item: HelpCenterDto) => {
                 type="button"
                 @click.stop="deleteCategory(cat)"
                 class="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
-                title="Delete category"
+                :title="t('helpCenter.deleteCategory')"
               >
                 <Trash2 class="w-3.5 h-3.5" />
               </button>
@@ -499,7 +499,7 @@ const deleteFaq = async (item: HelpCenterDto) => {
                   type="button"
                   @click.stop="openEditFaqModal(item)"
                   class="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 cursor-pointer transition-colors"
-                  title="Edit question"
+                  :title="t('helpCenter.editFaq')"
                 >
                   <Pencil class="w-4 h-4" />
                 </button>
@@ -508,7 +508,7 @@ const deleteFaq = async (item: HelpCenterDto) => {
                   type="button"
                   @click.stop="deleteFaq(item)"
                   class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer transition-colors"
-                  title="Delete question"
+                  :title="t('helpCenter.deleteFaq')"
                 >
                   <Trash2 class="w-4 h-4" />
                 </button>
@@ -528,7 +528,7 @@ const deleteFaq = async (item: HelpCenterDto) => {
               <!-- English Version -->
               <div class="flex flex-col gap-2 bg-white p-3.5 rounded-xl border border-slate-100">
                 <div class="flex items-center justify-between pb-1.5 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
-                  <span>English FAQ</span>
+                  <span>{{ t('helpCenter.englishFaq') }}</span>
                   <span>EN</span>
                 </div>
                 <div class="font-bold text-slate-900 text-xs">{{ item.titleEn || '—' }}</div>
@@ -538,7 +538,7 @@ const deleteFaq = async (item: HelpCenterDto) => {
               <!-- Arabic Version -->
               <div class="flex flex-col gap-2 bg-white p-3.5 rounded-xl border border-slate-100" dir="rtl">
                 <div class="flex items-center justify-between pb-1.5 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono text-start">
-                  <span>السؤال والإجابة بالعربية</span>
+                  <span>{{ t('helpCenter.arabicFaq') }}</span>
                   <span>AR</span>
                 </div>
                 <div class="font-bold text-slate-900 text-xs text-start">{{ item.titleAr || '—' }}</div>
@@ -645,7 +645,7 @@ const deleteFaq = async (item: HelpCenterDto) => {
               @click="showFaqModal = false"
               class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
             >
-              {{ isRtl ? 'إلغاء' : 'Cancel' }}
+              {{ t('common.cancel') }}
             </button>
             <button
               type="button"
@@ -653,7 +653,7 @@ const deleteFaq = async (item: HelpCenterDto) => {
               :disabled="isSaving"
               class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 transition-colors cursor-pointer shadow-xs"
             >
-              {{ isRtl ? 'حفظ السؤال' : 'Save FAQ' }}
+              {{ t('helpCenter.saveFaq') }}
             </button>
           </div>
         </div>
@@ -703,7 +703,7 @@ const deleteFaq = async (item: HelpCenterDto) => {
               @click="showCategoryModal = false"
               class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
             >
-              {{ isRtl ? 'إلغاء' : 'Cancel' }}
+              {{ t('common.cancel') }}
             </button>
             <button
               type="button"
@@ -711,7 +711,7 @@ const deleteFaq = async (item: HelpCenterDto) => {
               :disabled="isSaving"
               class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 transition-colors cursor-pointer shadow-xs"
             >
-              {{ isRtl ? 'حفظ القسم' : 'Save Category' }}
+              {{ t('helpCenter.saveCategory') }}
             </button>
           </div>
         </div>
@@ -767,7 +767,7 @@ const deleteFaq = async (item: HelpCenterDto) => {
           <!-- Loading state -->
           <div v-if="isPreviewLoading" class="flex-1 flex flex-col items-center justify-center bg-slate-50 gap-3">
             <RefreshCw class="w-8 h-8 text-emerald-600 animate-spin" />
-            <span class="text-sm font-medium text-slate-500">{{ isRtl ? 'جاري تحميل المعاينة...' : 'Loading preview...' }}</span>
+            <span class="text-sm font-medium text-slate-500">{{ t('common.loadingPreview') }}</span>
           </div>
 
           <!-- Iframe loading the live HTML endpoint via srcdoc -->

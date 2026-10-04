@@ -1,9 +1,11 @@
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { coreServices } from '@/di'
 
 let cachedCss = ''
 
 export function useLivePreview(getEndpointUrl: () => string) {
+  const { t, locale } = useI18n()
   const previewHtml = ref('')
   const isPreviewLoading = ref(false)
 
@@ -71,10 +73,14 @@ export function useLivePreview(getEndpointUrl: () => string) {
 
         previewHtml.value = raw
       } else {
-        previewHtml.value = `<div style="padding: 2.5rem; text-align: center; color: #ef4444; font-family: sans-serif; direction: rtl;">فشل في تحميل المعاينة (رمز الحالة: ${res.status})</div>`
+        const dir = locale.value === 'ar' ? 'rtl' : 'ltr'
+        const msg = t('common.previewLoadFailed', { status: res.status })
+        previewHtml.value = `<div style="padding: 2.5rem; text-align: center; color: #ef4444; font-family: sans-serif; direction: ${dir};">${msg}</div>`
       }
     } catch {
-      previewHtml.value = `<div style="padding: 2.5rem; text-align: center; color: #ef4444; font-family: sans-serif; direction: rtl;">تعذر الاتصال بخادم المعاينة المباشرة</div>`
+      const dir = locale.value === 'ar' ? 'rtl' : 'ltr'
+      const msg = t('common.previewConnectionError')
+      previewHtml.value = `<div style="padding: 2.5rem; text-align: center; color: #ef4444; font-family: sans-serif; direction: ${dir};">${msg}</div>`
     } finally {
       isPreviewLoading.value = false
     }
