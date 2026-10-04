@@ -156,17 +156,20 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Help Center & FAQ', requiresAuth: true },
   },
 
-  // 16. Terms & Conditions and Privacy
+  // 16. Terms & Conditions
   {
     path: '/terms',
     name: 'terms',
     component: () => import('@/views/legal/TermsAndConditionsView.vue'),
     meta: { title: 'Terms & Conditions', requiresAuth: true },
   },
+
+  // 16b. Privacy Policy
   {
     path: '/privacy',
     name: 'privacy',
-    redirect: '/terms?tab=privacy',
+    component: () => import('@/views/legal/PrivacyPolicyView.vue'),
+    meta: { title: 'Privacy Policy', requiresAuth: true },
   },
 
   // 17. About FinWise

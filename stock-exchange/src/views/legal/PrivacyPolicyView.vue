@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
 import {
-  FileText,
+  Shield,
   Save,
   Plus,
   Trash2,
@@ -40,7 +40,7 @@ interface DocFormState {
   sections: (LegalSectionRequest & { id?: string; displayOrder?: number })[]
 }
 
-const termsDoc = ref<DocFormState>({
+const privacyDoc = ref<DocFormState>({
   id: '',
   titleEn: '',
   titleAr: '',
@@ -67,7 +67,7 @@ const sectionModalData = ref<{
 
 const previewUrl = computed(() => {
   const apiBase = coreServices.httpClient.getBaseUrl().replace(/\/+$/, '')
-  return `${apiBase}/terms-and-conditions/view?lang=${previewLang.value}`
+  return `${apiBase}/privacy-policy/view?lang=${previewLang.value}`
 })
 
 const { previewHtml, isPreviewLoading, fetchPreviewHtml } = useLivePreview(() => previewUrl.value)
@@ -81,14 +81,14 @@ watch([showPreviewModal, previewLang], ([isOpen]) => {
 const loadDocument = async () => {
   isLoading.value = true
   try {
-    const termsData = await coreServices.legal.getTerms(false)
-    termsDoc.value = {
-      id: termsData.id,
-      titleEn: termsData.titleEn || '',
-      titleAr: termsData.titleAr || '',
-      descriptionEn: termsData.descriptionEn || '',
-      descriptionAr: termsData.descriptionAr || '',
-      sections: (termsData.sections || []).map(s => ({
+    const privacyData = await coreServices.legal.getPrivacy(false)
+    privacyDoc.value = {
+      id: privacyData.id,
+      titleEn: privacyData.titleEn || '',
+      titleAr: privacyData.titleAr || '',
+      descriptionEn: privacyData.descriptionEn || '',
+      descriptionAr: privacyData.descriptionAr || '',
+      sections: (privacyData.sections || []).map(s => ({
         id: s.id,
         titleEn: s.titleEn,
         titleAr: s.titleAr,
@@ -111,7 +111,7 @@ onMounted(() => {
 const handleSave = async () => {
   isSaving.value = true
   try {
-    const doc = termsDoc.value
+    const doc = privacyDoc.value
     const payload: UpdateLegalDocumentPayload = {
       titleEn: doc.titleEn,
       titleAr: doc.titleAr,
@@ -125,8 +125,8 @@ const handleSave = async () => {
       }))
     }
 
-    const updated = await coreServices.legal.updateTerms(payload)
-    termsDoc.value.id = updated.id
+    const updated = await coreServices.legal.updatePrivacy(payload)
+    privacyDoc.value.id = updated.id
     toast.success(t('legal.saveSuccess'))
   } catch {
     toast.error(t('legal.saveError'))
@@ -148,7 +148,7 @@ const openAddSectionModal = () => {
 }
 
 const openEditSectionModal = (index: number) => {
-  const s = termsDoc.value.sections[index]
+  const s = privacyDoc.value.sections[index]
   if (!s) return
   editingSectionIndex.value = index
   sectionModalData.value = {
@@ -173,10 +173,10 @@ const saveSectionModal = () => {
   }
 
   if (editingSectionIndex.value !== null) {
-    termsDoc.value.sections[editingSectionIndex.value] = { ...s }
+    privacyDoc.value.sections[editingSectionIndex.value] = { ...s }
     toast.success(t('legal.sectionUpdated'))
   } else {
-    termsDoc.value.sections.push({ ...s })
+    privacyDoc.value.sections.push({ ...s })
     toast.success(t('legal.sectionAdded'))
   }
   showSectionModal.value = false
@@ -189,13 +189,13 @@ const removeSection = async (index: number) => {
     type: 'danger'
   })
   if (confirmed) {
-    termsDoc.value.sections.splice(index, 1)
+    privacyDoc.value.sections.splice(index, 1)
     toast.success(t('legal.sectionRemoved'))
   }
 }
 
 const moveSection = (index: number, direction: 'up' | 'down') => {
-  const sections = termsDoc.value.sections
+  const sections = privacyDoc.value.sections
   const targetIndex = direction === 'up' ? index - 1 : index + 1
   if (targetIndex < 0 || targetIndex >= sections.length) return
   const current = sections[index]
@@ -211,8 +211,8 @@ const moveSection = (index: number, direction: 'up' | 'down') => {
     <div class="space-y-6">
       <!-- Page Header -->
       <PageHeader
-        :title="t('legal.termsTitle')"
-        :description="t('legal.termsSubtitle')"
+        :title="t('legal.privacyTitle')"
+        :description="t('legal.privacySubtitle')"
       >
         <template #actions>
           <div class="flex items-center gap-2.5">
@@ -264,10 +264,10 @@ const moveSection = (index: number, direction: 'up' | 'down') => {
             <div class="flex flex-col gap-1.5">
               <label class="text-xs font-bold text-slate-700">{{ t('legal.docTitleEn') }}</label>
               <input
-                v-model="termsDoc.titleEn"
+                v-model="privacyDoc.titleEn"
                 type="text"
                 dir="ltr"
-                placeholder="Terms & Conditions"
+                placeholder="Privacy Policy"
                 class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all text-slate-900"
               />
             </div>
@@ -275,7 +275,7 @@ const moveSection = (index: number, direction: 'up' | 'down') => {
             <div class="flex flex-col gap-1.5">
               <label class="text-xs font-bold text-slate-700">{{ t('legal.introBannerEn') }}</label>
               <textarea
-                v-model="termsDoc.descriptionEn"
+                v-model="privacyDoc.descriptionEn"
                 rows="3"
                 dir="ltr"
                 :placeholder="t('legal.introBannerPlaceholderEn')"
@@ -297,10 +297,10 @@ const moveSection = (index: number, direction: 'up' | 'down') => {
             <div class="flex flex-col gap-1.5">
               <label class="text-xs font-bold text-slate-700">{{ t('legal.docTitleAr') }}</label>
               <input
-                v-model="termsDoc.titleAr"
+                v-model="privacyDoc.titleAr"
                 type="text"
                 dir="rtl"
-                placeholder="الشروط والأحكام"
+                placeholder="سياسة الخصوصية"
                 class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all text-slate-900"
               />
             </div>
@@ -308,7 +308,7 @@ const moveSection = (index: number, direction: 'up' | 'down') => {
             <div class="flex flex-col gap-1.5">
               <label class="text-xs font-bold text-slate-700">{{ t('legal.introBannerAr') }}</label>
               <textarea
-                v-model="termsDoc.descriptionAr"
+                v-model="privacyDoc.descriptionAr"
                 rows="3"
                 dir="rtl"
                 :placeholder="t('legal.introBannerPlaceholderAr')"
@@ -326,11 +326,11 @@ const moveSection = (index: number, direction: 'up' | 'down') => {
               <div class="flex items-center gap-2">
                 <h3 class="text-sm font-bold text-slate-900">{{ t('legal.sectionsCount') }}</h3>
                 <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700">
-                  {{ termsDoc.sections.length }}
+                  {{ privacyDoc.sections.length }}
                 </span>
               </div>
               <p class="text-xs text-slate-500 mt-1">
-                {{ t('legal.termsDesc') }}
+                {{ t('legal.privacyDesc') }}
               </p>
             </div>
 
@@ -345,22 +345,20 @@ const moveSection = (index: number, direction: 'up' | 'down') => {
           </div>
 
           <!-- Clauses List -->
-          <div v-if="termsDoc.sections.length === 0" class="p-8 text-center border-2 border-dashed border-slate-200 rounded-xl">
-            <FileText class="w-8 h-8 text-slate-300 mx-auto mb-2" />
+          <div v-if="privacyDoc.sections.length === 0" class="p-8 text-center border-2 border-dashed border-slate-200 rounded-xl">
+            <Shield class="w-8 h-8 text-slate-300 mx-auto mb-2" />
             <p class="text-xs font-bold text-slate-500">{{ t('legal.noSections') }}</p>
           </div>
 
           <div v-else class="space-y-3">
             <div
-              v-for="(section, index) in termsDoc.sections"
+              v-for="(section, index) in privacyDoc.sections"
               :key="section.id || index"
               class="group p-4 rounded-xl border border-slate-200/80 hover:border-slate-300 bg-slate-50/50 hover:bg-white transition-all flex flex-col sm:flex-row sm:items-start justify-between gap-4"
             >
               <!-- Section Details -->
               <div class="flex items-start gap-3 flex-1 min-w-0">
-                <span class="w-6 h-6 rounded-lg bg-white border border-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
-                  {{ index + 1 }}
-                </span>
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0 mt-2" />
                 
                 <div class="flex-1 min-w-0 space-y-1">
                   <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -396,7 +394,7 @@ const moveSection = (index: number, direction: 'up' | 'down') => {
                 <button
                   type="button"
                   @click="moveSection(index, 'down')"
-                  :disabled="index === termsDoc.sections.length - 1"
+                  :disabled="index === privacyDoc.sections.length - 1"
                   class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:pointer-events-none transition-colors"
                   :title="t('legal.moveDown')"
                 >

@@ -88,13 +88,7 @@ const isItemActive = (to: string) => {
   if (to === '/') {
     return route.path === '/'
   }
-  if (to === '/terms') {
-    return route.path === '/terms' && route.query.tab !== 'privacy'
-  }
-  if (to === '/privacy') {
-    return route.path === '/privacy' || (route.path === '/terms' && route.query.tab === 'privacy')
-  }
-  return route.path.startsWith(to)
+  return route.path === to || route.path.startsWith(to + '/')
 }
 
 const handleLogout = async () => {

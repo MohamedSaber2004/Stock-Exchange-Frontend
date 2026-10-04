@@ -209,6 +209,10 @@ export default {
   legal: {
     title: 'Terms & Conditions and Privacy',
     subtitle: 'Manage legal policies, user agreements, disclaimers, and version-controlled compliance documents.',
+    termsTitle: 'Terms & Conditions',
+    termsSubtitle: 'Manage user agreements, terms of service, and platform compliance rules.',
+    privacyTitle: 'Privacy Policy',
+    privacySubtitle: 'Manage data protection policies, privacy guidelines, and user consent documentation.',
     saveAndPublish: 'Save & Publish',
     termsTab: 'Terms of Service',
     privacyTab: 'Privacy Policy',
