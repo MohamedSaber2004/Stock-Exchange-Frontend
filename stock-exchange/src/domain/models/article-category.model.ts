@@ -2,6 +2,7 @@ export interface ArticleCategory {
   id: string
   categoryArName: string
   categoryEnName: string
+  articlesCount?: number
   createdAt?: string
   updatedAt?: string
   isActive?: boolean

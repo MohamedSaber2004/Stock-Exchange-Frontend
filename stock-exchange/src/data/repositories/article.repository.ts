@@ -1,6 +1,10 @@
 import type { ApiResponse } from '@/domain/models/common.model'
 import type { PagginatedResult } from '@/domain/models/user.model'
-import type { ArticleCategory } from '@/domain/models/article-category.model'
+import type {
+  ArticleCategory,
+  CreateArticleCategoryPayload,
+  UpdateArticleCategoryPayload
+} from '@/domain/models/article-category.model'
 import type { ArticleDto, GetArticlesParams } from '@/domain/models/article.model'
 import type { HttpClient } from '@/infrastructure/http/http-client'
 
@@ -11,9 +15,19 @@ export class ArticleRepository {
     this.httpClient = httpClient
   }
 
-  async getCategories(applyLanguageFilter: boolean = false): Promise<ArticleCategory[]> {
+  async getCategories(paramsOrFilter?: boolean | { search?: string; applyLanguageFilter?: boolean }): Promise<ArticleCategory[]> {
+    let search: string | undefined
+    let applyLanguageFilter = false
+
+    if (typeof paramsOrFilter === 'boolean') {
+      applyLanguageFilter = paramsOrFilter
+    } else if (paramsOrFilter && typeof paramsOrFilter === 'object') {
+      search = paramsOrFilter.search
+      applyLanguageFilter = paramsOrFilter.applyLanguageFilter ?? false
+    }
+
     const response = await this.httpClient.get<ApiResponse<ArticleCategory[]>>('/article-categories', {
-      params: { applyLanguageFilter },
+      params: { search, applyLanguageFilter },
       requiresAuth: true
     })
     const raw = response.data as unknown
@@ -22,6 +36,27 @@ export class ArticleRepository {
       return (raw as { data: ArticleCategory[] }).data
     }
     return []
+  }
+
+  async createCategory(payload: CreateArticleCategoryPayload): Promise<ArticleCategory> {
+    const response = await this.httpClient.post<ApiResponse<ArticleCategory>>('/article-categories', payload, {
+      requiresAuth: true
+    })
+    return (response.data as unknown as { data?: ArticleCategory })?.data || (response.data as unknown as ArticleCategory)
+  }
+
+  async updateCategory(id: string, payload: UpdateArticleCategoryPayload): Promise<ArticleCategory> {
+    const response = await this.httpClient.put<ApiResponse<ArticleCategory>>(`/article-categories/${id}`, payload, {
+      requiresAuth: true
+    })
+    return (response.data as unknown as { data?: ArticleCategory })?.data || (response.data as unknown as ArticleCategory)
+  }
+
+  async deleteCategory(id: string): Promise<boolean> {
+    const response = await this.httpClient.delete<ApiResponse<boolean>>(`/article-categories/${id}`, {
+      requiresAuth: true
+    })
+    return Boolean(response.data ?? true)
   }
 
   async getAll(params?: GetArticlesParams): Promise<PagginatedResult<ArticleDto>> {
@@ -39,3 +74,4 @@ export class ArticleRepository {
     return response.data as unknown as PagginatedResult<ArticleDto>
   }
 }
+

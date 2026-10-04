@@ -106,6 +106,14 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Post Market News', requiresAuth: true },
   },
 
+  // 10b. Categories Management
+  {
+    path: '/categories',
+    name: 'categories',
+    component: () => import('@/views/categories/CategoriesManagementView.vue'),
+    meta: { title: 'Categories Management', requiresAuth: true },
+  },
+
   // Redirect removed subscription routes to dashboard
   {
     path: '/subscriptions',

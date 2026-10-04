@@ -15,6 +15,7 @@ import {
   TrendingUp,
   Activity,
   Bell,
+  Tags,
   X,
   type LucideIcon
 } from 'lucide-vue-next'
@@ -59,7 +60,8 @@ const navSections = computed<NavSection[]>(() => [
     items: [
       { id: 'articles', label: t('nav.articles'), to: '/articles', icon: FileText },
       { id: 'videos', label: t('nav.videos'), to: '/videos', icon: Video },
-      { id: 'news', label: t('nav.news'), to: '/news', icon: Newspaper }
+      { id: 'news', label: t('nav.news'), to: '/news', icon: Newspaper },
+      { id: 'categories', label: t('nav.categories'), to: '/categories', icon: Tags }
     ]
   },
   {

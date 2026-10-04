@@ -2,6 +2,7 @@ export interface VideoCategory {
   id: string
   categoryArName: string
   categoryEnName: string
+  videosCount?: number
   createdAt?: string
   updatedAt?: string
   isActive?: boolean
