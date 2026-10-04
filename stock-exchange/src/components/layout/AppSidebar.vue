@@ -7,6 +7,7 @@ import {
   Users, 
   Globe,
   ShieldCheck, 
+  Shield, 
   HelpCircle,
   Info, 
   Settings, 
@@ -74,7 +75,8 @@ const navSections = computed<NavSection[]>(() => [
       { id: 'notifications', label: t('nav.notifications'), to: '/notifications', icon: Bell },
       { id: 'activity', label: t('nav.activity'), to: '/activity', icon: Activity },
       { id: 'help-center', label: t('nav.helpCenter'), to: '/help-center', icon: HelpCircle },
-      { id: 'terms', label: t('nav.terms'), to: '/terms', icon: ShieldCheck },
+      { id: 'terms', label: t('nav.termsAndConditions'), to: '/terms', icon: ShieldCheck },
+      { id: 'privacy', label: t('nav.privacyPolicy'), to: '/privacy', icon: Shield },
       { id: 'about', label: t('nav.about'), to: '/about', icon: Info }
     ]
   }
@@ -83,6 +85,12 @@ const navSections = computed<NavSection[]>(() => [
 const isItemActive = (to: string) => {
   if (to === '/') {
     return route.path === '/'
+  }
+  if (to === '/terms') {
+    return route.path === '/terms' && route.query.tab !== 'privacy'
+  }
+  if (to === '/privacy') {
+    return route.path === '/privacy' || (route.path === '/terms' && route.query.tab === 'privacy')
   }
   return route.path.startsWith(to)
 }

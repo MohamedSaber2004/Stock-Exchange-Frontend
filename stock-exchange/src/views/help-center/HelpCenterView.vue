@@ -18,6 +18,7 @@ import {
 import AppShell from '@/components/layout/AppShell.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import { useFeedback } from '@/composables/useFeedback'
+import { useLivePreview } from '@/composables/useLivePreview'
 import { useI18n } from 'vue-i18n'
 import { coreServices } from '@/di'
 import type {
@@ -80,8 +81,6 @@ const categoryForm = ref<{
   titleEn: '',
   titleAr: ''
 })
-
-import { useLivePreview } from '@/composables'
 
 const previewUrl = computed(() => {
   const apiBase = coreServices.httpClient.getBaseUrl().replace(/\/+$/, '')
