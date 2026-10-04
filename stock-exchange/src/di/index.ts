@@ -12,6 +12,8 @@ import { ActivityLogRepository } from '@/data/repositories/activity-log.reposito
 import { AboutUsRepository } from '@/data/repositories/about-us.repository'
 import { LegalRepository } from '@/data/repositories/legal.repository'
 import { HelpCenterRepository } from '@/data/repositories/help-center.repository'
+import { ArticleRepository } from '@/data/repositories/article.repository'
+import { VideoRepository } from '@/data/repositories/video.repository'
 
 // Register Core Infrastructure Singletons
 container.register(TokenStore, () => new TokenStore())
@@ -50,6 +52,14 @@ container.register(
   HelpCenterRepository,
   () => new HelpCenterRepository(container.resolve(HttpClient))
 )
+container.register(
+  ArticleRepository,
+  () => new ArticleRepository(container.resolve(HttpClient))
+)
+container.register(
+  VideoRepository,
+  () => new VideoRepository(container.resolve(HttpClient))
+)
 
 export const coreServices = {
   get tokenStore(): TokenStore {
@@ -87,6 +97,12 @@ export const coreServices = {
   },
   get helpCenter(): HelpCenterRepository {
     return container.resolve(HelpCenterRepository)
+  },
+  get articles(): ArticleRepository {
+    return container.resolve(ArticleRepository)
+  },
+  get videos(): VideoRepository {
+    return container.resolve(VideoRepository)
   },
 }
 
