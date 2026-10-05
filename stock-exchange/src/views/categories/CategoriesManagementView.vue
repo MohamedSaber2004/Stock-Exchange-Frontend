@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import AppShell from '@/components/layout/AppShell.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import DataState from '@/components/ui/DataState.vue'
@@ -14,11 +14,7 @@ import {
   RefreshCw,
   FileText,
   Video,
-  Layers,
-  CheckCircle2,
-  Calendar,
-  Layers3,
-  Languages
+  Calendar
 } from 'lucide-vue-next'
 import { useFeedback } from '@/composables/useFeedback'
 import { useI18n } from 'vue-i18n'

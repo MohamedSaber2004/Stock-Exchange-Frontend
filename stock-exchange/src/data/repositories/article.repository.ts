@@ -5,7 +5,12 @@ import type {
   CreateArticleCategoryPayload,
   UpdateArticleCategoryPayload
 } from '@/domain/models/article-category.model'
-import type { ArticleDto, GetArticlesParams } from '@/domain/models/article.model'
+import type {
+  ArticleDto,
+  GetArticlesParams,
+  CreateArticlePayload,
+  UpdateArticlePayload
+} from '@/domain/models/article.model'
 import type { HttpClient } from '@/infrastructure/http/http-client'
 
 export class ArticleRepository {
@@ -60,18 +65,74 @@ export class ArticleRepository {
   }
 
   async getAll(params?: GetArticlesParams): Promise<PagginatedResult<ArticleDto>> {
+    const categoryId = (params?.articleCategoryId || params?.categoryId)?.trim() || undefined
     const response = await this.httpClient.get<ApiResponse<PagginatedResult<ArticleDto>>>('/articles', {
       params: {
         pageNumber: params?.pageNumber ?? 1,
         pageSize: params?.pageSize ?? 10,
-        search: params?.search,
-        articleCategoryId: params?.articleCategoryId ?? params?.categoryId,
+        search: params?.search?.trim() || undefined,
+        articleCategoryId: categoryId,
+        categoryId: categoryId,
         isActive: params?.isActive,
         applyLanguageFilter: params?.applyLanguageFilter ?? false
       },
       requiresAuth: true
     })
-    return response.data as unknown as PagginatedResult<ArticleDto>
+    const raw = response.data as unknown
+    if (raw && typeof raw === 'object' && 'data' in (raw as object)) {
+      return (raw as { data: PagginatedResult<ArticleDto> }).data
+    }
+    return raw as PagginatedResult<ArticleDto>
+  }
+
+  async getById(id: string): Promise<ArticleDto> {
+    const response = await this.httpClient.get<ApiResponse<ArticleDto>>(`/articles/${id}`, {
+      params: { applyLanguageFilter: false },
+      requiresAuth: true
+    })
+    const raw = response.data as unknown
+    if (raw && typeof raw === 'object' && 'data' in (raw as object)) {
+      return (raw as { data: ArticleDto }).data
+    }
+    return raw as ArticleDto
+  }
+
+  async create(payload: CreateArticlePayload): Promise<ArticleDto> {
+    const cleanPayload = {
+      ...payload,
+      categoryId: payload.categoryId ? payload.categoryId : null,
+      imageUrl: payload.imageUrl ? payload.imageUrl : null
+    }
+    const response = await this.httpClient.post<ApiResponse<ArticleDto>>('/articles', cleanPayload, {
+      requiresAuth: true
+    })
+    const raw = response.data as unknown
+    if (raw && typeof raw === 'object' && 'data' in (raw as object)) {
+      return (raw as { data: ArticleDto }).data
+    }
+    return raw as ArticleDto
+  }
+
+  async update(id: string, payload: UpdateArticlePayload): Promise<ArticleDto> {
+    const cleanPayload = {
+      ...payload,
+      categoryId: payload.categoryId ? payload.categoryId : null,
+      imageUrl: payload.imageUrl ? payload.imageUrl : null
+    }
+    const response = await this.httpClient.put<ApiResponse<ArticleDto>>(`/articles/${id}`, cleanPayload, {
+      requiresAuth: true
+    })
+    const raw = response.data as unknown
+    if (raw && typeof raw === 'object' && 'data' in (raw as object)) {
+      return (raw as { data: ArticleDto }).data
+    }
+    return raw as ArticleDto
+  }
+
+  async delete(id: string): Promise<boolean> {
+    const response = await this.httpClient.delete<ApiResponse<boolean>>(`/articles/${id}`, {
+      requiresAuth: true
+    })
+    return Boolean((response.data as unknown as { data?: boolean })?.data ?? true)
   }
 }
-

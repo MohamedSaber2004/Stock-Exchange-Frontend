@@ -4,8 +4,11 @@ export interface ArticleDto {
   titleAr: string
   excerptEn: string
   excerptAr: string
+  contentEn?: string
+  contentAr?: string
   imageUrl?: string | null
   authorName: string
+  readMinutes?: number
   publishedAt: string
   isFeaturedOnHome: boolean
   displayOrder: number
@@ -17,6 +20,7 @@ export interface ArticleDto {
   categoryArName?: string | null
   title?: string
   excerpt?: string
+  content?: string
 }
 
 export interface GetArticlesParams {
@@ -27,4 +31,38 @@ export interface GetArticlesParams {
   categoryId?: string
   isActive?: boolean
   applyLanguageFilter?: boolean
+}
+
+export interface CreateArticlePayload {
+  titleEn: string
+  titleAr: string
+  excerptEn: string
+  excerptAr: string
+  contentEn?: string
+  contentAr?: string
+  imageUrl?: string | null
+  authorName: string
+  readMinutes?: number
+  publishedAt?: string | null
+  isFeaturedOnHome?: boolean
+  displayOrder?: number
+  isActive?: boolean
+  categoryId?: string | null
+}
+
+export interface UpdateArticlePayload {
+  titleEn: string
+  titleAr: string
+  excerptEn: string
+  excerptAr: string
+  contentEn?: string
+  contentAr?: string
+  imageUrl?: string | null
+  authorName: string
+  readMinutes?: number
+  publishedAt?: string | null
+  isFeaturedOnHome?: boolean
+  displayOrder?: number
+  isActive?: boolean
+  categoryId?: string | null
 }

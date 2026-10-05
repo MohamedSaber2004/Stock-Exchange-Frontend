@@ -1,21 +1,23 @@
 <script setup lang="ts">
-import { 
-  LayoutDashboard, 
-  FileText, 
-  Video, 
-  Newspaper, 
-  Users, 
+import {
+  LayoutDashboard,
+  FileText,
+  Video,
+  Newspaper,
+  Users,
   Globe,
-  ShieldCheck, 
-  Shield, 
+  ShieldCheck,
+  Shield,
   HelpCircle,
-  Info, 
-  Settings, 
+  Info,
+  Settings,
   LogOut,
   TrendingUp,
   Activity,
   Bell,
   Tags,
+  Briefcase,
+  Award,
   X,
   type LucideIcon
 } from 'lucide-vue-next'
@@ -61,6 +63,8 @@ const navSections = computed<NavSection[]>(() => [
       { id: 'articles', label: t('nav.articles'), to: '/articles', icon: FileText },
       { id: 'videos', label: t('nav.videos'), to: '/videos', icon: Video },
       { id: 'news', label: t('nav.news'), to: '/news', icon: Newspaper },
+      { id: 'services', label: t('nav.services'), to: '/services', icon: Briefcase },
+      { id: 'experts', label: t('nav.experts'), to: '/experts', icon: Award },
       { id: 'categories', label: t('nav.categories'), to: '/categories', icon: Tags }
     ]
   },
@@ -136,8 +140,8 @@ const handleLogout = async () => {
   <aside
     :class="[
       'fixed lg:static top-0 start-0 h-full w-64 border-e border-slate-200/80 bg-white flex flex-col justify-between shrink-0 select-none z-50 transition-transform duration-300 ease-in-out lg:translate-x-0 lg:rtl:translate-x-0 lg:transform-none',
-      isOpen 
-        ? 'translate-x-0 shadow-2xl lg:shadow-none' 
+      isOpen
+        ? 'translate-x-0 shadow-2xl lg:shadow-none'
         : (isAr ? 'max-lg:translate-x-full' : 'max-lg:-translate-x-full')
     ]"
     aria-label="Main Navigation"
@@ -168,8 +172,8 @@ const handleLogout = async () => {
     <!-- Middle: Navigation Links (Scrollable area) -->
     <div class="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-3.5 flex flex-col gap-4">
       <div v-for="(section, sIdx) in navSections" :key="sIdx" class="flex flex-col gap-1">
-        <div 
-          v-if="section.title" 
+        <div
+          v-if="section.title"
           class="px-3 pt-2 pb-1 text-[10px] font-bold tracking-wider text-slate-400 uppercase"
         >
           {{ section.title }}

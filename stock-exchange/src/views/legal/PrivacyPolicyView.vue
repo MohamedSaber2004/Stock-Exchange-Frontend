@@ -21,8 +21,7 @@ import { coreServices } from '@/di'
 import type { LegalSectionRequest, UpdateLegalDocumentPayload } from '@/domain/models/legal-content.model'
 
 const { toast, confirm } = useFeedback()
-const { t, locale } = useI18n()
-const isRtl = computed(() => locale.value === 'ar')
+const { t } = useI18n()
 
 // State
 const isLoading = ref(true)

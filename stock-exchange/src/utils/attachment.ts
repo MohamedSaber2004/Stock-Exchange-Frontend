@@ -8,6 +8,37 @@ export const DEFAULT_IMAGE_PLACEHOLDER =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300' width='400' height='300'%3E%3Crect width='400' height='300' rx='16' fill='%23f8fafc' stroke='%23cbd5e1' stroke-width='2' stroke-dasharray='6 6'/%3E%3Cg transform='translate(160, 100)' fill='none' stroke='%2394a3b8' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='0' y='0' width='80' height='64' rx='8'/%3E%3Ccircle cx='24' cy='22' r='7' fill='%2394a3b8'/%3E%3Cpath d='M6 56 L30 32 L46 48 L56 38 L74 56'/%3E%3C/g%3E%3Ctext x='200' y='200' text-anchor='middle' font-family='system-ui, sans-serif' font-size='13' font-weight='600' fill='%2394a3b8'%3ENo Image Available%3C/text%3E%3C/svg%3E"
 
 /**
+ * Checks whether a URL is a static/external link (like youtube.com, external website)
+ * rather than a dynamic uploaded attachment or local blob.
+ */
+export function isStaticUrl(url?: string | null): boolean {
+  if (!url || typeof url !== 'string') return false
+  const trimmed = url.trim()
+  if (!trimmed) return false
+  if (trimmed.startsWith('blob:') || trimmed.startsWith('data:')) return false
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    // If it points to our dynamic /files/ endpoint, it is dynamic
+    return !trimmed.includes('/files/')
+  }
+  return false
+}
+
+/**
+ * Returns clean attachment name or empty string if input is a static/external link.
+ */
+export function sanitizeAttachmentName(fileName?: string | null): string {
+  if (!fileName || typeof fileName !== 'string') return ''
+  const trimmed = fileName.trim()
+  if (isStaticUrl(trimmed)) return ''
+  if (trimmed.startsWith('blob:') || trimmed.startsWith('data:')) return trimmed
+  let cleanName = trimmed.replace(/^\.?\/+/, '')
+  if (cleanName.startsWith('files/')) {
+    cleanName = cleanName.substring(6).replace(/^\/+/, '')
+  }
+  return cleanName
+}
+
+/**
  * Resolves any backend file path to a fully qualified URL,
  * or returns the appropriate global placeholder if no image exists.
  */
@@ -31,12 +62,18 @@ export function resolveAttachmentUrl(
     return getFallback()
   }
 
-  if (
-    trimmed.startsWith('http://') ||
-    trimmed.startsWith('https://') ||
-    trimmed.startsWith('data:') ||
-    trimmed.startsWith('blob:')
-  ) {
+  // Reject static/external links (like YouTube or third-party web links)
+  if (isStaticUrl(trimmed)) {
+    return getFallback()
+  }
+
+  // Local object URLs or Data URIs
+  if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
+    return trimmed
+  }
+
+  // If already an absolute URL to /files/
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
     return trimmed
   }
 
@@ -52,6 +89,17 @@ export function resolveAttachmentUrl(
   const explicitFileUrl = (import.meta.env?.VITE_FILE_URL as string | undefined)?.trim()
   if (explicitFileUrl) {
     return `${explicitFileUrl.replace(/\/+$/, '')}/files/${cleanName}`
+  }
+
+  // If a custom base URL was provided via fallback param (e.g. from HttpClient or explicit param)
+  if (fallback && (fallback.startsWith('http://') || fallback.startsWith('https://'))) {
+    try {
+      const parsed = new URL(fallback)
+      return `${parsed.origin}/files/${cleanName}`
+    } catch {
+      const stripped = fallback.replace(/\/api(\/v\d+)?\/?$/, '').replace(/\/+$/, '')
+      return `${stripped}/files/${cleanName}`
+    }
   }
 
   const rawBase = (import.meta.env?.VITE_API_URL || '').trim()

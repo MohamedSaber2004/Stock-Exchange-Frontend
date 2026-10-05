@@ -1,196 +1,405 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { Play } from 'lucide-vue-next'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import AppShell from '@/components/layout/AppShell.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
-import RichTextEditor from '@/components/forms/RichTextEditor.vue'
+import ImageUploader from '@/components/forms/ImageUploader.vue'
+import VideoUploader from '@/components/forms/VideoUploader.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { useI18n } from 'vue-i18n'
-import { resolveAttachmentUrl, handleImageError } from '@/utils/attachment'
+import { extractApiErrors } from '@/domain/models/common.model'
+import { coreServices } from '@/di'
+import { sanitizeAttachmentName } from '@/utils/attachment'
+import type { VideoCategory } from '@/domain/models/video-category.model'
+import type { VideoDto } from '@/domain/models/video.model'
 
 const router = useRouter()
+const route = useRoute()
 const { toast } = useFeedback()
-const { t, locale } = useI18n()
+const { locale } = useI18n()
+
 const isAr = computed(() => locale.value === 'ar')
+const videoId = computed(() => route.params.id as string)
+
+const categories = ref<VideoCategory[]>([])
+const isLoading = ref(true)
+const isSubmitting = ref(false)
+const originalVideo = ref<VideoDto | null>(null)
 
 const form = ref({
-  title: 'Investing 101',
-  category: 'Beginner',
-  educator: 'Ali Hussain',
-  educatorTitle: 'Financial Educator',
-  duration: '15:30',
-  description: 'A complete guide to investing in the stock market. Learn key investment strategies, risk management fundamentals, and how to analyze financial assets.',
-  sourceType: 'YouTube',
-  videoUrl: 'https://youtube.com/watch?v=mockvideo101',
-  thumbnail: 'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=800&auto=format&fit=crop&q=80',
-  status: 'Published'
+  titleEn: '',
+  titleAr: '',
+  categoryId: '',
+  instructorName: '',
+  videoUrl: '', // Stored attachment file name (e.g. 0_video.mp4)
+  thumbnailUrl: '', // Stored attachment file name
+  durationSeconds: 0,
+  descriptionEn: '',
+  descriptionAr: '',
+  isPreviewable: true,
+  isFeaturedOnHome: true,
+  isActive: true,
+  displayOrder: 0,
 })
 
-const handleSave = () => {
-  if (!form.value.title) {
-    toast.error(isAr.value ? 'يرجى إدخال عنوان الفيديو' : 'Please enter video title')
+const handleThumbnailCaptured = (payload: { file: File; dataUrl: string; attachmentName?: string }) => {
+  if (payload.attachmentName) {
+    form.value.thumbnailUrl = payload.attachmentName
+    toast.success(
+      isAr.value
+        ? 'تم التقاط صورة الغلاف ورفعها تلقائياً'
+        : 'Cover image captured and uploaded automatically'
+    )
+  }
+}
+
+const loadCategories = async () => {
+  try {
+    categories.value = await coreServices.videos.getCategories({ applyLanguageFilter: false })
+  } catch {
+    categories.value = []
+  }
+}
+
+const loadVideo = async () => {
+  if (!videoId.value) return
+  isLoading.value = true
+  try {
+    const video = await coreServices.videos.getById(videoId.value)
+    originalVideo.value = video
+
+    let resolvedCatId = video.categoryId ?? video.videoCategoryId ?? ''
+    if (!resolvedCatId && categories.value.length) {
+      const match = categories.value.find(
+        (c) => c.categoryEnName === video.categoryEn || c.categoryArName === video.categoryAr
+      )
+      if (match) resolvedCatId = match.id
+    }
+
+    form.value = {
+      titleEn: video.titleEn ?? '',
+      titleAr: video.titleAr ?? '',
+      categoryId: resolvedCatId,
+      instructorName: video.instructorName ?? '',
+      videoUrl: sanitizeAttachmentName(video.videoUrl),
+      thumbnailUrl: sanitizeAttachmentName(video.thumbnailUrl),
+      durationSeconds: video.durationSeconds ?? 0,
+      descriptionEn: video.descriptionEn ?? '',
+      descriptionAr: video.descriptionAr ?? '',
+      isPreviewable: video.isPreviewable ?? true,
+      isFeaturedOnHome: video.isFeaturedOnHome ?? true,
+      isActive: video.isActive ?? true,
+      displayOrder: video.displayOrder ?? 0,
+    }
+  } catch (err: unknown) {
+    console.error('Failed to load video:', err)
+    const errorDetails = extractApiErrors(err)
+    toast.error(errorDetails.generalMessage || (isAr.value ? 'فشل تحميل بيانات الفيديو' : 'Failed to load video data'))
+    router.push('/videos')
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const handleSave = async () => {
+  if (!form.value.titleEn.trim()) {
+    toast.error(isAr.value ? 'يرجى إدخال عنوان الفيديو بالإنجليزية' : 'Please enter video title in English')
     return
   }
-  toast.success(isAr.value ? 'تم حفظ بيانات الفيديو بنجاح' : 'Video lesson updated successfully')
-  router.push('/videos')
+  if (!form.value.titleAr.trim()) {
+    toast.error(isAr.value ? 'يرجى إدخال عنوان الفيديو بالعربية' : 'Please enter video title in Arabic')
+    return
+  }
+  if (!form.value.instructorName.trim()) {
+    toast.error(isAr.value ? 'يرجى إدخال اسم المحاضر' : 'Please enter instructor name')
+    return
+  }
+  if (!form.value.categoryId) {
+    toast.error(isAr.value ? 'يرجى اختيار تصنيف الفيديو' : 'Please select a video category')
+    return
+  }
+  if (!form.value.videoUrl) {
+    toast.error(
+      isAr.value
+        ? 'يرجى رفع ملف الفيديو أولاً (لا يُسمح بروابط خارجية)'
+        : 'Please upload the video file (direct external links are not allowed)'
+    )
+    return
+  }
+
+  const selectedCat = categories.value.find((c) => c.id === form.value.categoryId)
+  const catEn = selectedCat?.categoryEnName || originalVideo.value?.categoryEn || 'General'
+  const catAr = selectedCat?.categoryArName || originalVideo.value?.categoryAr || 'عام'
+
+  isSubmitting.value = true
+  try {
+    await coreServices.videos.update(videoId.value, {
+      titleEn: form.value.titleEn.trim(),
+      titleAr: form.value.titleAr.trim(),
+      thumbnailUrl: form.value.thumbnailUrl || null,
+      videoUrl: form.value.videoUrl.trim(),
+      durationSeconds: form.value.durationSeconds || 0,
+      instructorName: form.value.instructorName.trim(),
+      descriptionEn: form.value.descriptionEn.trim() || undefined,
+      descriptionAr: form.value.descriptionAr.trim() || undefined,
+      categoryEn: catEn,
+      categoryAr: catAr,
+      categoryId: form.value.categoryId || null,
+      isPreviewable: form.value.isPreviewable,
+      isFeaturedOnHome: form.value.isFeaturedOnHome,
+      isActive: form.value.isActive,
+      displayOrder: form.value.displayOrder || 0,
+    })
+
+    toast.success(isAr.value ? 'تم حفظ بيانات الفيديو بنجاح' : 'Video updated successfully')
+    router.push('/videos')
+  } catch (err: unknown) {
+    console.error('Update video failed:', err)
+    const errorDetails = extractApiErrors(err)
+    const fieldMsg = errorDetails.fieldErrors
+      ? Object.values(errorDetails.fieldErrors).flat().join(' - ')
+      : ''
+    toast.error(fieldMsg || errorDetails.generalMessage || (isAr.value ? 'فشل حفظ التعديلات' : 'Failed to save changes'))
+  } finally {
+    isSubmitting.value = false
+  }
 }
+
+onMounted(async () => {
+  await loadCategories()
+  await loadVideo()
+})
 </script>
 
 <template>
   <AppShell>
     <div class="flex flex-col max-w-5xl mx-auto">
       <PageHeader
-        :title="t('videos.editVideo')"
-        :description="t('videos.subtitle')"
+        :title="isAr ? 'تعديل الفيديو التعليمي' : 'Edit Video'"
+        :description="
+          isAr
+            ? 'تحديث ملف الفيديو وبيانات المحاضرة'
+            : 'Update educational video file and lecture information'
+        "
       />
 
-      <div class="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-6 lg:p-8 shadow-2xs">
+      <!-- Loading skeleton -->
+      <div
+        v-if="isLoading"
+        class="bg-white rounded-2xl border border-slate-200/80 p-8 shadow-2xs flex items-center justify-center py-20"
+      >
+        <div class="flex flex-col items-center gap-3">
+          <div class="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+          <span class="text-xs text-slate-500 font-medium">
+            {{ isAr ? 'جاري تحميل البيانات...' : 'Loading video data...' }}
+          </span>
+        </div>
+      </div>
+
+      <div v-else class="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-6 lg:p-8 shadow-2xs">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
-          
-          <!-- Left Main Column: 2 cols -->
+          <!-- Left Column: Details (2 cols) -->
           <div class="lg:col-span-2 flex flex-col gap-5">
             <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">
-              {{ isAr ? 'تفاصيل الدرس المرئي' : 'Video Details' }}
+              {{ isAr ? 'تفاصيل الفيديو' : 'Video Details' }}
             </h2>
 
-            <!-- Title -->
+            <!-- English Title -->
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-bold text-slate-700">{{ t('videos.videoTitle') }} *</label>
+              <label class="text-xs font-bold text-slate-700">
+                {{ isAr ? 'العنوان (إنجليزي) *' : 'Title (English) *' }}
+              </label>
               <input
-                v-model="form.title"
+                v-model="form.titleEn"
                 type="text"
-                :placeholder="t('videos.enterTitle')"
                 class="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 font-medium"
+                dir="ltr"
+              />
+            </div>
+
+            <!-- Arabic Title -->
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs font-bold text-slate-700">
+                {{ isAr ? 'العنوان (عربي) *' : 'Title (Arabic) *' }}
+              </label>
+              <input
+                v-model="form.titleAr"
+                type="text"
+                class="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 font-medium"
+                dir="rtl"
               />
             </div>
 
             <!-- Category -->
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-bold text-slate-700">{{ t('videos.category') }} *</label>
+              <label class="text-xs font-bold text-slate-700">{{ isAr ? 'التصنيف *' : 'Category *' }}</label>
               <select
-                v-model="form.category"
+                v-model="form.categoryId"
                 class="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 cursor-pointer font-medium"
               >
-                <option value="Beginner">{{ t('videos.catBeginner') }}</option>
-                <option value="Market">{{ t('videos.catMarket') }}</option>
-                <option value="Technical">{{ t('videos.catTechnical') }}</option>
-                <option value="Investing">{{ t('videos.catInvesting') }}</option>
+                <option value="" disabled>{{ isAr ? 'اختر التصنيف *' : 'Select category *' }}</option>
+                <option v-for="cat in categories" :key="cat.id" :value="cat.id">
+                  {{ isAr ? cat.categoryArName : cat.categoryEnName }}
+                </option>
               </select>
             </div>
 
-            <!-- Educator & Title -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-bold text-slate-700">{{ t('videos.educator') }} *</label>
-                <input
-                  v-model="form.educator"
-                  type="text"
-                  :placeholder="t('videos.enterEducator')"
-                  class="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 font-medium"
-                />
-              </div>
-
-              <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-bold text-slate-700">{{ t('videos.educatorRole') }}</label>
-                <input
-                  v-model="form.educatorTitle"
-                  type="text"
-                  :placeholder="t('videos.enterEducatorRole')"
-                  class="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 font-medium"
-                />
-              </div>
-            </div>
-
-            <!-- Duration -->
+            <!-- Instructor -->
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-bold text-slate-700">{{ t('videos.duration') }} *</label>
+              <label class="text-xs font-bold text-slate-700">{{ isAr ? 'المحاضر *' : 'Instructor *' }}</label>
               <input
-                v-model="form.duration"
+                v-model="form.instructorName"
                 type="text"
-                placeholder="15:30"
-                class="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 font-medium font-mono"
+                class="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 font-medium"
               />
             </div>
 
-            <!-- Description -->
-            <RichTextEditor
-              v-model="form.description"
-              :label="t('videos.description') + ' *'"
-              :rows="7"
-            />
+            <!-- Description Arabic -->
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs font-bold text-slate-700">{{ isAr ? 'وصف الفيديو (عربي)' : 'Video Description (Arabic)' }}</label>
+              <textarea
+                v-model="form.descriptionAr"
+                rows="3"
+                dir="rtl"
+                :placeholder="isAr ? 'اكتب وصفاً مختصراً لمحتوى الفيديو بالعربية...' : 'Write video description in Arabic...'"
+                class="w-full bg-slate-50/50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 resize-none font-medium"
+              ></textarea>
+            </div>
+
+            <!-- Description English -->
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs font-bold text-slate-700">{{ isAr ? 'وصف الفيديو (إنجليزي)' : 'Video Description (English)' }}</label>
+              <textarea
+                v-model="form.descriptionEn"
+                rows="3"
+                dir="ltr"
+                :placeholder="isAr ? 'اكتب وصفاً لمحتوى الفيديو بالإنجليزية...' : 'Write video description in English...'"
+                class="w-full bg-slate-50/50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 resize-none font-medium"
+              ></textarea>
+            </div>
           </div>
 
-          <!-- Right Column: 1 col -->
+          <!-- Right Column: Media Uploads & Settings (1 col) -->
           <div class="flex flex-col gap-6">
-            <!-- Video Source Selector -->
-            <div class="flex flex-col gap-2">
-              <label class="text-xs font-bold text-slate-700">{{ isAr ? 'مصدر الفيديو' : 'Video Source' }}</label>
-              <div class="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl">
-                <button
-                  type="button"
-                  v-for="src in ['YouTube', 'Vimeo', 'Direct MP4']"
-                  :key="src"
-                  @click="form.sourceType = src"
+            <!-- Video File Uploader -->
+            <VideoUploader
+              v-model="form.videoUrl"
+              v-model:thumbnail-url="form.thumbnailUrl"
+              v-model:duration-seconds="form.durationSeconds"
+              :label="isAr ? 'ملف الفيديو *' : 'Video File *'"
+              :hint="isAr ? 'صيغ: MP4, MOV, MKV (يتم رفعه والتقاط الغلاف تلقائياً)' : 'Formats: MP4, MOV, MKV (uploaded & cover auto-captured)'"
+              @thumbnail-captured="handleThumbnailCaptured"
+            />
+
+            <!-- Thumbnail Image Uploader -->
+            <ImageUploader
+              v-model="form.thumbnailUrl"
+              :old-file-name="originalVideo?.thumbnailUrl || undefined"
+              :label="isAr ? 'الصورة المصغرة (الغلاف)' : 'Video Thumbnail'"
+              :hint="isAr ? 'تُلتقط تلقائياً من الفيديو أو يمكنك اختيار صورة مخصصة' : 'Auto-captured from video or choose custom image'"
+            />
+
+            <!-- Display Order -->
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs font-bold text-slate-700">{{ isAr ? 'ترتيب العرض' : 'Display Order' }}</label>
+              <input
+                v-model.number="form.displayOrder"
+                type="number"
+                min="0"
+                class="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 font-medium"
+              />
+            </div>
+
+            <!-- Toggles Settings -->
+            <div class="flex flex-col gap-3 p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80">
+              <label class="text-xs font-bold text-slate-700">{{ isAr ? 'الإعدادات' : 'Settings' }}</label>
+
+              <!-- Previewable Toggle -->
+              <label class="flex items-center justify-between gap-3 cursor-pointer">
+                <span class="text-xs font-medium text-slate-700">
+                  {{ isAr ? 'متاح للمعاينة المجانية' : 'Available for Preview' }}
+                </span>
+                <div
+                  @click="form.isPreviewable = !form.isPreviewable"
                   :class="[
-                    'py-1.5 rounded-lg text-xs font-bold transition-all text-center cursor-pointer',
-                    form.sourceType === src
-                      ? 'bg-white text-slate-900 shadow-xs'
-                      : 'text-slate-500 hover:text-slate-900'
+                    'w-10 h-5 rounded-full transition-colors cursor-pointer relative',
+                    form.isPreviewable ? 'bg-emerald-500' : 'bg-slate-200'
                   ]"
                 >
-                  {{ src }}
-                </button>
-              </div>
-            </div>
-
-            <!-- Video URL Input -->
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-bold text-slate-700">{{ isAr ? 'رابط الفيديو *' : 'Video URL *' }}</label>
-              <input
-                v-model="form.videoUrl"
-                type="url"
-                class="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10"
-              />
-            </div>
-
-            <!-- Video Preview Player with Play Button -->
-            <div class="flex flex-col gap-2">
-              <label class="text-xs font-bold text-slate-700">{{ isAr ? 'المعاينة / الصورة المصغرة' : 'Thumbnail / Preview' }}</label>
-              <div class="relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-900 group aspect-video">
-                <img
-                  :src="resolveAttachmentUrl(form.thumbnail, 'image')"
-                  alt="Video Preview"
-                  @error="handleImageError($event, 'image')"
-                  class="w-full h-full object-cover opacity-80"
-                />
-                <!-- Play Button Center Overlay -->
-                <div class="absolute inset-0 flex items-center justify-center">
-                  <div class="w-12 h-12 rounded-full bg-emerald-500/90 text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform cursor-pointer">
-                    <Play class="w-5 h-5 fill-white translate-x-0.5" />
-                  </div>
+                  <div
+                    :class="[
+                      'absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-xs transition-all',
+                      form.isPreviewable ? 'start-5' : 'start-0.5'
+                    ]"
+                  ></div>
                 </div>
-              </div>
+              </label>
+
+              <!-- Featured on Home Toggle -->
+              <label class="flex items-center justify-between gap-3 cursor-pointer">
+                <span class="text-xs font-medium text-slate-700">
+                  {{ isAr ? 'مميز في الصفحة الرئيسية' : 'Featured on Home' }}
+                </span>
+                <div
+                  @click="form.isFeaturedOnHome = !form.isFeaturedOnHome"
+                  :class="[
+                    'w-10 h-5 rounded-full transition-colors cursor-pointer relative',
+                    form.isFeaturedOnHome ? 'bg-emerald-500' : 'bg-slate-200'
+                  ]"
+                >
+                  <div
+                    :class="[
+                      'absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-xs transition-all',
+                      form.isFeaturedOnHome ? 'start-5' : 'start-0.5'
+                    ]"
+                  ></div>
+                </div>
+              </label>
+
+              <!-- Active Status Toggle -->
+              <label class="flex items-center justify-between gap-3 cursor-pointer">
+                <span class="text-xs font-medium text-slate-700">
+                  {{ isAr ? 'حالة النشاط' : 'Active Status' }}
+                </span>
+                <div
+                  @click="form.isActive = !form.isActive"
+                  :class="[
+                    'w-10 h-5 rounded-full transition-colors cursor-pointer relative',
+                    form.isActive ? 'bg-emerald-500' : 'bg-slate-200'
+                  ]"
+                >
+                  <div
+                    :class="[
+                      'absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-xs transition-all',
+                      form.isActive ? 'start-5' : 'start-0.5'
+                    ]"
+                  ></div>
+                </div>
+              </label>
             </div>
           </div>
-
         </div>
 
-        <!-- Footer Actions -->
+        <!-- Form Actions Footer -->
         <div class="mt-8 pt-6 border-t border-slate-100 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 sm:gap-3">
           <button
             type="button"
             @click="router.push('/videos')"
             class="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-xs transition-colors cursor-pointer text-center"
           >
-            {{ t('common.cancel') }}
+            {{ isAr ? 'إلغاء' : 'Cancel' }}
           </button>
           <button
             type="button"
             @click="handleSave"
-            class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs cursor-pointer text-center"
+            :disabled="isSubmitting"
+            class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs cursor-pointer text-center disabled:opacity-50"
           >
-            {{ t('common.save') }}
+            <span v-if="isSubmitting" class="inline-flex items-center gap-2">
+              <div class="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+              {{ isAr ? 'جاري الحفظ...' : 'Saving...' }}
+            </span>
+            <span v-else>{{ isAr ? 'حفظ التعديلات' : 'Save Changes' }}</span>
           </button>
         </div>
       </div>

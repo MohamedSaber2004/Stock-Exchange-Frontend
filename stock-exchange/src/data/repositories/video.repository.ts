@@ -5,7 +5,12 @@ import type {
   CreateVideoCategoryPayload,
   UpdateVideoCategoryPayload
 } from '@/domain/models/video-category.model'
-import type { VideoDto, GetVideosParams } from '@/domain/models/video.model'
+import type {
+  VideoDto,
+  GetVideosParams,
+  CreateVideoPayload,
+  UpdateVideoPayload
+} from '@/domain/models/video.model'
 import type { HttpClient } from '@/infrastructure/http/http-client'
 
 export class VideoRepository {
@@ -60,19 +65,92 @@ export class VideoRepository {
   }
 
   async getAll(params?: GetVideosParams): Promise<PagginatedResult<VideoDto>> {
+    const categoryId = (params?.videoCategoryId || params?.categoryId)?.trim() || undefined
     const response = await this.httpClient.get<ApiResponse<PagginatedResult<VideoDto>>>('/videos', {
       params: {
         pageNumber: params?.pageNumber ?? 1,
         pageSize: params?.pageSize ?? 10,
-        search: params?.search,
-        category: params?.category,
-        videoCategoryId: params?.videoCategoryId ?? params?.categoryId,
+        search: params?.search?.trim() || undefined,
+        category: params?.category?.trim() || undefined,
+        videoCategoryId: categoryId,
+        categoryId: categoryId,
         isActive: params?.isActive,
         applyLanguageFilter: params?.applyLanguageFilter ?? false
       },
       requiresAuth: true
     })
-    return response.data as unknown as PagginatedResult<VideoDto>
+    const raw = response as unknown
+    if (raw && typeof raw === 'object' && 'data' in (raw as object)) {
+      const inner = (raw as { data: unknown }).data
+      if (inner && typeof inner === 'object' && 'items' in (inner as object)) {
+        return inner as PagginatedResult<VideoDto>
+      }
+    }
+    if (raw && typeof raw === 'object' && 'items' in (raw as object)) {
+      return raw as PagginatedResult<VideoDto>
+    }
+    return {
+      items: [],
+      pageNumber: params?.pageNumber ?? 1,
+      pageSize: params?.pageSize ?? 10,
+      totalPages: 1,
+      totalCount: 0,
+      hasPreviousPage: false,
+      hasNextPage: false
+    }
+  }
+
+  async getById(id: string): Promise<VideoDto> {
+    const response = await this.httpClient.get<ApiResponse<VideoDto>>(`/videos/${id}`, {
+      params: { applyLanguageFilter: false },
+      requiresAuth: true
+    })
+    const raw = response.data as unknown
+    if (raw && typeof raw === 'object' && 'data' in (raw as object)) {
+      return (raw as { data: VideoDto }).data
+    }
+    return raw as VideoDto
+  }
+
+  async create(payload: CreateVideoPayload): Promise<VideoDto> {
+    const cleanPayload = {
+      ...payload,
+      categoryId: payload.categoryId ? payload.categoryId : null,
+      thumbnailUrl: payload.thumbnailUrl ? payload.thumbnailUrl : null,
+      videoUrl: payload.videoUrl ? payload.videoUrl : null
+    }
+    const response = await this.httpClient.post<ApiResponse<VideoDto>>('/videos', cleanPayload, {
+      requiresAuth: true
+    })
+    const raw = response.data as unknown
+    if (raw && typeof raw === 'object' && 'data' in (raw as object)) {
+      return (raw as { data: VideoDto }).data
+    }
+    return raw as VideoDto
+  }
+
+  async update(id: string, payload: UpdateVideoPayload): Promise<VideoDto> {
+    const cleanPayload = {
+      id,
+      ...payload,
+      categoryId: payload.categoryId ? payload.categoryId : null,
+      thumbnailUrl: payload.thumbnailUrl ? payload.thumbnailUrl : null,
+      videoUrl: payload.videoUrl ? payload.videoUrl : null
+    }
+    const response = await this.httpClient.put<ApiResponse<VideoDto>>(`/videos/${id}`, cleanPayload, {
+      requiresAuth: true
+    })
+    const raw = response.data as unknown
+    if (raw && typeof raw === 'object' && 'data' in (raw as object)) {
+      return (raw as { data: VideoDto }).data
+    }
+    return raw as VideoDto
+  }
+
+  async delete(id: string): Promise<boolean> {
+    const response = await this.httpClient.delete<ApiResponse<boolean>>(`/videos/${id}`, {
+      requiresAuth: true
+    })
+    return Boolean((response.data as unknown as { data?: boolean })?.data ?? true)
   }
 }
-

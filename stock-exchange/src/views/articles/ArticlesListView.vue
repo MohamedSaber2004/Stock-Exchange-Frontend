@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus, X, Clock, User } from 'lucide-vue-next'
+import { Plus, X, Clock, User, RefreshCw } from 'lucide-vue-next'
 import AppShell from '@/components/layout/AppShell.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import TableFilterBar from '@/components/data-table/TableFilterBar.vue'
@@ -10,7 +10,11 @@ import ActionMenu from '@/components/ui/ActionMenu.vue'
 import AppPagination from '@/components/ui/AppPagination.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { useI18n } from 'vue-i18n'
+import { extractApiErrors } from '@/domain/models/common.model'
 import { resolveAttachmentUrl, handleImageError } from '@/utils/attachment'
+import { coreServices } from '@/di'
+import type { ArticleDto } from '@/domain/models/article.model'
+import type { ArticleCategory } from '@/domain/models/article-category.model'
 
 const router = useRouter()
 const { confirm, toast } = useFeedback()
@@ -18,173 +22,170 @@ const { t, locale } = useI18n()
 const isAr = computed(() => locale.value === 'ar')
 
 const search = ref('')
-const selectedCategory = ref('')
-const selectedTier = ref('')
+const selectedCategoryId = ref('')
 const selectedStatus = ref('')
 const currentPage = ref(1)
+const pageSize = ref(10)
+const totalPages = ref(1)
+const totalCount = ref(0)
 
-const previewArticle = ref<Article | null>(null)
+const articles = ref<ArticleDto[]>([])
+const categories = ref<ArticleCategory[]>([])
+const isLoading = ref(true)
+
+const previewArticle = ref<ArticleDto | null>(null)
 const isPreviewOpen = ref(false)
+
+// Load categories for filter dropdown
+const loadCategories = async () => {
+  try {
+    categories.value = await coreServices.articles.getCategories({ applyLanguageFilter: false })
+  } catch {
+    categories.value = []
+  }
+}
+
+// Load articles from API
+const loadArticles = async () => {
+  isLoading.value = true
+  try {
+    const isActiveFilter = selectedStatus.value === 'active'
+      ? true
+      : selectedStatus.value === 'inactive'
+        ? false
+        : undefined
+
+    const result = await coreServices.articles.getAll({
+      pageNumber: currentPage.value,
+      pageSize: pageSize.value,
+      search: search.value || undefined,
+      articleCategoryId: selectedCategoryId.value || undefined,
+      isActive: isActiveFilter,
+      applyLanguageFilter: false
+    })
+
+    const raw = result as unknown
+    if (raw && typeof raw === 'object' && 'data' in (raw as object)) {
+      const inner = (raw as { data: typeof result }).data
+      articles.value = inner?.items ?? []
+      totalPages.value = inner?.totalPages ?? 1
+      totalCount.value = inner?.totalCount ?? 0
+    } else {
+      articles.value = result?.items ?? []
+      totalPages.value = result?.totalPages ?? 1
+      totalCount.value = result?.totalCount ?? 0
+    }
+  } catch (err: unknown) {
+    console.error('Failed to load articles:', err)
+    const errorDetails = extractApiErrors(err)
+    toast.error(errorDetails.generalMessage || (isAr.value ? 'فشل تحميل المقالات' : 'Failed to load articles'))
+    articles.value = []
+  } finally {
+    isLoading.value = false
+  }
+}
 
 const filters = computed(() => [
   {
     id: 'category',
     label: t('articles.categoryCol'),
-    value: selectedCategory.value,
-    options: [
-      { label: t('articles.catBeginner'), value: 'Beginner' },
-      { label: t('articles.catMarket'), value: 'Market News' },
-      { label: t('articles.catTechnical'), value: 'Technical Analysis' },
-      { label: t('articles.catInvesting'), value: 'Investing' },
-    ]
-  },
-  {
-    id: 'tier',
-    label: t('articles.tierCol'),
-    value: selectedTier.value,
-    options: [
-      { label: t('users.planFree'), value: 'FREE' },
-      { label: t('users.planBasic'), value: 'BASIC' },
-      { label: t('users.planPro'), value: 'PRO' },
-    ]
+    value: selectedCategoryId.value,
+    options: categories.value.map(cat => ({
+      label: isAr.value ? cat.categoryArName : cat.categoryEnName,
+      value: cat.id
+    }))
   },
   {
     id: 'status',
     label: t('articles.statusCol'),
     value: selectedStatus.value,
     options: [
-      { label: t('common.published'), value: 'Published' },
-      { label: t('common.draft'), value: 'Draft' },
+      { label: isAr.value ? 'نشط' : 'Active', value: 'active' },
+      { label: isAr.value ? 'غير نشط' : 'Inactive', value: 'inactive' },
     ]
   }
 ])
 
 const handleFilterChange = (filterId: string, val: string) => {
-  if (filterId === 'category') selectedCategory.value = val
-  if (filterId === 'tier') selectedTier.value = val
+  if (filterId === 'category') selectedCategoryId.value = val
   if (filterId === 'status') selectedStatus.value = val
+  currentPage.value = 1
 }
 
-const getCategoryLabel = (category: string) => {
-  const c = (category || '').toLowerCase()
-  if (c.includes('beginner')) return t('articles.catBeginner')
-  if (c.includes('market')) return t('articles.catMarket')
-  if (c.includes('technical')) return t('articles.catTechnical')
-  if (c.includes('investing')) return t('articles.catInvesting')
-  return category
-}
-
-const getTierLabel = (tier: string) => {
-  const upper = (tier || '').toUpperCase()
-  if (upper === 'FREE') return t('users.planFree')
-  if (upper === 'BASIC') return t('users.planBasic')
-  if (upper === 'PRO') return t('users.planPro')
-  return tier
-}
-
-const getStatusLabel = (status: string) => {
-  const s = (status || '').toLowerCase()
-  if (s === 'published') return t('common.published')
-  if (s === 'draft') return t('common.draft')
-  return status
-}
-
-interface Article {
-  id: string
-  title: string
-  subtitle: string
-  cover: string
-  category: string
-  author: string
-  tier: 'FREE' | 'BASIC' | 'PRO'
-  readTime: string
-  published: string
-  status: 'Published' | 'Draft'
-}
-
-const articles = ref<Article[]>([
-  {
-    id: 'art-1',
-    title: 'Investing 101',
-    subtitle: 'A beginner\'s guide to financial growth',
-    cover: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=150&auto=format&fit=crop&q=80',
-    category: 'Beginner',
-    author: 'Maryam Ali',
-    tier: 'FREE',
-    readTime: '5 min',
-    published: 'Sep 27, 2025',
-    status: 'Published'
-  },
-  {
-    id: 'art-2',
-    title: 'Market Outlook 2026',
-    subtitle: 'Trends and predictions for global assets',
-    cover: 'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=150&auto=format&fit=crop&q=80',
-    category: 'Market News',
-    author: 'Ahmed Hossam',
-    tier: 'PRO',
-    readTime: '8 min',
-    published: 'Sep 21, 2025',
-    status: 'Published'
-  },
-  {
-    id: 'art-3',
-    title: 'Technical Analysis',
-    subtitle: 'Chart patterns and indicators explained',
-    cover: 'https://images.unsplash.com/photo-1642543492481-44e81e3914a7?w=150&auto=format&fit=crop&q=80',
-    category: 'Technical Analysis',
-    author: 'Omar Ali',
-    tier: 'BASIC',
-    readTime: '12 min',
-    published: 'Sep 15, 2025',
-    status: 'Draft'
-  },
-  {
-    id: 'art-4',
-    title: 'Risk Management',
-    subtitle: 'Protecting your capital during volatility',
-    cover: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=150&auto=format&fit=crop&q=80',
-    category: 'Investing',
-    author: 'Sarah Ahmed',
-    tier: 'FREE',
-    readTime: '6 min',
-    published: 'Sep 12, 2025',
-    status: 'Published'
-  }
-])
-
-const filteredArticles = computed(() => {
-  return articles.value.filter(art => {
-    const matchesSearch = !search.value || 
-      art.title.toLowerCase().includes(search.value.toLowerCase()) || 
-      art.author.toLowerCase().includes(search.value.toLowerCase())
-    const matchesCat = !selectedCategory.value || art.category === selectedCategory.value
-    const matchesTier = !selectedTier.value || art.tier === selectedTier.value
-    const matchesStatus = !selectedStatus.value || art.status === selectedStatus.value
-    return matchesSearch && matchesCat && matchesTier && matchesStatus
-  })
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+watch(search, () => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    currentPage.value = 1
+    loadArticles()
+  }, 400)
 })
 
-const handleAction = async (actionId: string, article: Article) => {
-  if (actionId === 'edit') {
+watch([selectedCategoryId, selectedStatus], () => {
+  currentPage.value = 1
+  loadArticles()
+})
+
+watch(currentPage, () => {
+  loadArticles()
+})
+
+const getArticleTitle = (art: ArticleDto) =>
+  isAr.value ? (art.titleAr || art.titleEn) : (art.titleEn || art.titleAr)
+
+const getArticleExcerpt = (art: ArticleDto) =>
+  isAr.value ? (art.excerptAr || art.excerptEn) : (art.excerptEn || art.excerptAr)
+
+const getCategoryName = (art: ArticleDto) => {
+  if (isAr.value) return art.categoryArName || art.categoryEnName || '-'
+  return art.categoryEnName || art.categoryArName || '-'
+}
+
+const formatDate = (dateStr: string) => {
+  try {
+    return new Date(dateStr).toLocaleDateString(isAr.value ? 'ar-EG' : 'en-US', {
+      year: 'numeric', month: 'short', day: 'numeric'
+    })
+  } catch {
+    return dateStr
+  }
+}
+
+const handleAction = async (actionId: string, article: ArticleDto) => {
+  if (actionId === 'details') {
+    router.push(`/articles/${article.id}`)
+  } else if (actionId === 'edit') {
     router.push(`/articles/${article.id}/edit`)
   } else if (actionId === 'preview') {
     previewArticle.value = article
     isPreviewOpen.value = true
   } else if (actionId === 'delete') {
+    const title = getArticleTitle(article)
     const ok = await confirm({
       title: t('articles.deleteConfirmTitle'),
-      message: `${t('articles.deleteConfirmDesc')} ("${article.title}")`,
+      message: `${t('articles.deleteConfirmDesc')} ("${title}")`,
       confirmText: t('common.delete'),
       cancelText: t('common.cancel'),
       type: 'danger'
     })
     if (ok) {
-      articles.value = articles.value.filter(a => a.id !== article.id)
-      toast.success(isAr.value ? 'تم حذف المقال بنجاح' : 'Article deleted successfully')
+      try {
+        await coreServices.articles.delete(article.id)
+        toast.success(isAr.value ? 'تم حذف المقال بنجاح' : 'Article deleted successfully')
+        await loadArticles()
+      } catch (err: unknown) {
+        console.error('Delete article failed:', err)
+        const errorDetails = extractApiErrors(err)
+        toast.error(errorDetails.generalMessage || (isAr.value ? 'فشل حذف المقال' : 'Failed to delete article'))
+      }
     }
   }
 }
+
+onMounted(async () => {
+  await loadCategories()
+  await loadArticles()
+})
 </script>
 
 <template>
@@ -195,6 +196,14 @@ const handleAction = async (actionId: string, article: Article) => {
         :description="t('articles.subtitle')"
       >
         <template #actions>
+          <button
+            type="button"
+            @click="loadArticles"
+            :disabled="isLoading"
+            class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50"
+          >
+            <RefreshCw :class="['w-3.5 h-3.5', isLoading && 'animate-spin']" />
+          </button>
           <button
             type="button"
             @click="router.push('/articles/create')"
@@ -216,8 +225,33 @@ const handleAction = async (actionId: string, article: Article) => {
           @update:filter="handleFilterChange"
         />
 
+        <!-- Loading State -->
+        <div v-if="isLoading" class="flex items-center justify-center py-20">
+          <div class="flex flex-col items-center gap-3">
+            <div class="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+            <span class="text-xs text-slate-500 font-medium">{{ isAr ? 'جاري التحميل...' : 'Loading...' }}</span>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div v-else-if="!articles.length" class="flex flex-col items-center justify-center py-20 gap-3">
+          <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center">
+            <span class="text-2xl">📄</span>
+          </div>
+          <p class="text-sm font-bold text-slate-700">{{ isAr ? 'لا توجد مقالات' : 'No articles found' }}</p>
+          <p class="text-xs text-slate-400">{{ isAr ? 'أنشئ مقالاً جديداً للبدء' : 'Create a new article to get started' }}</p>
+          <button
+            type="button"
+            @click="router.push('/articles/create')"
+            class="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+          >
+            <Plus class="w-3.5 h-3.5 stroke-[3]" />
+            {{ t('articles.addArticle') }}
+          </button>
+        </div>
+
         <!-- Data Table -->
-        <div class="overflow-x-auto">
+        <div v-else class="overflow-x-auto">
           <table class="w-full text-start text-xs min-w-[750px]">
             <thead>
               <tr class="text-[11px] font-bold text-slate-400 border-b border-slate-100 uppercase tracking-wider bg-slate-50/50">
@@ -225,61 +259,50 @@ const handleAction = async (actionId: string, article: Article) => {
                 <th class="py-3 px-4 text-start">{{ t('articles.titleCol') }}</th>
                 <th class="py-3 px-4 text-start">{{ t('articles.categoryCol') }}</th>
                 <th class="py-3 px-4 text-start">{{ t('articles.authorCol') }}</th>
-                <th class="py-3 px-4 text-start">{{ t('articles.tierCol') }}</th>
-                <th class="py-3 px-4 text-start">{{ t('articles.readTimeCol') }}</th>
+                <th class="py-3 px-4 text-start">{{ isAr ? 'تاريخ النشر' : 'Published' }}</th>
                 <th class="py-3 px-4 text-start">{{ t('articles.statusCol') }}</th>
                 <th class="py-3 px-4 text-end">{{ t('common.actions') }}</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
               <tr
-                v-for="article in filteredArticles"
+                v-for="article in articles"
                 :key="article.id"
                 class="hover:bg-slate-50/60 transition-colors"
               >
                 <!-- Cover Image -->
                 <td class="py-3 px-4 text-start">
                   <img
-                    :src="resolveAttachmentUrl(article.cover, 'image')"
-                    :alt="article.title"
+                    :src="resolveAttachmentUrl(article.imageUrl ?? '', 'image')"
+                    :alt="getArticleTitle(article)"
                     @error="handleImageError($event, 'image')"
                     class="w-12 h-9 rounded-lg object-cover border border-slate-200"
                   />
                 </td>
 
-                <!-- Title & Subtitle -->
+                <!-- Title & Excerpt -->
                 <td class="py-3 px-4 text-start">
                   <div class="flex flex-col max-w-xs">
-                    <span class="font-bold text-slate-900 leading-snug">{{ article.title }}</span>
-                    <span class="text-[11px] text-slate-400 font-medium truncate">{{ article.subtitle }}</span>
+                    <span class="font-bold text-slate-900 leading-snug">{{ getArticleTitle(article) }}</span>
+                    <span class="text-[11px] text-slate-400 font-medium truncate">{{ getArticleExcerpt(article) }}</span>
                   </div>
                 </td>
 
                 <!-- Category -->
                 <td class="py-3 px-4 text-slate-600 font-medium text-start">
-                  {{ getCategoryLabel(article.category) }}
+                  {{ getCategoryName(article) }}
                 </td>
 
                 <!-- Author -->
-                <td class="py-3 px-4 text-slate-800 font-medium text-start">{{ article.author }}</td>
-
-                <!-- Tier -->
-                <td class="py-3 px-4 text-start">
-                  <StatusBadge :status="article.tier" :variant="article.tier === 'PRO' ? 'purple' : article.tier === 'BASIC' ? 'warning' : 'success'">
-                    {{ getTierLabel(article.tier) }}
-                  </StatusBadge>
-                </td>
-
-                <!-- Read Time -->
-                <td class="py-3 px-4 text-slate-500 font-medium text-start">{{ article.readTime }}</td>
+                <td class="py-3 px-4 text-slate-800 font-medium text-start">{{ article.authorName }}</td>
 
                 <!-- Published Date -->
-                <td class="py-3 px-4 text-slate-500 font-medium text-start">{{ article.published }}</td>
+                <td class="py-3 px-4 text-slate-500 font-medium text-start">{{ formatDate(article.publishedAt) }}</td>
 
                 <!-- Status -->
                 <td class="py-3 px-4 text-start">
-                  <StatusBadge :status="article.status">
-                    {{ getStatusLabel(article.status) }}
+                  <StatusBadge :status="article.isActive ? 'active' : 'inactive'" :variant="article.isActive ? 'success' : 'neutral'">
+                    {{ article.isActive ? (isAr ? 'نشط' : 'Active') : (isAr ? 'غير نشط' : 'Inactive') }}
                   </StatusBadge>
                 </td>
 
@@ -287,6 +310,7 @@ const handleAction = async (actionId: string, article: Article) => {
                 <td class="py-3 px-4 text-end">
                   <ActionMenu
                     :items="[
+                      { id: 'details', label: isAr ? 'عرض التفاصيل' : 'View Details' },
                       { id: 'preview', label: t('articles.previewArticle') },
                       { id: 'edit', label: t('common.edit') },
                       { id: 'delete', label: t('common.delete'), danger: true }
@@ -300,7 +324,16 @@ const handleAction = async (actionId: string, article: Article) => {
         </div>
 
         <!-- Pagination -->
-        <AppPagination v-model:current-page="currentPage" :total-pages="5" />
+        <AppPagination
+          v-if="!isLoading && totalPages > 1"
+          v-model:current-page="currentPage"
+          :total-pages="totalPages"
+        />
+
+        <!-- Total count info -->
+        <p v-if="!isLoading && totalCount > 0" class="text-[11px] text-slate-400 mt-3 text-center">
+          {{ isAr ? `إجمالي ${totalCount} مقال` : `${totalCount} article${totalCount !== 1 ? 's' : ''} total` }}
+        </p>
       </div>
 
       <!-- Article Preview Modal -->
@@ -312,22 +345,23 @@ const handleAction = async (actionId: string, article: Article) => {
         leave-from-class="opacity-100 scale-100"
         leave-to-class="opacity-0 scale-95"
       >
-        <div 
+        <div
           v-if="isPreviewOpen && previewArticle"
           class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-xs"
+          @click.self="isPreviewOpen = false"
         >
           <div class="bg-white rounded-2xl max-w-2xl w-full border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in max-h-[90vh] flex flex-col mx-auto">
             <!-- Header -->
             <div class="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
               <div class="flex items-center gap-2">
-                <StatusBadge :status="previewArticle.tier" :variant="previewArticle.tier === 'PRO' ? 'purple' : 'warning'">
-                  {{ getTierLabel(previewArticle.tier) }}
+                <StatusBadge :status="previewArticle.isActive ? 'active' : 'inactive'" :variant="previewArticle.isActive ? 'success' : 'neutral'">
+                  {{ previewArticle.isActive ? (isAr ? 'نشط' : 'Active') : (isAr ? 'غير نشط' : 'Inactive') }}
                 </StatusBadge>
-                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">{{ getCategoryLabel(previewArticle.category) }}</span>
+                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">{{ getCategoryName(previewArticle) }}</span>
               </div>
-              <button 
-                type="button" 
-                @click="isPreviewOpen = false" 
+              <button
+                type="button"
+                @click="isPreviewOpen = false"
                 class="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
               >
                 <X class="w-5 h-5" />
@@ -336,44 +370,36 @@ const handleAction = async (actionId: string, article: Article) => {
 
             <!-- Scrollable Content -->
             <div class="p-4 sm:p-6 overflow-y-auto flex flex-col gap-4 text-xs">
-              <img 
-                :src="resolveAttachmentUrl(previewArticle.cover, 'image')" 
-                :alt="previewArticle.title" 
+              <img
+                :src="resolveAttachmentUrl(previewArticle.imageUrl ?? '', 'image')"
+                :alt="getArticleTitle(previewArticle)"
                 @error="handleImageError($event, 'image')"
                 class="w-full h-44 sm:h-64 rounded-xl object-cover border border-slate-100"
               />
 
               <div>
-                <h2 class="text-base sm:text-lg font-black text-slate-900 leading-tight">{{ previewArticle.title }}</h2>
-                <p class="text-xs text-slate-500 font-medium mt-1">{{ previewArticle.subtitle }}</p>
+                <h2 class="text-base sm:text-lg font-black text-slate-900 leading-tight">{{ getArticleTitle(previewArticle) }}</h2>
+                <p class="text-xs text-slate-500 font-medium mt-1">{{ getArticleExcerpt(previewArticle) }}</p>
               </div>
 
               <div class="flex items-center gap-3 sm:gap-4 py-2 border-y border-slate-100 text-slate-600 text-[11px] flex-wrap">
                 <div class="flex items-center gap-1.5 font-bold">
                   <User class="w-3.5 h-3.5 text-slate-400" />
-                  <span>{{ previewArticle.author }}</span>
+                  <span>{{ previewArticle.authorName }}</span>
                 </div>
                 <div class="flex items-center gap-1.5 font-medium text-slate-400">
                   <Clock class="w-3.5 h-3.5" />
-                  <span>{{ previewArticle.readTime }}</span>
+                  <span>{{ formatDate(previewArticle.publishedAt) }}</span>
                 </div>
-                <StatusBadge :status="previewArticle.status">
-                  {{ getStatusLabel(previewArticle.status) }}
-                </StatusBadge>
-              </div>
-
-              <div class="text-slate-700 leading-relaxed font-normal space-y-3">
-                <p>Diversification is the practice of spreading your investments around so that your exposure to any one type of asset is limited. This practice is designed to help reduce the volatility of your portfolio over time.</p>
-                <p>As an investor in financial markets, having a balanced mix of equities, bonds, indices, and liquid cash ensures that downturns in one specific sector are cushioned by performance across others.</p>
               </div>
             </div>
 
             <!-- Footer -->
             <div class="px-4 sm:px-6 py-3 border-t border-slate-100 flex items-center justify-between gap-3 bg-slate-50/50 shrink-0">
-              <span class="text-[11px] text-slate-400 truncate">Published on {{ previewArticle.published }}</span>
+              <span class="text-[11px] text-slate-400 truncate">{{ isAr ? 'نشر في' : 'Published on' }} {{ formatDate(previewArticle.publishedAt) }}</span>
               <button
                 type="button"
-                @click="router.push(`/articles/${previewArticle.id}/edit`)"
+                @click="router.push(`/articles/${previewArticle.id}/edit`); isPreviewOpen = false"
                 class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer shadow-xs shrink-0"
               >
                 {{ t('articles.editArticle') }}

@@ -66,6 +66,14 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Edit Article', requiresAuth: true },
   },
 
+  // 05b. Article Details
+  {
+    path: '/articles/:id',
+    name: 'article-details',
+    component: () => import('@/views/articles/ArticleDetailsView.vue'),
+    meta: { title: 'Article Details', requiresAuth: true },
+  },
+
   // 06. Videos List
   {
     path: '/videos',
@@ -90,6 +98,14 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Edit Video', requiresAuth: true },
   },
 
+  // 08b. Video Details
+  {
+    path: '/videos/:id',
+    name: 'video-details',
+    component: () => import('@/views/videos/VideoDetailsView.vue'),
+    meta: { title: 'Video Details', requiresAuth: true },
+  },
+
   // 09. Market News List
   {
     path: '/news',
@@ -104,6 +120,46 @@ const routes: RouteRecordRaw[] = [
     name: 'create-news',
     component: () => import('@/views/news/CreateNewsView.vue'),
     meta: { title: 'Post Market News', requiresAuth: true },
+  },
+
+  // 10a. Edit News
+  {
+    path: '/news/:id/edit',
+    name: 'edit-news',
+    component: () => import('@/views/news/EditNewsView.vue'),
+    meta: { title: 'Edit Market News', requiresAuth: true },
+  },
+
+  // 10b. News Details
+  {
+    path: '/news/:id',
+    name: 'news-details',
+    component: () => import('@/views/news/NewsDetailsView.vue'),
+    meta: { title: 'News Details', requiresAuth: true },
+  },
+
+  // Services Management
+  {
+    path: '/services',
+    name: 'services',
+    component: () => import('@/views/services/ServicesListView.vue'),
+    meta: { title: 'Services', requiresAuth: true },
+  },
+
+  // Service Details
+  {
+    path: '/services/:id',
+    name: 'service-details',
+    component: () => import('@/views/services/ServiceDetailsView.vue'),
+    meta: { title: 'Service Details', requiresAuth: true },
+  },
+
+  // Experts Management
+  {
+    path: '/experts',
+    name: 'experts',
+    component: () => import('@/views/experts/ExpertsListView.vue'),
+    meta: { title: 'Our Experts', requiresAuth: true },
   },
 
   // 10b. Categories Management

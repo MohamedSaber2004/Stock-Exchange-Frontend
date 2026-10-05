@@ -1,130 +1,194 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AppShell from '@/components/layout/AppShell.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import ImageUploader from '@/components/forms/ImageUploader.vue'
-import AttachmentUploader, { type AttachmentItem } from '@/components/forms/AttachmentUploader.vue'
 import RichTextEditor from '@/components/forms/RichTextEditor.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { useI18n } from 'vue-i18n'
+import { extractApiErrors } from '@/domain/models/common.model'
+import { coreServices } from '@/di'
+import type { ArticleCategory } from '@/domain/models/article-category.model'
 
 const router = useRouter()
 const { toast } = useFeedback()
-const { t, locale } = useI18n()
+const { locale } = useI18n()
 const isAr = computed(() => locale.value === 'ar')
 
+const categories = ref<ArticleCategory[]>([])
+const isSubmitting = ref(false)
+
 const form = ref({
-  title: '',
-  category: '',
-  author: '',
-  authorRole: '',
-  readingTime: '',
-  content: '',
-  coverImage: '',
-  attachments: [] as AttachmentItem[],
-  status: 'Published'
+  titleEn: '',
+  titleAr: '',
+  excerptEn: '',
+  excerptAr: '',
+  contentEn: '',
+  contentAr: '',
+  authorName: '',
+  imageUrl: '',
+  categoryId: '',
+  isFeaturedOnHome: true,
+  isActive: true,
+  displayOrder: 0,
 })
 
-const handleSaveDraft = () => {
-  form.value.status = 'Draft'
-  toast.success(isAr.value ? 'تم حفظ مسودة المقال' : 'Draft saved successfully')
-  router.push('/articles')
+const loadCategories = async () => {
+  try {
+    categories.value = await coreServices.articles.getCategories({ applyLanguageFilter: false })
+  } catch {
+    categories.value = []
+  }
 }
 
-const handlePublish = () => {
-  if (!form.value.title) {
-    toast.error(isAr.value ? 'يرجى إدخال عنوان المقال' : 'Please provide an article title')
+const handlePublish = async () => {
+  if (!form.value.titleEn.trim()) {
+    toast.error(isAr.value ? 'يرجى إدخال عنوان المقال بالإنجليزية' : 'Please provide English title')
     return
   }
-  form.value.status = 'Published'
-  toast.success(isAr.value ? 'تم نشر المقال بنجاح' : 'Article published successfully')
-  router.push('/articles')
+  if (!form.value.titleAr.trim()) {
+    toast.error(isAr.value ? 'يرجى إدخال عنوان المقال بالعربية' : 'Please provide Arabic title')
+    return
+  }
+  if (!form.value.authorName.trim()) {
+    toast.error(isAr.value ? 'يرجى إدخال اسم الكاتب' : 'Please provide author name')
+    return
+  }
+  if (!form.value.excerptEn.trim()) {
+    toast.error(isAr.value ? 'يرجى إدخال الوصف المختصر بالإنجليزية' : 'Please provide English excerpt')
+    return
+  }
+  if (!form.value.excerptAr.trim()) {
+    toast.error(isAr.value ? 'يرجى إدخال الوصف المختصر بالعربية' : 'Please provide Arabic excerpt')
+    return
+  }
+
+  isSubmitting.value = true
+  try {
+    await coreServices.articles.create({
+      titleEn: form.value.titleEn.trim(),
+      titleAr: form.value.titleAr.trim(),
+      excerptEn: form.value.excerptEn.trim(),
+      excerptAr: form.value.excerptAr.trim(),
+      contentEn: form.value.contentEn.trim() || undefined,
+      contentAr: form.value.contentAr.trim() || undefined,
+      authorName: form.value.authorName.trim(),
+      imageUrl: form.value.imageUrl || null,
+      categoryId: form.value.categoryId || null,
+      isFeaturedOnHome: form.value.isFeaturedOnHome,
+      isActive: form.value.isActive,
+      displayOrder: form.value.displayOrder,
+    })
+    toast.success(isAr.value ? 'تم إنشاء المقال بنجاح' : 'Article created successfully')
+    router.push('/articles')
+  } catch (err: unknown) {
+    console.error('Create article failed:', err)
+    const errorDetails = extractApiErrors(err)
+    toast.error(errorDetails.generalMessage || (isAr.value ? 'فشل إنشاء المقال' : 'Failed to create article'))
+  } finally {
+    isSubmitting.value = false
+  }
 }
+
+onMounted(loadCategories)
 </script>
 
 <template>
   <AppShell>
     <div class="flex flex-col max-w-5xl mx-auto">
       <PageHeader
-        :title="t('articles.createArticle')"
-        :description="t('articles.subtitle')"
+        :title="isAr ? 'إنشاء مقال جديد' : 'Create Article'"
+        :description="isAr ? 'أضف مقالاً جديداً للمنصة' : 'Add a new article to the platform'"
       />
 
       <div class="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-6 lg:p-8 shadow-2xs">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
-          
+
           <!-- Left Main Form: 2 cols -->
           <div class="lg:col-span-2 flex flex-col gap-5">
             <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">
               {{ isAr ? 'معلومات المقال' : 'Article Information' }}
             </h2>
 
-            <!-- Title -->
+            <!-- English Title -->
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-bold text-slate-700">{{ isAr ? 'عنوان المقال *' : 'Title *' }}</label>
+              <label class="text-xs font-bold text-slate-700">{{ isAr ? 'العنوان (إنجليزي) *' : 'Title (English) *' }}</label>
               <input
-                v-model="form.title"
+                v-model="form.titleEn"
                 type="text"
-                :placeholder="isAr ? 'أدخل عنوان المقال' : 'Enter article title'"
+                :placeholder="isAr ? 'أدخل عنوان المقال بالإنجليزية' : 'Enter article title in English'"
                 class="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10"
+                dir="ltr"
+              />
+            </div>
+
+            <!-- Arabic Title -->
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs font-bold text-slate-700">{{ isAr ? 'العنوان (عربي) *' : 'Title (Arabic) *' }}</label>
+              <input
+                v-model="form.titleAr"
+                type="text"
+                :placeholder="isAr ? 'أدخل عنوان المقال بالعربية' : 'Enter article title in Arabic'"
+                class="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10"
+                dir="rtl"
               />
             </div>
 
             <!-- Category -->
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-bold text-slate-700">{{ isAr ? 'التصنيف *' : 'Category *' }}</label>
+              <label class="text-xs font-bold text-slate-700">{{ isAr ? 'التصنيف' : 'Category' }}</label>
               <select
-                v-model="form.category"
+                v-model="form.categoryId"
                 class="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 cursor-pointer"
               >
-                <option value="">{{ isAr ? 'اختر التصنيف' : 'Select category' }}</option>
-                <option value="Beginner">{{ isAr ? 'مبتدئ' : 'Beginner' }}</option>
-                <option value="Technical Analysis">{{ isAr ? 'التحليل الفني' : 'Technical Analysis' }}</option>
-                <option value="Market News">{{ isAr ? 'أخبار السوق' : 'Market News' }}</option>
-                <option value="Investing">{{ isAr ? 'الاستثمار' : 'Investing' }}</option>
+                <option value="">{{ isAr ? 'اختر التصنيف (اختياري)' : 'Select category (optional)' }}</option>
+                <option v-for="cat in categories" :key="cat.id" :value="cat.id">
+                  {{ isAr ? cat.categoryArName : cat.categoryEnName }}
+                </option>
               </select>
             </div>
 
-            <!-- Author & Role -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-bold text-slate-700">{{ isAr ? 'الكاتب *' : 'Author *' }}</label>
-                <input
-                  v-model="form.author"
-                  type="text"
-                  :placeholder="isAr ? 'أدخل اسم الكاتب' : 'Enter author name'"
-                  class="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10"
-                />
-              </div>
-
-              <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-bold text-slate-700">{{ isAr ? 'صفة الكاتب' : 'Author Role' }}</label>
-                <input
-                  v-model="form.authorRole"
-                  type="text"
-                  :placeholder="isAr ? 'مثال: محلل مالي' : 'e.g. Financial Analyst'"
-                  class="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10"
-                />
-              </div>
-            </div>
-
-            <!-- Reading Time -->
+            <!-- Author -->
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-bold text-slate-700">{{ isAr ? 'وقت القراءة' : 'Reading Time' }}</label>
+              <label class="text-xs font-bold text-slate-700">{{ isAr ? 'الكاتب *' : 'Author *' }}</label>
               <input
-                v-model="form.readingTime"
+                v-model="form.authorName"
                 type="text"
-                :placeholder="isAr ? 'مثال: 5 دقائق' : 'e.g. 5 min'"
+                :placeholder="isAr ? 'أدخل اسم الكاتب' : 'Enter author name'"
                 class="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10"
               />
             </div>
 
-            <!-- Content Editor -->
+            <!-- Excerpt English -->
             <RichTextEditor
-              v-model="form.content"
-              :label="isAr ? 'محتوى المقال *' : 'Content *'"
-              :placeholder="isAr ? 'اكتب محتوى المقال هنا...' : 'Write your article content here...'"
+              v-model="form.excerptEn"
+              :label="isAr ? 'الوصف المختصر (إنجليزي) *' : 'Excerpt (English) *'"
+              :placeholder="isAr ? 'أدخل وصفاً مختصراً بالإنجليزية' : 'Enter excerpt in English'"
+              :rows="4"
+            />
+
+            <!-- Excerpt Arabic -->
+            <RichTextEditor
+              v-model="form.excerptAr"
+              :label="isAr ? 'الوصف المختصر (عربي) *' : 'Excerpt (Arabic) *'"
+              :placeholder="isAr ? 'أدخل وصفاً مختصراً بالعربية' : 'Enter excerpt in Arabic'"
+              :rows="3"
+            />
+
+            <!-- Full Content English -->
+            <RichTextEditor
+              v-model="form.contentEn"
+              :label="isAr ? 'المحتوى الكامل للمقال (إنجليزي)' : 'Full Article Content (English)'"
+              :placeholder="isAr ? 'اكتب المحتوى الكامل للمقال بالإنجليزية...' : 'Write full article content in English...'"
+              :rows="8"
+            />
+
+            <!-- Full Content Arabic -->
+            <RichTextEditor
+              v-model="form.contentAr"
+              :label="isAr ? 'المحتوى الكامل للمقال (عربي)' : 'Full Article Content (Arabic)'"
+              :placeholder="isAr ? 'اكتب المحتوى الكامل للمقال بالعربية...' : 'Write full article content in Arabic...'"
               :rows="8"
             />
           </div>
@@ -133,41 +197,45 @@ const handlePublish = () => {
           <div class="flex flex-col gap-6">
             <!-- Cover Image Upload -->
             <ImageUploader
-              v-model="form.coverImage"
+              v-model="form.imageUrl"
               :label="isAr ? 'صورة الغلاف' : 'Cover Image'"
               :hint="isAr ? 'الحجم الموصى به: 1200×675' : 'Recommended size: 1200×675'"
             />
 
-            <!-- Attachments & Documents Upload with Accessible Progress Bar -->
-            <AttachmentUploader
-              v-model="form.attachments"
-              :label="isAr ? 'المرفقات والتقارير المالية' : 'Attachments & Financial Documents'"
-              :hint="isAr ? 'PDF, Excel, Word (بحد أقصى 15MB)' : 'PDF, Excel, Word (max 15MB)'"
-            />
+            <!-- Display Order -->
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs font-bold text-slate-700">{{ isAr ? 'ترتيب العرض' : 'Display Order' }}</label>
+              <input
+                v-model.number="form.displayOrder"
+                type="number"
+                min="0"
+                class="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10"
+              />
+            </div>
 
-            <!-- Status Selector -->
-            <div class="flex flex-col gap-2 p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80">
-              <label class="text-xs font-bold text-slate-700">{{ isAr ? 'الحالة' : 'Status' }}</label>
-              <div class="flex items-center gap-4">
-                <label class="flex items-center gap-2 text-xs font-medium text-slate-700 cursor-pointer">
-                  <input
-                    type="radio"
-                    v-model="form.status"
-                    value="Draft"
-                    class="text-emerald-600 focus:ring-emerald-500"
-                  />
-                  <span>{{ isAr ? 'مسودة' : 'Draft' }}</span>
-                </label>
-                <label class="flex items-center gap-2 text-xs font-medium text-slate-700 cursor-pointer">
-                  <input
-                    type="radio"
-                    v-model="form.status"
-                    value="Published"
-                    class="text-emerald-600 focus:ring-emerald-500"
-                  />
-                  <span>{{ isAr ? 'منشور' : 'Published' }}</span>
-                </label>
-              </div>
+            <!-- Toggles -->
+            <div class="flex flex-col gap-3 p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80">
+              <label class="text-xs font-bold text-slate-700">{{ isAr ? 'الإعدادات' : 'Settings' }}</label>
+
+              <label class="flex items-center justify-between gap-3 cursor-pointer">
+                <span class="text-xs font-medium text-slate-700">{{ isAr ? 'مميز في الرئيسية' : 'Featured on Home' }}</span>
+                <div
+                  @click="form.isFeaturedOnHome = !form.isFeaturedOnHome"
+                  :class="['w-10 h-5 rounded-full transition-colors cursor-pointer relative', form.isFeaturedOnHome ? 'bg-emerald-500' : 'bg-slate-200']"
+                >
+                  <div :class="['absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-xs transition-all', form.isFeaturedOnHome ? 'start-5' : 'start-0.5']"></div>
+                </div>
+              </label>
+
+              <label class="flex items-center justify-between gap-3 cursor-pointer">
+                <span class="text-xs font-medium text-slate-700">{{ isAr ? 'نشط' : 'Active' }}</span>
+                <div
+                  @click="form.isActive = !form.isActive"
+                  :class="['w-10 h-5 rounded-full transition-colors cursor-pointer relative', form.isActive ? 'bg-emerald-500' : 'bg-slate-200']"
+                >
+                  <div :class="['absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-xs transition-all', form.isActive ? 'start-5' : 'start-0.5']"></div>
+                </div>
+              </label>
             </div>
           </div>
 
@@ -180,21 +248,19 @@ const handlePublish = () => {
             @click="router.push('/articles')"
             class="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-xs transition-colors cursor-pointer text-center"
           >
-            {{ t('common.cancel') }}
-          </button>
-          <button
-            type="button"
-            @click="handleSaveDraft"
-            class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors cursor-pointer text-center"
-          >
-            {{ isAr ? 'حفظ كمسودة' : 'Save Draft' }}
+            {{ isAr ? 'إلغاء' : 'Cancel' }}
           </button>
           <button
             type="button"
             @click="handlePublish"
-            class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs cursor-pointer text-center"
+            :disabled="isSubmitting"
+            class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs cursor-pointer text-center disabled:opacity-50"
           >
-            {{ isAr ? 'نشر المقال' : 'Publish' }}
+            <span v-if="isSubmitting" class="inline-flex items-center gap-2">
+              <div class="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+              {{ isAr ? 'جاري الحفظ...' : 'Saving...' }}
+            </span>
+            <span v-else>{{ isAr ? 'حفظ المقال' : 'Save Article' }}</span>
           </button>
         </div>
       </div>

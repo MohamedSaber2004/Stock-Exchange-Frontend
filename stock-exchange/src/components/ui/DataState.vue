@@ -6,12 +6,15 @@ import AppButton from './AppButton.vue'
 
 interface Props {
   loading?: boolean
+  isLoading?: boolean
   loadingText?: string
   error?: string | null
   errorTitle?: string
   empty?: boolean
+  isEmpty?: boolean
   emptyTitle?: string
   emptyMessage?: string
+  emptyDescription?: string
   retryText?: string
 }
 
@@ -23,21 +26,26 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
+const computedLoading = computed(() => Boolean(props.loading ?? props.isLoading))
+const computedEmpty = computed(() => Boolean(props.empty ?? props.isEmpty))
 const computedLoadingText = computed(() => props.loadingText || t('common.loadingData'))
 const computedErrorTitle = computed(() => props.errorTitle || t('common.loadFailed'))
 const computedEmptyTitle = computed(() => props.emptyTitle || t('common.noData'))
-const computedEmptyMessage = computed(() => props.emptyMessage || t('common.noDataDesc'))
+const computedEmptyMessage = computed(() => props.emptyMessage || props.emptyDescription || t('common.noDataDesc'))
 const computedRetryText = computed(() => props.retryText || t('common.retry'))
 </script>
 
 <template>
   <div class="w-full">
     <!-- Loading State -->
-    <div v-if="loading" class="w-full py-12 flex flex-col items-center justify-center">
+    <div v-if="computedLoading" class="w-full py-16 flex flex-col items-center justify-center">
       <slot name="loading">
         <div class="flex flex-col items-center gap-3">
-          <div class="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          <span class="text-xs text-slate-500 font-medium">{{ computedLoadingText }}</span>
+          <div class="relative w-10 h-10">
+            <div class="w-10 h-10 border-3 border-emerald-100 rounded-full" />
+            <div class="absolute inset-0 w-10 h-10 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+          </div>
+          <span class="text-xs text-slate-500 font-semibold tracking-wide animate-pulse">{{ computedLoadingText }}</span>
         </div>
       </slot>
     </div>
@@ -64,7 +72,7 @@ const computedRetryText = computed(() => props.retryText || t('common.retry'))
 
     <!-- Empty State -->
     <div
-      v-else-if="empty"
+      v-else-if="computedEmpty"
       class="w-full py-14 px-4 rounded-2xl border border-dashed border-slate-300 bg-white flex flex-col items-center text-center gap-3 my-4 shadow-xs"
     >
       <slot name="empty">
