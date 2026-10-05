@@ -45,7 +45,7 @@ const getCategoryName = (c: OverviewCategorySummaryDto) => {
       <div>
         <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
           <span>{{ t('dashboard.articleCategories') }}</span>
-          <RouterLink to="/categories/articles" class="text-emerald-600 hover:underline cursor-pointer lowercase text-[10px]">
+          <RouterLink :to="{ path: '/categories', query: { tab: 'articles' } }" class="text-emerald-600 hover:underline cursor-pointer lowercase text-[10px]">
             {{ t('dashboard.viewAll') }}
           </RouterLink>
         </div>
@@ -74,7 +74,7 @@ const getCategoryName = (c: OverviewCategorySummaryDto) => {
       <div class="pt-2 border-t border-slate-100">
         <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
           <span>{{ t('dashboard.videoCategories') }}</span>
-          <RouterLink to="/categories/videos" class="text-indigo-600 hover:underline cursor-pointer lowercase text-[10px]">
+          <RouterLink :to="{ path: '/categories', query: { tab: 'videos' } }" class="text-indigo-600 hover:underline cursor-pointer lowercase text-[10px]">
             {{ t('dashboard.viewAll') }}
           </RouterLink>
         </div>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import AppShell from '@/components/layout/AppShell.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import DataState from '@/components/ui/DataState.vue'
@@ -23,12 +24,28 @@ import type { ArticleCategory } from '@/domain/models/article-category.model'
 import type { VideoCategory } from '@/domain/models/video-category.model'
 import type { AppError } from '@/domain/models/common.model'
 
+const route = useRoute()
+const router = useRouter()
 const { toast, confirm } = useFeedback()
 const { t, locale } = useI18n()
 const isAr = computed(() => locale.value === 'ar')
 
 // Active tab: 'articles' or 'videos'
-const activeTab = ref<'articles' | 'videos'>('articles')
+const activeTab = ref<'articles' | 'videos'>(route.query.tab === 'videos' ? 'videos' : 'articles')
+
+watch(
+  () => route.query.tab,
+  (newTab) => {
+    if (newTab === 'videos' || newTab === 'articles') {
+      activeTab.value = newTab
+    }
+  }
+)
+
+const switchTab = (tab: 'articles' | 'videos') => {
+  activeTab.value = tab
+  router.replace({ query: { ...route.query, tab } })
+}
 
 // Data state
 const articleCategories = ref<ArticleCategory[]>([])
@@ -274,7 +291,7 @@ const formatDate = (dateStr?: string) => {
         <div
           class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex items-center gap-4 cursor-pointer transition-all hover:shadow-md hover:border-blue-300"
           :class="{ 'ring-2 ring-blue-500/20 border-blue-500': activeTab === 'articles' }"
-          @click="activeTab = 'articles'"
+          @click="switchTab('articles')"
         >
           <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
             <FileText class="w-6 h-6" />
@@ -293,7 +310,7 @@ const formatDate = (dateStr?: string) => {
         <div
           class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex items-center gap-4 cursor-pointer transition-all hover:shadow-md hover:border-purple-300"
           :class="{ 'ring-2 ring-purple-500/20 border-purple-500': activeTab === 'videos' }"
-          @click="activeTab = 'videos'"
+          @click="switchTab('videos')"
         >
           <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
             <Video class="w-6 h-6" />
@@ -319,7 +336,7 @@ const formatDate = (dateStr?: string) => {
               type="button"
               class="flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all"
               :class="activeTab === 'articles' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'"
-              @click="activeTab = 'articles'"
+              @click="switchTab('articles')"
             >
               <FileText class="w-4 h-4 text-blue-600" />
               <span>{{ t('categories.articlesTab') }}</span>
@@ -331,7 +348,7 @@ const formatDate = (dateStr?: string) => {
               type="button"
               class="flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all"
               :class="activeTab === 'videos' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'"
-              @click="activeTab = 'videos'"
+              @click="switchTab('videos')"
             >
               <Video class="w-4 h-4 text-purple-600" />
               <span>{{ t('categories.videosTab') }}</span>

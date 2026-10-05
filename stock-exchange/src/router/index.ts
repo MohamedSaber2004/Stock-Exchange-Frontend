@@ -169,6 +169,14 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/categories/CategoriesManagementView.vue'),
     meta: { title: 'Categories Management', requiresAuth: true },
   },
+  {
+    path: '/categories/articles',
+    redirect: { path: '/categories', query: { tab: 'articles' } },
+  },
+  {
+    path: '/categories/videos',
+    redirect: { path: '/categories', query: { tab: 'videos' } },
+  },
 
   // Redirect removed subscription routes to dashboard
   {
