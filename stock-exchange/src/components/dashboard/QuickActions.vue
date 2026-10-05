@@ -12,7 +12,7 @@ const { t } = useI18n()
       {{ t('dashboard.quickActions') }}
     </h3>
 
-    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-2.5">
       <RouterLink
         to="/articles/create"
         class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer group"

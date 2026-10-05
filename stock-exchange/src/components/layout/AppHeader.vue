@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bell, Search, ChevronRight, Menu, Globe, User, LogOut, ChevronDown, Check } from 'lucide-vue-next'
+import { Bell, ChevronRight, Menu, Globe, User, LogOut, ChevronDown, Check } from 'lucide-vue-next'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useFeedback } from '@/composables/useFeedback'
@@ -8,6 +8,7 @@ import { useLocale } from '@/composables/useLocale'
 import { useI18n } from 'vue-i18n'
 import { coreServices } from '@/di'
 import { resolveAttachmentUrl, handleImageError } from '@/utils/attachment'
+import GlobalSearchBar from './GlobalSearchBar.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -152,15 +153,8 @@ const navigateToNotifications = () => {
         <Menu class="w-5 h-5" />
       </button>
 
-      <!-- Search anything bar as in mockup -->
-      <div class="relative w-full max-w-[135px] xs:max-w-[175px] sm:max-w-xs md:max-w-md">
-        <Search class="w-4 h-4 text-slate-400 absolute start-3 sm:start-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-        <input
-          type="text"
-          :placeholder="t('common.searchPlaceholder')"
-          class="w-full bg-slate-50/80 border border-slate-200 rounded-xl ps-8 sm:ps-10 pe-2.5 sm:pe-4 py-1.5 sm:py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 transition-all truncate"
-        />
-      </div>
+      <!-- Global Search Bar with Autocomplete & Command Palette -->
+      <GlobalSearchBar />
 
       <!-- Optional subtle breadcrumb on wide screens -->
       <div v-if="breadcrumbs.length > 1" class="hidden 2xl:flex items-center gap-1.5 text-xs text-slate-400">

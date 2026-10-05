@@ -97,6 +97,11 @@ export class ApiEndpoints {
     Base: '/overview',
   } as const
 
+  public static readonly Search = {
+    Base: '/search',
+    Global: (query: string, limit: number = 5) => `/search?query=${encodeURIComponent(query)}&limit=${limit}`,
+  } as const
+
   public static readonly Services = {
     Base: '/services',
     ById: (id: string | number) => `/services/${id}`,

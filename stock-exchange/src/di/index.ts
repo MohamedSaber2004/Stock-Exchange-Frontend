@@ -18,6 +18,7 @@ import { ServiceRepository } from '@/data/repositories/service.repository'
 import { ExpertRepository } from '@/data/repositories/expert.repository'
 import { NewsRepository } from '@/data/repositories/news.repository'
 import { OverviewRepository } from '@/data/repositories/overview.repository'
+import { SearchRepository } from '@/data/repositories/search.repository'
 
 // Register Core Infrastructure Singletons
 container.register(TokenStore, () => new TokenStore())
@@ -80,6 +81,10 @@ container.register(
   OverviewRepository,
   () => new OverviewRepository(container.resolve(HttpClient))
 )
+container.register(
+  SearchRepository,
+  () => new SearchRepository(container.resolve(HttpClient))
+)
 
 export const coreServices = {
   get tokenStore(): TokenStore {
@@ -135,6 +140,9 @@ export const coreServices = {
   },
   get overview(): OverviewRepository {
     return container.resolve(OverviewRepository)
+  },
+  get search(): SearchRepository {
+    return container.resolve(SearchRepository)
   },
 }
 
