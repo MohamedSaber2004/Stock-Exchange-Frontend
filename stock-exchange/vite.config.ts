@@ -31,19 +31,25 @@ export default defineConfig({
         target: 'https://stock-exchange.runasp.net',
         changeOrigin: true,
         secure: false,
-        xfwd: true,
+        headers: {
+          'X-Forwarded-Proto': 'https',
+        },
       },
       '/files': {
         target: 'https://stock-exchange.runasp.net',
         changeOrigin: true,
         secure: false,
-        xfwd: true,
+        headers: {
+          'X-Forwarded-Proto': 'https',
+        },
       },
       '/pages': {
         target: 'https://stock-exchange.runasp.net',
         changeOrigin: true,
         secure: false,
-        xfwd: true,
+        headers: {
+          'X-Forwarded-Proto': 'https',
+        },
       },
     },
   },
