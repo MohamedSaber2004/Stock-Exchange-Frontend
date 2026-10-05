@@ -52,6 +52,8 @@ interface FormState {
   titleAr: string
   descriptionEn: string
   descriptionAr: string
+  contentEn: string
+  contentAr: string
   iconName: string
   imageUrl: string
   linkRoute: string
@@ -64,6 +66,8 @@ const form = ref<FormState>({
   titleAr: '',
   descriptionEn: '',
   descriptionAr: '',
+  contentEn: '',
+  contentAr: '',
   iconName: '',
   imageUrl: '',
   linkRoute: '',
@@ -131,6 +135,8 @@ const openCreateModal = () => {
     titleAr: '',
     descriptionEn: '',
     descriptionAr: '',
+    contentEn: '',
+    contentAr: '',
     iconName: 'TrendingUp',
     imageUrl: '',
     linkRoute: '',
@@ -149,6 +155,8 @@ const openEditModal = (service: ServiceDto) => {
     titleAr: service.titleAr || '',
     descriptionEn: service.descriptionEn || '',
     descriptionAr: service.descriptionAr || '',
+    contentEn: service.contentEn || '',
+    contentAr: service.contentAr || '',
     iconName: service.iconName || 'TrendingUp',
     imageUrl: service.imageUrl || '',
     linkRoute: service.linkRoute || '',
@@ -188,6 +196,8 @@ const handleSubmit = async () => {
       titleAr: form.value.titleAr.trim() || form.value.titleEn.trim(),
       descriptionEn: form.value.descriptionEn.trim() || form.value.descriptionAr.trim(),
       descriptionAr: form.value.descriptionAr.trim() || form.value.descriptionEn.trim(),
+      contentEn: form.value.contentEn.trim() || undefined,
+      contentAr: form.value.contentAr.trim() || undefined,
       iconName: form.value.iconName.trim() || 'TrendingUp',
       imageUrl: form.value.imageUrl.trim() || null,
       linkRoute: form.value.linkRoute.trim() || null,
@@ -527,6 +537,35 @@ onMounted(() => {
             </div>
           </div>
           <p v-if="formErrors.description" class="text-xs text-rose-500 font-semibold">{{ formErrors.description }}</p>
+
+          <!-- Rich Content Details / Features (Bilingual) -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs font-bold text-slate-700">
+                {{ isAr ? 'تفاصيل ومميزات الخدمة (عربي)' : 'Service Content / Features (Arabic)' }}
+              </label>
+              <textarea
+                v-model="form.contentAr"
+                rows="3"
+                dir="rtl"
+                placeholder="اكتب تفاصيل ومزايا الخدمة المعروضة للعملاء..."
+                class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 resize-none"
+              ></textarea>
+            </div>
+
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs font-bold text-slate-700">
+                {{ isAr ? 'تفاصيل ومميزات الخدمة (إنجليزي)' : 'Service Content / Features (English)' }}
+              </label>
+              <textarea
+                v-model="form.contentEn"
+                rows="3"
+                dir="ltr"
+                placeholder="Write service details and features in English..."
+                class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 resize-none"
+              ></textarea>
+            </div>
+          </div>
 
           <!-- Icon, Route, Display Order -->
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">

@@ -1,24 +1,19 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import {
   ChevronLeft,
   ChevronRight,
   Share2,
   Bookmark,
   Clock,
-  User,
   Play,
   CheckCircle,
-  ExternalLink,
   Sparkles,
   TrendingUp,
-  Volume2,
   Wifi,
   Battery,
   Calendar,
-  Layers,
-  ArrowRight,
-  ArrowLeft
+  Layers
 } from 'lucide-vue-next'
 import { resolveAttachmentUrl, handleImageError } from '@/utils/attachment'
 import type { ArticleDto } from '@/domain/models/article.model'
@@ -41,6 +36,13 @@ const props = withDefaults(defineProps<Props>(), {
 
 const previewLang = ref<'ar' | 'en'>(props.defaultLang)
 const isAr = computed(() => previewLang.value === 'ar')
+
+watch(
+  () => props.defaultLang,
+  (newVal) => {
+    if (newVal) previewLang.value = newVal
+  }
+)
 
 const toggleLang = () => {
   previewLang.value = previewLang.value === 'ar' ? 'en' : 'ar'
@@ -101,7 +103,7 @@ const formatDate = (dateStr?: string) => {
 
       <!-- Phone Screen Inside Chassis -->
       <div class="bg-white rounded-[40px] overflow-hidden flex flex-col h-[650px] relative border border-slate-200/60 shadow-inner">
-        
+
         <!-- Status Bar -->
         <div class="h-9 px-6 flex items-center justify-between text-[11px] font-semibold text-slate-900 z-20 shrink-0 select-none bg-white/80 backdrop-blur-xs">
           <span>09:41</span>
@@ -134,10 +136,8 @@ const formatDate = (dateStr?: string) => {
 
         <!-- Scrollable Screen Content Body -->
         <div class="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4 text-start scroll-smooth">
-          
-          <!-- ================= ARTICLE VIEW ================= -->
+
           <div v-if="type === 'article' && article" class="space-y-4">
-            <!-- Article Hero Image -->
             <div class="relative w-full h-44 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200/80 shadow-xs">
               <img
                 v-if="article.imageUrl"
@@ -157,7 +157,6 @@ const formatDate = (dateStr?: string) => {
               </span>
             </div>
 
-            <!-- Title & Metadata -->
             <div>
               <h2 class="text-sm font-black text-slate-900 leading-snug">
                 {{ isAr ? (article.titleAr || article.titleEn) : (article.titleEn || article.titleAr) }}
@@ -183,12 +182,10 @@ const formatDate = (dateStr?: string) => {
               </div>
             </div>
 
-            <!-- Excerpt Callout -->
             <div class="p-3 rounded-xl bg-emerald-50/70 border-s-4 border-emerald-500 text-[11px] text-emerald-950 font-medium leading-relaxed italic">
               {{ isAr ? (article.excerptAr || article.excerptEn) : (article.excerptEn || article.excerptAr) }}
             </div>
 
-            <!-- Full Article Content -->
             <div class="text-[11px] text-slate-700 leading-relaxed space-y-2.5">
               <div
                 v-if="isAr ? (article.contentAr || article.contentEn) : (article.contentEn || article.contentAr)"
@@ -201,7 +198,6 @@ const formatDate = (dateStr?: string) => {
               </div>
             </div>
 
-            <!-- Tags & Actions -->
             <div class="pt-2 flex flex-wrap gap-1.5">
               <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[9px] font-semibold">#Stocks</span>
               <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[9px] font-semibold">#Analysis</span>
@@ -209,9 +205,7 @@ const formatDate = (dateStr?: string) => {
             </div>
           </div>
 
-          <!-- ================= VIDEO VIEW ================= -->
           <div v-else-if="type === 'video' && video" class="space-y-4">
-            <!-- Video Player Mock -->
             <div class="relative w-full aspect-video rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 shadow-md group flex items-center justify-center">
               <img
                 v-if="video.thumbnailUrl"
@@ -222,21 +216,18 @@ const formatDate = (dateStr?: string) => {
               />
               <div v-else class="w-full h-full bg-gradient-to-tr from-slate-900 via-emerald-950 to-slate-900 opacity-90"></div>
 
-              <!-- Play Button -->
               <div class="absolute inset-0 flex items-center justify-center">
                 <div class="w-12 h-12 rounded-full bg-emerald-600/90 text-white flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
                   <Play class="w-5 h-5 ms-0.5 fill-current" />
                 </div>
               </div>
 
-              <!-- Video Bar Controls Overlay -->
               <div class="absolute bottom-2 inset-x-2 flex items-center justify-between text-[10px] text-white/90 bg-slate-950/70 backdrop-blur-md px-2.5 py-1 rounded-lg">
                 <span class="font-mono">00:00 / {{ formatDuration(video.durationSeconds) }}</span>
                 <span class="px-1.5 py-0.2 rounded bg-emerald-500/80 text-[9px] font-bold text-white uppercase">HD</span>
               </div>
             </div>
 
-            <!-- Title & Instructor -->
             <div>
               <div class="flex items-center gap-2 mb-1.5">
                 <span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[9px] font-bold">
@@ -281,6 +272,16 @@ const formatDate = (dateStr?: string) => {
 
           <!-- ================= SERVICE VIEW ================= -->
           <div v-else-if="type === 'service' && service" class="space-y-4">
+            <!-- Service Cover Image (if uploaded) -->
+            <div v-if="service.imageUrl" class="w-full h-36 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 shadow-2xs">
+              <img
+                :src="resolveAttachmentUrl(service.imageUrl, 'image')"
+                :alt="service.titleEn"
+                class="w-full h-full object-cover"
+                @error="handleImageError($event, 'image')"
+              />
+            </div>
+
             <!-- Service Header Card -->
             <div class="p-5 rounded-3xl bg-gradient-to-br from-emerald-600 to-teal-800 text-white shadow-lg flex flex-col items-center text-center gap-3">
               <div class="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-inner">
@@ -297,28 +298,28 @@ const formatDate = (dateStr?: string) => {
               </div>
 
               <span class="px-3 py-1 rounded-full bg-emerald-500/40 text-[9px] font-bold uppercase tracking-wider text-emerald-100">
-                {{ isAr ? 'خدمة متميزة' : 'Premium Advisory' }}
+                {{ isAr ? 'خدمة تعريفية' : 'Informational Service' }}
               </span>
             </div>
 
-            <!-- Features Checklist -->
+            <!-- Features / What this service offers -->
             <div class="bg-white rounded-2xl border border-slate-100 p-3.5 shadow-2xs space-y-2.5">
               <h3 class="text-xs font-black text-slate-800">
-                {{ isAr ? 'مميزات الخدمة:' : 'Service Highlights:' }}
+                {{ isAr ? 'ما تقدمه هذه الخدمة:' : 'What this service offers:' }}
               </h3>
 
               <div class="space-y-2 text-[11px] text-slate-600">
                 <div class="flex items-start gap-2">
                   <CheckCircle class="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                  <span>{{ isAr ? 'توصيات دورية مباشرة على مدار جلسات التداول' : 'Real-time market signals & alerts' }}</span>
+                  <span>{{ isAr ? 'تغطية تحليلية شاملة لأسواق المال والأسهم' : 'Comprehensive market intelligence & equity coverage' }}</span>
                 </div>
                 <div class="flex items-start gap-2">
                   <CheckCircle class="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                  <span>{{ isAr ? 'تحليلات تفصيلية للأسهم الأكثر نشاطاً' : 'Detailed equity reports & valuation' }}</span>
+                  <span>{{ isAr ? 'إحصاءات وبيانات مالية مدققة ومحدثة باستمرار' : 'Regular audited financial indicators & statistics' }}</span>
                 </div>
                 <div class="flex items-start gap-2">
                   <CheckCircle class="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                  <span>{{ isAr ? 'استشارات مباشرة مع نخبة من خبراء البورصة' : 'Direct advisory with accredited analysts' }}</span>
+                  <span>{{ isAr ? 'توجيهات استثمارية وإرشادية مبنية على معايير مهنية' : 'Professional guidance based on verified market standards' }}</span>
                 </div>
               </div>
             </div>
@@ -326,19 +327,21 @@ const formatDate = (dateStr?: string) => {
             <!-- Full Service Content -->
             <div
               v-if="isAr ? (service.contentAr || service.contentEn) : (service.contentEn || service.contentAr)"
-              class="p-3 rounded-2xl bg-slate-50 border border-slate-100 text-[11px] text-slate-700 leading-relaxed"
+              class="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 text-[11px] text-slate-700 leading-relaxed"
               v-html="isAr ? (service.contentAr || service.contentEn) : (service.contentEn || service.contentAr)"
             ></div>
 
-            <!-- Primary Mobile CTA -->
-            <div class="pt-2">
-              <button
-                type="button"
-                class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
-              >
-                <span>{{ isAr ? 'طلب الخدمة الآن' : 'Subscribe to Service' }}</span>
-                <component :is="isAr ? ArrowLeft : ArrowRight" class="w-3.5 h-3.5" />
-              </button>
+            <!-- Informational Service Note (Showcase only, no order/booking flow) -->
+            <div class="p-3.5 rounded-2xl bg-emerald-50/90 border border-emerald-100 flex items-start gap-2.5 text-emerald-950">
+              <div class="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                <CheckCircle class="w-3.5 h-3.5" />
+              </div>
+              <div class="text-[10px] leading-relaxed">
+                <p class="font-bold text-emerald-900">{{ isAr ? 'خدمة تعريفية وإرشادية للعملاء' : 'Client Informational & Guidance Service' }}</p>
+                <p class="text-emerald-700/90 text-[9px] mt-0.5">
+                  {{ isAr ? 'هذا المحتوى متاح لاطلاع وتعريف المستثمرين بقدرات المنصة ولا يتطلب أي طلب أو شراء.' : 'Showcased to introduce investors to our platform capabilities with no ordering or purchase required.' }}
+                </p>
+              </div>
             </div>
           </div>
 

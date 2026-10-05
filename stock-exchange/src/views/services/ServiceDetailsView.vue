@@ -14,13 +14,15 @@ import {
   XCircle,
   FileText,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  X
 } from 'lucide-vue-next'
 import AppShell from '@/components/layout/AppShell.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import StatusBadge from '@/components/ui/StatusBadge.vue'
 import DataState from '@/components/ui/DataState.vue'
 import MobileDeviceFrame from '@/components/mobile-preview/MobileDeviceFrame.vue'
+import ImageUploader from '@/components/forms/ImageUploader.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { useI18n } from 'vue-i18n'
 import { coreServices } from '@/di'
@@ -78,6 +80,78 @@ const handleDelete = async () => {
   }
 }
 
+// Edit Modal State & Logic
+const isEditModalOpen = ref(false)
+const isSubmitting = ref(false)
+
+const form = ref({
+  titleEn: '',
+  titleAr: '',
+  descriptionEn: '',
+  descriptionAr: '',
+  contentEn: '',
+  contentAr: '',
+  iconName: 'TrendingUp',
+  imageUrl: '',
+  linkRoute: '',
+  displayOrder: 1,
+  isActive: true
+})
+
+const openEditModal = () => {
+  if (!service.value) return
+  form.value = {
+    titleEn: service.value.titleEn || '',
+    titleAr: service.value.titleAr || '',
+    descriptionEn: service.value.descriptionEn || '',
+    descriptionAr: service.value.descriptionAr || '',
+    contentEn: service.value.contentEn || '',
+    contentAr: service.value.contentAr || '',
+    iconName: service.value.iconName || 'TrendingUp',
+    imageUrl: service.value.imageUrl || '',
+    linkRoute: service.value.linkRoute || '',
+    displayOrder: service.value.displayOrder ?? 1,
+    isActive: service.value.isActive ?? true
+  }
+  isEditModalOpen.value = true
+}
+
+const handleSaveEdit = async () => {
+  if (!form.value.titleEn.trim() && !form.value.titleAr.trim()) {
+    toast.error(isAr.value ? 'يرجى إدخال عنوان الخدمة' : 'Service title is required')
+    return
+  }
+  if (!form.value.descriptionEn.trim() && !form.value.descriptionAr.trim()) {
+    toast.error(isAr.value ? 'يرجى إدخال وصف الخدمة' : 'Service description is required')
+    return
+  }
+
+  isSubmitting.value = true
+  try {
+    await coreServices.services.update(serviceId, {
+      titleEn: form.value.titleEn.trim() || form.value.titleAr.trim(),
+      titleAr: form.value.titleAr.trim() || form.value.titleEn.trim(),
+      descriptionEn: form.value.descriptionEn.trim() || form.value.descriptionAr.trim(),
+      descriptionAr: form.value.descriptionAr.trim() || form.value.descriptionEn.trim(),
+      contentEn: form.value.contentEn.trim() || undefined,
+      contentAr: form.value.contentAr.trim() || undefined,
+      iconName: form.value.iconName.trim() || 'TrendingUp',
+      imageUrl: form.value.imageUrl.trim() || null,
+      linkRoute: form.value.linkRoute.trim() || null,
+      displayOrder: Number(form.value.displayOrder) || 1,
+      isActive: Boolean(form.value.isActive)
+    })
+    toast.success(isAr.value ? 'تم حفظ تعديلات الخدمة بنجاح' : 'Service updated successfully')
+    isEditModalOpen.value = false
+    await loadService()
+  } catch (err: unknown) {
+    const appErr = err as AppError
+    toast.error(appErr?.message || (isAr.value ? 'فشل حفظ التعديلات' : 'Failed to update service'))
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
 onMounted(() => {
   loadService()
 })
@@ -90,7 +164,7 @@ onMounted(() => {
       <!-- Top Header & Actions -->
       <PageHeader
         :title="isAr ? (service?.titleAr || service?.titleEn || 'تفاصيل الخدمة') : (service?.titleEn || service?.titleAr || 'Service Details')"
-        :description="isAr ? 'مراجعة بيانات الخدمة ومميزاتها ومعاينتها على تطبيق الجوال' : 'Inspect service features, routes, and Flutter mobile preview'"
+        :description="isAr ? 'عرض ومراجعة مميزات الخدمة التعريفية المقدمة للعملاء ومعاينتها على تطبيق الجوال' : 'Review informational service features showcased to clients and preview on mobile'"
       >
         <template #actions>
           <div class="flex items-center gap-2">
@@ -101,6 +175,16 @@ onMounted(() => {
             >
               <component :is="isAr ? ArrowRight : ArrowLeft" class="w-3.5 h-3.5" />
               {{ isAr ? 'العودة للخدمات' : 'Back to Services' }}
+            </button>
+
+            <button
+              v-if="service"
+              type="button"
+              @click="openEditModal"
+              class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+            >
+              <Edit class="w-3.5 h-3.5" />
+              {{ isAr ? 'تعديل الخدمة' : 'Edit Service' }}
             </button>
 
             <button
@@ -274,6 +358,186 @@ onMounted(() => {
 
         </div>
       </DataState>
+
+      <!-- Edit Service Modal -->
+      <div
+        v-if="isEditModalOpen"
+        class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150"
+      >
+        <div class="bg-white rounded-3xl border border-slate-200 max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl flex flex-col gap-5">
+          <!-- Modal Header -->
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div>
+              <h3 class="text-sm font-black text-slate-900">
+                {{ isAr ? 'تعديل بيانات الخدمة' : 'Edit Service' }}
+              </h3>
+              <p class="text-xs text-slate-400 mt-0.5">
+                {{ isAr ? 'تعديل التفاصيل والمميزات المعروضة للعملاء' : 'Update details and features showcased to clients' }}
+              </p>
+            </div>
+            <button
+              type="button"
+              @click="isEditModalOpen = false"
+              class="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+            >
+              <X class="w-4 h-4" />
+            </button>
+          </div>
+
+          <!-- Form Body -->
+          <form @submit.prevent="handleSaveEdit" class="flex flex-col gap-4">
+            <!-- Titles (Bilingual) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-bold text-slate-700">
+                  {{ isAr ? 'عنوان الخدمة (عربي) *' : 'Title (Arabic) *' }}
+                </label>
+                <input
+                  v-model="form.titleAr"
+                  type="text"
+                  dir="rtl"
+                  class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10"
+                />
+              </div>
+
+              <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-bold text-slate-700">
+                  {{ isAr ? 'عنوان الخدمة (إنجليزي) *' : 'Title (English) *' }}
+                </label>
+                <input
+                  v-model="form.titleEn"
+                  type="text"
+                  dir="ltr"
+                  class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10"
+                />
+              </div>
+            </div>
+
+            <!-- Descriptions (Bilingual) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-bold text-slate-700">
+                  {{ isAr ? 'الوصف المختصر (عربي) *' : 'Description (Arabic) *' }}
+                </label>
+                <textarea
+                  v-model="form.descriptionAr"
+                  rows="3"
+                  dir="rtl"
+                  class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 resize-none"
+                ></textarea>
+              </div>
+
+              <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-bold text-slate-700">
+                  {{ isAr ? 'الوصف المختصر (إنجليزي) *' : 'Description (English) *' }}
+                </label>
+                <textarea
+                  v-model="form.descriptionEn"
+                  rows="3"
+                  dir="ltr"
+                  class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 resize-none"
+                ></textarea>
+              </div>
+            </div>
+
+            <!-- Rich Content Details / Features (Bilingual) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-bold text-slate-700">
+                  {{ isAr ? 'تفاصيل ومميزات الخدمة (عربي)' : 'Service Content / Features (Arabic)' }}
+                </label>
+                <textarea
+                  v-model="form.contentAr"
+                  rows="4"
+                  dir="rtl"
+                  class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 resize-none"
+                ></textarea>
+              </div>
+
+              <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-bold text-slate-700">
+                  {{ isAr ? 'تفاصيل ومميزات الخدمة (إنجليزي)' : 'Service Content / Features (English)' }}
+                </label>
+                <textarea
+                  v-model="form.contentEn"
+                  rows="4"
+                  dir="ltr"
+                  class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 resize-none"
+                ></textarea>
+              </div>
+            </div>
+
+            <!-- Icon, Route, Display Order -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-bold text-slate-700">{{ isAr ? 'الأيقونة' : 'Icon Name' }}</label>
+                <input
+                  v-model="form.iconName"
+                  type="text"
+                  class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
+                />
+              </div>
+
+              <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-bold text-slate-700">{{ isAr ? 'المسار / الرابط' : 'Link Route' }}</label>
+                <input
+                  v-model="form.linkRoute"
+                  type="text"
+                  class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
+                />
+              </div>
+
+              <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-bold text-slate-700">{{ isAr ? 'ترتيب العرض' : 'Display Order' }}</label>
+                <input
+                  v-model.number="form.displayOrder"
+                  type="number"
+                  min="0"
+                  class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
+                />
+              </div>
+            </div>
+
+            <!-- Image Uploader -->
+            <ImageUploader
+              v-model="form.imageUrl"
+              :label="isAr ? 'صورة الغلاف' : 'Cover Image'"
+              :hint="isAr ? 'صورة معبرة عن الخدمة للمعاينة في التطبيق' : 'Informative service preview image'"
+            />
+
+            <!-- Active Toggle -->
+            <div class="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+              <div>
+                <span class="text-xs font-bold text-slate-800">{{ isAr ? 'حالة التفعيل' : 'Active Status' }}</span>
+                <p class="text-[11px] text-slate-400">{{ isAr ? 'تحديد إتاحة الخدمة في التطبيق' : 'Show or hide service on mobile' }}</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" v-model="form.isActive" class="sr-only peer" />
+                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+              </label>
+            </div>
+
+            <!-- Modal Actions Footer -->
+            <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                @click="isEditModalOpen = false"
+                class="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
+              >
+                {{ isAr ? 'إلغاء' : 'Cancel' }}
+              </button>
+              <button
+                type="submit"
+                :disabled="isSubmitting"
+                class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50"
+              >
+                <span v-if="isSubmitting">{{ isAr ? 'جاري الحفظ...' : 'Saving...' }}</span>
+                <span v-else>{{ isAr ? 'حفظ التعديلات' : 'Save Changes' }}</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
 
     </div>
   </AppShell>
