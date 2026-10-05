@@ -7,6 +7,7 @@ import type {
   UpdateServicePayload
 } from '@/domain/models/service.model'
 import type { HttpClient } from '@/infrastructure/http/http-client'
+import { ApiEndpoints } from '@/data/endpoints'
 
 export class ServiceRepository {
   private httpClient: HttpClient
@@ -16,7 +17,7 @@ export class ServiceRepository {
   }
 
   async getAll(params?: GetServicesParams): Promise<PagginatedResult<ServiceDto>> {
-    const response = await this.httpClient.get<ApiResponse<PagginatedResult<ServiceDto>>>('/services', {
+    const response = await this.httpClient.get<ApiResponse<PagginatedResult<ServiceDto>>>(ApiEndpoints.Services.Base, {
       params: {
         pageNumber: params?.pageNumber ?? 1,
         pageSize: params?.pageSize ?? 10,
@@ -34,7 +35,7 @@ export class ServiceRepository {
   }
 
   async getById(id: string): Promise<ServiceDto> {
-    const response = await this.httpClient.get<ApiResponse<ServiceDto>>(`/services/${id}`, {
+    const response = await this.httpClient.get<ApiResponse<ServiceDto>>(ApiEndpoints.Services.ById(id), {
       params: { applyLanguageFilter: false },
       requiresAuth: true
     })
@@ -46,7 +47,7 @@ export class ServiceRepository {
   }
 
   async create(payload: CreateServicePayload): Promise<ServiceDto> {
-    const response = await this.httpClient.post<ApiResponse<ServiceDto>>('/services', payload, {
+    const response = await this.httpClient.post<ApiResponse<ServiceDto>>(ApiEndpoints.Services.Base, payload, {
       requiresAuth: true
     })
     const raw = response.data as unknown
@@ -57,7 +58,7 @@ export class ServiceRepository {
   }
 
   async update(id: string, payload: UpdateServicePayload): Promise<ServiceDto> {
-    const response = await this.httpClient.put<ApiResponse<ServiceDto>>(`/services/${id}`, payload, {
+    const response = await this.httpClient.put<ApiResponse<ServiceDto>>(ApiEndpoints.Services.ById(id), payload, {
       requiresAuth: true
     })
     const raw = response.data as unknown
@@ -68,7 +69,7 @@ export class ServiceRepository {
   }
 
   async delete(id: string): Promise<boolean> {
-    const response = await this.httpClient.delete<ApiResponse<boolean>>(`/services/${id}`, {
+    const response = await this.httpClient.delete<ApiResponse<boolean>>(ApiEndpoints.Services.ById(id), {
       requiresAuth: true
     })
     return Boolean((response.data as unknown as { data?: boolean })?.data ?? true)

@@ -17,6 +17,7 @@ import { VideoRepository } from '@/data/repositories/video.repository'
 import { ServiceRepository } from '@/data/repositories/service.repository'
 import { ExpertRepository } from '@/data/repositories/expert.repository'
 import { NewsRepository } from '@/data/repositories/news.repository'
+import { OverviewRepository } from '@/data/repositories/overview.repository'
 
 // Register Core Infrastructure Singletons
 container.register(TokenStore, () => new TokenStore())
@@ -75,6 +76,10 @@ container.register(
   NewsRepository,
   () => new NewsRepository(container.resolve(HttpClient))
 )
+container.register(
+  OverviewRepository,
+  () => new OverviewRepository(container.resolve(HttpClient))
+)
 
 export const coreServices = {
   get tokenStore(): TokenStore {
@@ -127,6 +132,9 @@ export const coreServices = {
   },
   get news(): NewsRepository {
     return container.resolve(NewsRepository)
+  },
+  get overview(): OverviewRepository {
+    return container.resolve(OverviewRepository)
   },
 }
 

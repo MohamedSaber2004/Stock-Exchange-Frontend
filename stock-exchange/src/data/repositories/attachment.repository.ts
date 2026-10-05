@@ -10,6 +10,7 @@ import type { IAttachmentRepository } from '@/domain/ports/attachment-repository
 import type { HttpClient } from '@/infrastructure/http/http-client'
 import type { TokenStore } from '@/infrastructure/storage/token-store'
 import { resolveAttachmentUrl as resolveUrlHelper } from '@/utils/attachment'
+import { ApiEndpoints } from '@/data/endpoints'
 
 export class AttachmentRepository implements IAttachmentRepository {
   private httpClient: HttpClient
@@ -27,7 +28,7 @@ export class AttachmentRepository implements IAttachmentRepository {
     formData.append('Place', String(payload.place ?? 0))
 
     const response = await this.httpClient.post<ApiResponse<string>>(
-      '/attachments/upload',
+      ApiEndpoints.Attachments.Upload,
       formData,
       { requiresAuth: true }
     )
@@ -53,7 +54,7 @@ export class AttachmentRepository implements IAttachmentRepository {
     formData.append('Place', String(payload.place ?? 0))
 
     const response = await this.httpClient.post<ApiResponse<string>>(
-      '/attachments/upload-multiple',
+      ApiEndpoints.Attachments.UploadMultiple,
       formData,
       { requiresAuth: true }
     )
@@ -82,7 +83,7 @@ export class AttachmentRepository implements IAttachmentRepository {
     formData.append('Place', String(payload.place ?? 0))
 
     const response = await this.httpClient.put<ApiResponse<string>>(
-      '/attachments/update',
+      ApiEndpoints.Attachments.Update,
       formData,
       { requiresAuth: true }
     )
@@ -137,7 +138,7 @@ export class AttachmentRepository implements IAttachmentRepository {
     const mediaType = payload.mediaType ?? MediaType.File
     const filePlace = payload.filePlace ?? 0
     const baseUrl = this.httpClient.getBaseUrl()
-    const apiDownloadUrl = `${baseUrl}/attachments/download?FileName=${encodeURIComponent(
+    const apiDownloadUrl = `${baseUrl}${ApiEndpoints.Attachments.Download}?FileName=${encodeURIComponent(
       payload.fileName
     )}&FilePlace=${filePlace}&MediaType=${mediaType}`
 

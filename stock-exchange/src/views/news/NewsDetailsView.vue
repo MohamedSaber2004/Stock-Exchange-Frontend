@@ -8,18 +8,13 @@ import {
   Trash2,
   Calendar,
   Clock,
-  Newspaper,
   Tag,
   Star,
   CheckCircle2,
-  XCircle,
-  FileText,
-  Sparkles,
-  RefreshCw
+  XCircle
 } from 'lucide-vue-next'
 import AppShell from '@/components/layout/AppShell.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
-import StatusBadge from '@/components/ui/StatusBadge.vue'
 import DataState from '@/components/ui/DataState.vue'
 import MobileDeviceFrame from '@/components/mobile-preview/MobileDeviceFrame.vue'
 import { useFeedback } from '@/composables/useFeedback'

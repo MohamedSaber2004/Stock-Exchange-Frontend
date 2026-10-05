@@ -7,6 +7,7 @@ import type {
   UpdateNewsPayload
 } from '@/domain/models/news.model'
 import type { HttpClient } from '@/infrastructure/http/http-client'
+import { ApiEndpoints } from '@/data/endpoints'
 
 export class NewsRepository {
   private httpClient: HttpClient
@@ -16,7 +17,7 @@ export class NewsRepository {
   }
 
   async getAll(params?: GetNewsParams): Promise<PagginatedResult<NewsDto>> {
-    const response = await this.httpClient.get<ApiResponse<PagginatedResult<NewsDto>>>('/news', {
+    const response = await this.httpClient.get<ApiResponse<PagginatedResult<NewsDto>>>(ApiEndpoints.News.Base, {
       params: {
         pageNumber: params?.pageNumber ?? 1,
         pageSize: params?.pageSize ?? 10,
@@ -35,7 +36,7 @@ export class NewsRepository {
   }
 
   async getById(id: string): Promise<NewsDto> {
-    const response = await this.httpClient.get<ApiResponse<NewsDto>>(`/news/${id}`, {
+    const response = await this.httpClient.get<ApiResponse<NewsDto>>(ApiEndpoints.News.ById(id), {
       params: { applyLanguageFilter: false },
       requiresAuth: true
     })
@@ -51,7 +52,7 @@ export class NewsRepository {
       ...payload,
       imageUrl: payload.imageUrl ? payload.imageUrl : null
     }
-    const response = await this.httpClient.post<ApiResponse<NewsDto>>('/news', cleanPayload, {
+    const response = await this.httpClient.post<ApiResponse<NewsDto>>(ApiEndpoints.News.Base, cleanPayload, {
       requiresAuth: true
     })
     const raw = response.data as unknown
@@ -66,7 +67,7 @@ export class NewsRepository {
       ...payload,
       imageUrl: payload.imageUrl ? payload.imageUrl : null
     }
-    const response = await this.httpClient.put<ApiResponse<NewsDto>>(`/news/${id}`, cleanPayload, {
+    const response = await this.httpClient.put<ApiResponse<NewsDto>>(ApiEndpoints.News.ById(id), cleanPayload, {
       requiresAuth: true
     })
     const raw = response.data as unknown
@@ -77,7 +78,7 @@ export class NewsRepository {
   }
 
   async delete(id: string): Promise<boolean> {
-    const response = await this.httpClient.delete<ApiResponse<boolean>>(`/news/${id}`, {
+    const response = await this.httpClient.delete<ApiResponse<boolean>>(ApiEndpoints.News.ById(id), {
       requiresAuth: true
     })
     return Boolean((response.data as unknown as { data?: boolean })?.data ?? true)

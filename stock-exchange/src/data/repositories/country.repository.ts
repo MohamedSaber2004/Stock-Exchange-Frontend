@@ -8,6 +8,7 @@ import type {
 import type { PagginatedResult } from '@/domain/models/user.model'
 import type { ICountryRepository } from '@/domain/ports/country-repository.port'
 import type { HttpClient } from '@/infrastructure/http/http-client'
+import { ApiEndpoints } from '@/data/endpoints'
 
 export class CountryRepository implements ICountryRepository {
   private httpClient: HttpClient
@@ -29,7 +30,7 @@ export class CountryRepository implements ICountryRepository {
   }
 
   async getAll(): Promise<CountryDto[]> {
-    const response = await this.httpClient.get<ApiResponse<unknown>>('/countries', {
+    const response = await this.httpClient.get<ApiResponse<unknown>>(ApiEndpoints.Countries.Base, {
       requiresAuth: false
     })
 
@@ -55,7 +56,7 @@ export class CountryRepository implements ICountryRepository {
     if (params?.pageSize) queryParams.PageSize = params.pageSize
 
     const response = await this.httpClient.get<ApiResponse<PagginatedResult<Record<string, unknown>>>>(
-      '/countries/paginated',
+      ApiEndpoints.Countries.Paginated,
       {
         params: queryParams,
         requiresAuth: true
@@ -88,28 +89,28 @@ export class CountryRepository implements ICountryRepository {
   }
 
   async getById(id: string): Promise<CountryDto> {
-    const response = await this.httpClient.get<ApiResponse<Record<string, unknown>>>(`/countries/${id}`, {
+    const response = await this.httpClient.get<ApiResponse<Record<string, unknown>>>(ApiEndpoints.Countries.ById(id), {
       requiresAuth: true
     })
     return this.mapCountryDto(response.data || {})
   }
 
   async create(payload: CreateCountryPayload): Promise<CountryDto> {
-    const response = await this.httpClient.post<ApiResponse<Record<string, unknown>>>('/countries', payload, {
+    const response = await this.httpClient.post<ApiResponse<Record<string, unknown>>>(ApiEndpoints.Countries.Base, payload, {
       requiresAuth: true
     })
     return this.mapCountryDto(response.data || {})
   }
 
   async update(id: string, payload: UpdateCountryPayload): Promise<CountryDto> {
-    const response = await this.httpClient.put<ApiResponse<Record<string, unknown>>>(`/countries/${id}`, payload, {
+    const response = await this.httpClient.put<ApiResponse<Record<string, unknown>>>(ApiEndpoints.Countries.ById(id), payload, {
       requiresAuth: true
     })
     return this.mapCountryDto(response.data || {})
   }
 
   async delete(id: string): Promise<boolean> {
-    const response = await this.httpClient.delete<ApiResponse<boolean>>(`/countries/${id}`, {
+    const response = await this.httpClient.delete<ApiResponse<boolean>>(ApiEndpoints.Countries.ById(id), {
       requiresAuth: true
     })
     return Boolean(response.data ?? true)

@@ -12,6 +12,7 @@ import type {
   UpdateArticlePayload
 } from '@/domain/models/article.model'
 import type { HttpClient } from '@/infrastructure/http/http-client'
+import { ApiEndpoints } from '@/data/endpoints'
 
 export class ArticleRepository {
   private httpClient: HttpClient
@@ -31,7 +32,7 @@ export class ArticleRepository {
       applyLanguageFilter = paramsOrFilter.applyLanguageFilter ?? false
     }
 
-    const response = await this.httpClient.get<ApiResponse<ArticleCategory[]>>('/article-categories', {
+    const response = await this.httpClient.get<ApiResponse<ArticleCategory[]>>(ApiEndpoints.ArticleCategories.Base, {
       params: { search, applyLanguageFilter },
       requiresAuth: true
     })
@@ -44,21 +45,21 @@ export class ArticleRepository {
   }
 
   async createCategory(payload: CreateArticleCategoryPayload): Promise<ArticleCategory> {
-    const response = await this.httpClient.post<ApiResponse<ArticleCategory>>('/article-categories', payload, {
+    const response = await this.httpClient.post<ApiResponse<ArticleCategory>>(ApiEndpoints.ArticleCategories.Base, payload, {
       requiresAuth: true
     })
     return (response.data as unknown as { data?: ArticleCategory })?.data || (response.data as unknown as ArticleCategory)
   }
 
   async updateCategory(id: string, payload: UpdateArticleCategoryPayload): Promise<ArticleCategory> {
-    const response = await this.httpClient.put<ApiResponse<ArticleCategory>>(`/article-categories/${id}`, payload, {
+    const response = await this.httpClient.put<ApiResponse<ArticleCategory>>(ApiEndpoints.ArticleCategories.ById(id), payload, {
       requiresAuth: true
     })
     return (response.data as unknown as { data?: ArticleCategory })?.data || (response.data as unknown as ArticleCategory)
   }
 
   async deleteCategory(id: string): Promise<boolean> {
-    const response = await this.httpClient.delete<ApiResponse<boolean>>(`/article-categories/${id}`, {
+    const response = await this.httpClient.delete<ApiResponse<boolean>>(ApiEndpoints.ArticleCategories.ById(id), {
       requiresAuth: true
     })
     return Boolean(response.data ?? true)
@@ -66,7 +67,7 @@ export class ArticleRepository {
 
   async getAll(params?: GetArticlesParams): Promise<PagginatedResult<ArticleDto>> {
     const categoryId = (params?.articleCategoryId || params?.categoryId)?.trim() || undefined
-    const response = await this.httpClient.get<ApiResponse<PagginatedResult<ArticleDto>>>('/articles', {
+    const response = await this.httpClient.get<ApiResponse<PagginatedResult<ArticleDto>>>(ApiEndpoints.Articles.Base, {
       params: {
         pageNumber: params?.pageNumber ?? 1,
         pageSize: params?.pageSize ?? 10,
@@ -86,7 +87,7 @@ export class ArticleRepository {
   }
 
   async getById(id: string): Promise<ArticleDto> {
-    const response = await this.httpClient.get<ApiResponse<ArticleDto>>(`/articles/${id}`, {
+    const response = await this.httpClient.get<ApiResponse<ArticleDto>>(ApiEndpoints.Articles.ById(id), {
       params: { applyLanguageFilter: false },
       requiresAuth: true
     })
@@ -103,7 +104,7 @@ export class ArticleRepository {
       categoryId: payload.categoryId ? payload.categoryId : null,
       imageUrl: payload.imageUrl ? payload.imageUrl : null
     }
-    const response = await this.httpClient.post<ApiResponse<ArticleDto>>('/articles', cleanPayload, {
+    const response = await this.httpClient.post<ApiResponse<ArticleDto>>(ApiEndpoints.Articles.Base, cleanPayload, {
       requiresAuth: true
     })
     const raw = response.data as unknown
@@ -119,7 +120,7 @@ export class ArticleRepository {
       categoryId: payload.categoryId ? payload.categoryId : null,
       imageUrl: payload.imageUrl ? payload.imageUrl : null
     }
-    const response = await this.httpClient.put<ApiResponse<ArticleDto>>(`/articles/${id}`, cleanPayload, {
+    const response = await this.httpClient.put<ApiResponse<ArticleDto>>(ApiEndpoints.Articles.ById(id), cleanPayload, {
       requiresAuth: true
     })
     const raw = response.data as unknown
@@ -130,7 +131,7 @@ export class ArticleRepository {
   }
 
   async delete(id: string): Promise<boolean> {
-    const response = await this.httpClient.delete<ApiResponse<boolean>>(`/articles/${id}`, {
+    const response = await this.httpClient.delete<ApiResponse<boolean>>(ApiEndpoints.Articles.ById(id), {
       requiresAuth: true
     })
     return Boolean((response.data as unknown as { data?: boolean })?.data ?? true)

@@ -6,27 +6,21 @@ import {
   ArrowRight,
   Edit,
   Trash2,
-  Play,
   Clock,
   User,
-  Star,
   CheckCircle2,
   XCircle,
   Video as VideoIcon,
-  Tag,
-  ShieldCheck,
-  Eye,
-  RefreshCw
+  ShieldCheck
 } from 'lucide-vue-next'
 import AppShell from '@/components/layout/AppShell.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
-import StatusBadge from '@/components/ui/StatusBadge.vue'
 import DataState from '@/components/ui/DataState.vue'
 import MobileDeviceFrame from '@/components/mobile-preview/MobileDeviceFrame.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { useI18n } from 'vue-i18n'
 import { coreServices } from '@/di'
-import { resolveAttachmentUrl, handleImageError } from '@/utils/attachment'
+import { resolveAttachmentUrl } from '@/utils/attachment'
 import type { VideoDto } from '@/domain/models/video.model'
 import type { AppError } from '@/domain/models/common.model'
 

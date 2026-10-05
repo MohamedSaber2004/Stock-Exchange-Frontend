@@ -7,6 +7,7 @@ import type {
   UpdateExpertPayload
 } from '@/domain/models/expert.model'
 import type { HttpClient } from '@/infrastructure/http/http-client'
+import { ApiEndpoints } from '@/data/endpoints'
 
 export class ExpertRepository {
   private httpClient: HttpClient
@@ -16,7 +17,7 @@ export class ExpertRepository {
   }
 
   async getAll(params?: GetExpertsParams): Promise<PagginatedResult<ExpertDto>> {
-    const response = await this.httpClient.get<ApiResponse<PagginatedResult<ExpertDto>>>('/experts', {
+    const response = await this.httpClient.get<ApiResponse<PagginatedResult<ExpertDto>>>(ApiEndpoints.Experts.Base, {
       params: {
         pageNumber: params?.pageNumber ?? 1,
         pageSize: params?.pageSize ?? 10,
@@ -35,7 +36,7 @@ export class ExpertRepository {
   }
 
   async getById(id: string): Promise<ExpertDto> {
-    const response = await this.httpClient.get<ApiResponse<ExpertDto>>(`/experts/${id}`, {
+    const response = await this.httpClient.get<ApiResponse<ExpertDto>>(ApiEndpoints.Experts.ById(id), {
       params: { applyLanguageFilter: false },
       requiresAuth: true
     })
@@ -47,7 +48,7 @@ export class ExpertRepository {
   }
 
   async create(payload: CreateExpertPayload): Promise<ExpertDto> {
-    const response = await this.httpClient.post<ApiResponse<ExpertDto>>('/experts', payload, {
+    const response = await this.httpClient.post<ApiResponse<ExpertDto>>(ApiEndpoints.Experts.Base, payload, {
       requiresAuth: true
     })
     const raw = response.data as unknown
@@ -58,7 +59,7 @@ export class ExpertRepository {
   }
 
   async update(id: string, payload: UpdateExpertPayload): Promise<ExpertDto> {
-    const response = await this.httpClient.put<ApiResponse<ExpertDto>>(`/experts/${id}`, payload, {
+    const response = await this.httpClient.put<ApiResponse<ExpertDto>>(ApiEndpoints.Experts.ById(id), payload, {
       requiresAuth: true
     })
     const raw = response.data as unknown
@@ -69,7 +70,7 @@ export class ExpertRepository {
   }
 
   async delete(id: string): Promise<boolean> {
-    const response = await this.httpClient.delete<ApiResponse<boolean>>(`/experts/${id}`, {
+    const response = await this.httpClient.delete<ApiResponse<boolean>>(ApiEndpoints.Experts.ById(id), {
       requiresAuth: true
     })
     return Boolean((response.data as unknown as { data?: boolean })?.data ?? true)

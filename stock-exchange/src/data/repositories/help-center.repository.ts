@@ -10,6 +10,7 @@ import type {
 } from '@/domain/models/help-center.model'
 import type { IHelpCenterRepository } from '@/domain/ports/help-center-repository.port'
 import type { HttpClient } from '@/infrastructure/http/http-client'
+import { ApiEndpoints } from '@/data/endpoints'
 
 export class HelpCenterRepository implements IHelpCenterRepository {
   private httpClient: HttpClient
@@ -42,7 +43,7 @@ export class HelpCenterRepository implements IHelpCenterRepository {
 
   // --- Categories ---
   async getCategories(applyLanguageFilter: boolean = false): Promise<HelpCenterCategoryDto[]> {
-    const response = await this.httpClient.get<ApiResponse<unknown>>('/help-center-categories', {
+    const response = await this.httpClient.get<ApiResponse<unknown>>(ApiEndpoints.HelpCenterCategories.Base, {
       params: { applyLanguageFilter },
       requiresAuth: true
     })
@@ -56,7 +57,7 @@ export class HelpCenterRepository implements IHelpCenterRepository {
   }
 
   async getCategoryById(id: string, applyLanguageFilter: boolean = false): Promise<HelpCenterCategoryDto> {
-    const response = await this.httpClient.get<ApiResponse<Record<string, unknown>>>(`/help-center-categories/${id}`, {
+    const response = await this.httpClient.get<ApiResponse<Record<string, unknown>>>(ApiEndpoints.HelpCenterCategories.ById(id), {
       params: { applyLanguageFilter },
       requiresAuth: true
     })
@@ -64,7 +65,7 @@ export class HelpCenterRepository implements IHelpCenterRepository {
   }
 
   async createCategory(payload: CreateHelpCenterCategoryPayload): Promise<HelpCenterCategoryDto> {
-    const response = await this.httpClient.post<ApiResponse<Record<string, unknown>>>('/help-center-categories', payload, {
+    const response = await this.httpClient.post<ApiResponse<Record<string, unknown>>>(ApiEndpoints.HelpCenterCategories.Base, payload, {
       requiresAuth: true
     })
     return this.mapCategory(response.data || {})
@@ -72,14 +73,14 @@ export class HelpCenterRepository implements IHelpCenterRepository {
 
   async updateCategory(id: string, payload: UpdateHelpCenterCategoryPayload): Promise<HelpCenterCategoryDto> {
     const body = { ...payload, id }
-    const response = await this.httpClient.put<ApiResponse<Record<string, unknown>>>(`/help-center-categories/${id}`, body, {
+    const response = await this.httpClient.put<ApiResponse<Record<string, unknown>>>(ApiEndpoints.HelpCenterCategories.ById(id), body, {
       requiresAuth: true
     })
     return this.mapCategory(response.data || {})
   }
 
   async deleteCategory(id: string): Promise<boolean> {
-    const response = await this.httpClient.delete<ApiResponse<boolean>>(`/help-center-categories/${id}`, {
+    const response = await this.httpClient.delete<ApiResponse<boolean>>(ApiEndpoints.HelpCenterCategories.ById(id), {
       requiresAuth: true
     })
     return Boolean(response.data ?? true)
@@ -92,7 +93,7 @@ export class HelpCenterRepository implements IHelpCenterRepository {
     if (params?.search) queryParams.Search = params.search
     queryParams.applyLanguageFilter = params?.applyLanguageFilter ?? false
 
-    const response = await this.httpClient.get<ApiResponse<unknown>>('/help-center', {
+    const response = await this.httpClient.get<ApiResponse<unknown>>(ApiEndpoints.HelpCenter.Base, {
       params: queryParams,
       requiresAuth: true
     })
@@ -106,7 +107,7 @@ export class HelpCenterRepository implements IHelpCenterRepository {
   }
 
   async getById(id: string, applyLanguageFilter: boolean = false): Promise<HelpCenterDto> {
-    const response = await this.httpClient.get<ApiResponse<Record<string, unknown>>>(`/help-center/${id}`, {
+    const response = await this.httpClient.get<ApiResponse<Record<string, unknown>>>(ApiEndpoints.HelpCenter.ById(id), {
       params: { applyLanguageFilter },
       requiresAuth: true
     })
@@ -114,7 +115,7 @@ export class HelpCenterRepository implements IHelpCenterRepository {
   }
 
   async create(payload: CreateHelpCenterPayload): Promise<HelpCenterDto> {
-    const response = await this.httpClient.post<ApiResponse<Record<string, unknown>>>('/help-center', payload, {
+    const response = await this.httpClient.post<ApiResponse<Record<string, unknown>>>(ApiEndpoints.HelpCenter.Base, payload, {
       requiresAuth: true
     })
     return this.mapHelpCenter(response.data || {})
@@ -122,14 +123,14 @@ export class HelpCenterRepository implements IHelpCenterRepository {
 
   async update(id: string, payload: UpdateHelpCenterPayload): Promise<HelpCenterDto> {
     const body = { ...payload, id }
-    const response = await this.httpClient.put<ApiResponse<Record<string, unknown>>>(`/help-center/${id}`, body, {
+    const response = await this.httpClient.put<ApiResponse<Record<string, unknown>>>(ApiEndpoints.HelpCenter.ById(id), body, {
       requiresAuth: true
     })
     return this.mapHelpCenter(response.data || {})
   }
 
   async delete(id: string): Promise<boolean> {
-    const response = await this.httpClient.delete<ApiResponse<boolean>>(`/help-center/${id}`, {
+    const response = await this.httpClient.delete<ApiResponse<boolean>>(ApiEndpoints.HelpCenter.ById(id), {
       requiresAuth: true
     })
     return Boolean(response.data ?? true)

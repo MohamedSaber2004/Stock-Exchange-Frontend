@@ -8,6 +8,7 @@ import type {
 } from '@/domain/models/activity-log.model'
 import type { IActivityLogRepository } from '@/domain/ports/activity-log-repository.port'
 import type { HttpClient } from '@/infrastructure/http/http-client'
+import { ApiEndpoints } from '@/data/endpoints'
 
 export class ActivityLogRepository implements IActivityLogRepository {
   private httpClient: HttpClient
@@ -78,7 +79,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
     if (params?.pageSize) queryParams.PageSize = params.pageSize
 
     const response = await this.httpClient.get<ApiResponse<Record<string, unknown>>>(
-      '/activity-logs',
+      ApiEndpoints.ActivityLogs.Base,
       {
         params: queryParams,
         requiresAuth: true
@@ -112,7 +113,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
 
   async getSummary(): Promise<ActivityLogsSummaryDto> {
     const response = await this.httpClient.get<ApiResponse<Record<string, unknown>>>(
-      '/activity-logs/summary',
+      ApiEndpoints.ActivityLogs.Summary,
       {
         requiresAuth: true
       }
@@ -122,7 +123,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
 
   async getById(id: string): Promise<ActivityLogDto> {
     const response = await this.httpClient.get<ApiResponse<Record<string, unknown>>>(
-      `/activity-logs/${id}`,
+      ApiEndpoints.ActivityLogs.ById(id),
       {
         requiresAuth: true
       }

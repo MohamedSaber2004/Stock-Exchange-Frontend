@@ -11,6 +11,7 @@ import type {
 import { UserType } from '@/domain/models/user.model'
 import type { IUserRepository } from '@/domain/ports/user-repository.port'
 import type { HttpClient } from '@/infrastructure/http/http-client'
+import { ApiEndpoints } from '@/data/endpoints'
 
 export class UserRepository implements IUserRepository {
   private httpClient: HttpClient
@@ -76,7 +77,7 @@ export class UserRepository implements IUserRepository {
     if (query?.pageNumber) params.PageNumber = query.pageNumber
     if (query?.pageSize) params.PageSize = query.pageSize
 
-    const response = await this.httpClient.get<ApiResponse<Record<string, unknown>>>('/users', {
+    const response = await this.httpClient.get<ApiResponse<Record<string, unknown>>>(ApiEndpoints.Users.Base, {
       params,
       requiresAuth: true,
     })
@@ -96,7 +97,7 @@ export class UserRepository implements IUserRepository {
   }
 
   async getById(id: string): Promise<UserDetailsDto> {
-    const response = await this.httpClient.get<ApiResponse<Record<string, unknown>>>(`/users/${id}`, {
+    const response = await this.httpClient.get<ApiResponse<Record<string, unknown>>>(ApiEndpoints.Users.ById(id), {
       requiresAuth: true,
     })
 
@@ -108,7 +109,7 @@ export class UserRepository implements IUserRepository {
   }
 
   async create(command: AddUserCommand): Promise<UserDto> {
-    const response = await this.httpClient.post<ApiResponse<Record<string, unknown>>>('/users', command, {
+    const response = await this.httpClient.post<ApiResponse<Record<string, unknown>>>(ApiEndpoints.Users.Base, command, {
       requiresAuth: true,
     })
 
@@ -121,7 +122,7 @@ export class UserRepository implements IUserRepository {
 
   async update(id: string, command: UpdateUserCommand): Promise<UserDto> {
     const response = await this.httpClient.put<ApiResponse<Record<string, unknown>>>(
-      `/users/${id}`,
+      ApiEndpoints.Users.ById(id),
       { ...command, id },
       { requiresAuth: true }
     )
@@ -134,7 +135,7 @@ export class UserRepository implements IUserRepository {
   }
 
   async delete(id: string): Promise<boolean> {
-    const response = await this.httpClient.delete<ApiResponse<boolean>>(`/users/${id}`, {
+    const response = await this.httpClient.delete<ApiResponse<boolean>>(ApiEndpoints.Users.ById(id), {
       requiresAuth: true,
     })
     return Boolean(response.success)
@@ -142,7 +143,7 @@ export class UserRepository implements IUserRepository {
 
   async changePassword(id: string, request: AdminChangePasswordRequest): Promise<boolean> {
     const response = await this.httpClient.put<ApiResponse<boolean>>(
-      `/users/${id}/change-password`,
+      ApiEndpoints.Users.ChangePassword(id),
       request,
       { requiresAuth: true }
     )

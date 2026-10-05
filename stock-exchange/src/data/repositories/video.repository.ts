@@ -12,6 +12,7 @@ import type {
   UpdateVideoPayload
 } from '@/domain/models/video.model'
 import type { HttpClient } from '@/infrastructure/http/http-client'
+import { ApiEndpoints } from '@/data/endpoints'
 
 export class VideoRepository {
   private httpClient: HttpClient
@@ -31,7 +32,7 @@ export class VideoRepository {
       applyLanguageFilter = paramsOrFilter.applyLanguageFilter ?? false
     }
 
-    const response = await this.httpClient.get<ApiResponse<VideoCategory[]>>('/video-categories', {
+    const response = await this.httpClient.get<ApiResponse<VideoCategory[]>>(ApiEndpoints.VideoCategories.Base, {
       params: { search, applyLanguageFilter },
       requiresAuth: true
     })
@@ -44,21 +45,21 @@ export class VideoRepository {
   }
 
   async createCategory(payload: CreateVideoCategoryPayload): Promise<VideoCategory> {
-    const response = await this.httpClient.post<ApiResponse<VideoCategory>>('/video-categories', payload, {
+    const response = await this.httpClient.post<ApiResponse<VideoCategory>>(ApiEndpoints.VideoCategories.Base, payload, {
       requiresAuth: true
     })
     return (response.data as unknown as { data?: VideoCategory })?.data || (response.data as unknown as VideoCategory)
   }
 
   async updateCategory(id: string, payload: UpdateVideoCategoryPayload): Promise<VideoCategory> {
-    const response = await this.httpClient.put<ApiResponse<VideoCategory>>(`/video-categories/${id}`, payload, {
+    const response = await this.httpClient.put<ApiResponse<VideoCategory>>(ApiEndpoints.VideoCategories.ById(id), payload, {
       requiresAuth: true
     })
     return (response.data as unknown as { data?: VideoCategory })?.data || (response.data as unknown as VideoCategory)
   }
 
   async deleteCategory(id: string): Promise<boolean> {
-    const response = await this.httpClient.delete<ApiResponse<boolean>>(`/video-categories/${id}`, {
+    const response = await this.httpClient.delete<ApiResponse<boolean>>(ApiEndpoints.VideoCategories.ById(id), {
       requiresAuth: true
     })
     return Boolean(response.data ?? true)
@@ -66,7 +67,7 @@ export class VideoRepository {
 
   async getAll(params?: GetVideosParams): Promise<PagginatedResult<VideoDto>> {
     const categoryId = (params?.videoCategoryId || params?.categoryId)?.trim() || undefined
-    const response = await this.httpClient.get<ApiResponse<PagginatedResult<VideoDto>>>('/videos', {
+    const response = await this.httpClient.get<ApiResponse<PagginatedResult<VideoDto>>>(ApiEndpoints.Videos.Base, {
       params: {
         pageNumber: params?.pageNumber ?? 1,
         pageSize: params?.pageSize ?? 10,
@@ -101,7 +102,7 @@ export class VideoRepository {
   }
 
   async getById(id: string): Promise<VideoDto> {
-    const response = await this.httpClient.get<ApiResponse<VideoDto>>(`/videos/${id}`, {
+    const response = await this.httpClient.get<ApiResponse<VideoDto>>(ApiEndpoints.Videos.ById(id), {
       params: { applyLanguageFilter: false },
       requiresAuth: true
     })
@@ -119,7 +120,7 @@ export class VideoRepository {
       thumbnailUrl: payload.thumbnailUrl ? payload.thumbnailUrl : null,
       videoUrl: payload.videoUrl ? payload.videoUrl : null
     }
-    const response = await this.httpClient.post<ApiResponse<VideoDto>>('/videos', cleanPayload, {
+    const response = await this.httpClient.post<ApiResponse<VideoDto>>(ApiEndpoints.Videos.Base, cleanPayload, {
       requiresAuth: true
     })
     const raw = response.data as unknown
@@ -137,7 +138,7 @@ export class VideoRepository {
       thumbnailUrl: payload.thumbnailUrl ? payload.thumbnailUrl : null,
       videoUrl: payload.videoUrl ? payload.videoUrl : null
     }
-    const response = await this.httpClient.put<ApiResponse<VideoDto>>(`/videos/${id}`, cleanPayload, {
+    const response = await this.httpClient.put<ApiResponse<VideoDto>>(ApiEndpoints.Videos.ById(id), cleanPayload, {
       requiresAuth: true
     })
     const raw = response.data as unknown
@@ -148,7 +149,7 @@ export class VideoRepository {
   }
 
   async delete(id: string): Promise<boolean> {
-    const response = await this.httpClient.delete<ApiResponse<boolean>>(`/videos/${id}`, {
+    const response = await this.httpClient.delete<ApiResponse<boolean>>(ApiEndpoints.Videos.ById(id), {
       requiresAuth: true
     })
     return Boolean((response.data as unknown as { data?: boolean })?.data ?? true)

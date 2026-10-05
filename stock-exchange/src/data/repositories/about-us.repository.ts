@@ -6,6 +6,7 @@ import type {
 } from '@/domain/models/about-us.model'
 import type { IAboutUsRepository } from '@/domain/ports/about-us-repository.port'
 import type { HttpClient } from '@/infrastructure/http/http-client'
+import { ApiEndpoints } from '@/data/endpoints'
 
 export class AboutUsRepository implements IAboutUsRepository {
   private httpClient: HttpClient
@@ -48,7 +49,7 @@ export class AboutUsRepository implements IAboutUsRepository {
   }
 
   async get(applyLanguageFilter: boolean = false): Promise<AboutUsDto> {
-    const response = await this.httpClient.get<ApiResponse<Record<string, unknown>>>('/about-us', {
+    const response = await this.httpClient.get<ApiResponse<Record<string, unknown>>>(ApiEndpoints.AboutUs.Base, {
       params: { applyLanguageFilter },
       requiresAuth: true
     })
@@ -56,7 +57,7 @@ export class AboutUsRepository implements IAboutUsRepository {
   }
 
   async update(payload: UpdateAboutUsPayload): Promise<AboutUsDto> {
-    const response = await this.httpClient.patch<ApiResponse<Record<string, unknown>>>('/about-us', payload, {
+    const response = await this.httpClient.patch<ApiResponse<Record<string, unknown>>>(ApiEndpoints.AboutUs.Base, payload, {
       requiresAuth: true
     })
     return this.mapAboutUs(response.data || {})

@@ -15,6 +15,7 @@ import {
 import type { IAuthRepository } from '@/domain/ports/auth-repository.port'
 import type { HttpClient } from '@/infrastructure/http/http-client'
 import type { TokenStore } from '@/infrastructure/storage/token-store'
+import { ApiEndpoints } from '@/data/endpoints'
 
 export class AuthRepository implements IAuthRepository {
   private httpClient: HttpClient
@@ -27,7 +28,7 @@ export class AuthRepository implements IAuthRepository {
 
   async login(credentials: LoginCredentials): Promise<AuthResponseDto> {
     const response = await this.httpClient.post<ApiResponse<AuthResponseDto>>(
-      '/authentication/login',
+      ApiEndpoints.Authentication.Login,
       credentials,
       { requiresAuth: false }
     )
@@ -88,7 +89,7 @@ export class AuthRepository implements IAuthRepository {
 
   async forgetPassword(payload: ForgetPasswordPayload): Promise<boolean> {
     const response = await this.httpClient.post<ApiResponse<boolean>>(
-      '/authentication/forget-password',
+      ApiEndpoints.Authentication.ForgetPassword,
       payload,
       { requiresAuth: false }
     )
@@ -98,7 +99,7 @@ export class AuthRepository implements IAuthRepository {
 
   async verifyOtp(payload: VerifyOtpPayload): Promise<string> {
     const response = await this.httpClient.post<ApiResponse<string>>(
-      '/authentication/verify-otp',
+      ApiEndpoints.Authentication.VerifyOtp,
       payload,
       { requiresAuth: false }
     )
@@ -108,7 +109,7 @@ export class AuthRepository implements IAuthRepository {
 
   async resetPassword(payload: ResetPasswordPayload): Promise<boolean> {
     const response = await this.httpClient.post<ApiResponse<boolean>>(
-      '/authentication/reset-password',
+      ApiEndpoints.Authentication.ResetPassword,
       payload,
       { requiresAuth: false }
     )
@@ -118,7 +119,7 @@ export class AuthRepository implements IAuthRepository {
 
   async refreshToken(refreshToken: string): Promise<RefreshTokenResponseDto> {
     const response = await this.httpClient.post<ApiResponse<RefreshTokenResponseDto>>(
-      '/authentication/refresh-token',
+      ApiEndpoints.Authentication.RefreshToken,
       { refreshToken },
       { requiresAuth: false }
     )
@@ -141,7 +142,7 @@ export class AuthRepository implements IAuthRepository {
     try {
       if (this.tokenStore.hasValidToken()) {
         await this.httpClient.post<ApiResponse<boolean>>(
-          '/authentication/logout',
+          ApiEndpoints.Authentication.Logout,
           { refreshToken: refreshToken || null },
           { requiresAuth: true }
         )
@@ -159,7 +160,7 @@ export class AuthRepository implements IAuthRepository {
 
   async getUserProfile(): Promise<UserProfileDto> {
     const response = await this.httpClient.get<ApiResponse<unknown>>(
-      '/authentication/my-profile',
+      ApiEndpoints.Authentication.UserProfile,
       { requiresAuth: true }
     )
 
@@ -216,7 +217,7 @@ export class AuthRepository implements IAuthRepository {
 
   async updateProfile(payload: UpdateUserInfoPayload): Promise<string> {
     const response = await this.httpClient.patch<ApiResponse<string>>(
-      '/authentication/update/myprofile',
+      ApiEndpoints.Authentication.UpdateProfile,
       payload,
       { requiresAuth: true }
     )
@@ -242,7 +243,7 @@ export class AuthRepository implements IAuthRepository {
 
   async changePassword(payload: ChangePasswordPayload): Promise<boolean> {
     const response = await this.httpClient.post<ApiResponse<boolean>>(
-      '/authentication/change-password',
+      ApiEndpoints.Authentication.ChangePassword,
       payload,
       { requiresAuth: true }
     )

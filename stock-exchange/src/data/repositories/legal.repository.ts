@@ -6,6 +6,7 @@ import type {
 } from '@/domain/models/legal-content.model'
 import type { ILegalRepository } from '@/domain/ports/legal-repository.port'
 import type { HttpClient } from '@/infrastructure/http/http-client'
+import { ApiEndpoints } from '@/data/endpoints'
 
 export class LegalRepository implements ILegalRepository {
   private httpClient: HttpClient
@@ -47,7 +48,7 @@ export class LegalRepository implements ILegalRepository {
 
   // --- Terms & Conditions ---
   async getTerms(applyLanguageFilter: boolean = false): Promise<LegalDocumentDto> {
-    const response = await this.httpClient.get<ApiResponse<Record<string, unknown>>>('/terms-and-conditions', {
+    const response = await this.httpClient.get<ApiResponse<Record<string, unknown>>>(ApiEndpoints.TermsAndConditions.Base, {
       params: { applyLanguageFilter },
       requiresAuth: true
     })
@@ -55,14 +56,14 @@ export class LegalRepository implements ILegalRepository {
   }
 
   async updateTerms(payload: UpdateLegalDocumentPayload): Promise<LegalDocumentDto> {
-    const response = await this.httpClient.patch<ApiResponse<Record<string, unknown>>>('/terms-and-conditions', payload, {
+    const response = await this.httpClient.patch<ApiResponse<Record<string, unknown>>>(ApiEndpoints.TermsAndConditions.Base, payload, {
       requiresAuth: true
     })
     return this.mapDocument(response.data || {})
   }
 
   async deleteTerms(id?: string): Promise<boolean> {
-    const url = id ? `/terms-and-conditions/${id}` : '/terms-and-conditions'
+    const url = id ? ApiEndpoints.TermsAndConditions.ById(id) : ApiEndpoints.TermsAndConditions.Base
     const response = await this.httpClient.delete<ApiResponse<boolean>>(url, {
       requiresAuth: true
     })
@@ -71,7 +72,7 @@ export class LegalRepository implements ILegalRepository {
 
   // --- Privacy Policy ---
   async getPrivacy(applyLanguageFilter: boolean = false): Promise<LegalDocumentDto> {
-    const response = await this.httpClient.get<ApiResponse<Record<string, unknown>>>('/privacy-policy', {
+    const response = await this.httpClient.get<ApiResponse<Record<string, unknown>>>(ApiEndpoints.PrivacyPolicy.Base, {
       params: { applyLanguageFilter },
       requiresAuth: true
     })
@@ -79,14 +80,14 @@ export class LegalRepository implements ILegalRepository {
   }
 
   async updatePrivacy(payload: UpdateLegalDocumentPayload): Promise<LegalDocumentDto> {
-    const response = await this.httpClient.patch<ApiResponse<Record<string, unknown>>>('/privacy-policy', payload, {
+    const response = await this.httpClient.patch<ApiResponse<Record<string, unknown>>>(ApiEndpoints.PrivacyPolicy.Base, payload, {
       requiresAuth: true
     })
     return this.mapDocument(response.data || {})
   }
 
   async deletePrivacy(id?: string): Promise<boolean> {
-    const url = id ? `/privacy-policy/${id}` : '/privacy-policy'
+    const url = id ? ApiEndpoints.PrivacyPolicy.ById(id) : ApiEndpoints.PrivacyPolicy.Base
     const response = await this.httpClient.delete<ApiResponse<boolean>>(url, {
       requiresAuth: true
     })
