@@ -1,10 +1,11 @@
 import type { ApiResponse } from '@/domain/models/common.model'
-import type {
-  ActivityLogDto,
-  ActivityLogsListResponse,
-  ActivityLogsSummaryDto,
-  GetActivityLogsParams,
-  SummaryCardDto
+import {
+  ActivityResourceType,
+  type ActivityLogDto,
+  type ActivityLogsListResponse,
+  type ActivityLogsSummaryDto,
+  type GetActivityLogsParams,
+  type SummaryCardDto
 } from '@/domain/models/activity-log.model'
 import type { IActivityLogRepository } from '@/domain/ports/activity-log-repository.port'
 import type { HttpClient } from '@/infrastructure/http/http-client'
@@ -17,7 +18,19 @@ export class ActivityLogRepository implements IActivityLogRepository {
     this.httpClient = httpClient
   }
 
+  private parseResourceType(val: unknown): ActivityResourceType {
+    if (typeof val === 'number') return val as ActivityResourceType
+    if (typeof val === 'string') {
+      const num = Number(val)
+      if (!isNaN(num)) return num as ActivityResourceType
+      const mapped = (ActivityResourceType as unknown as Record<string, unknown>)[val]
+      if (typeof mapped === 'number') return mapped as ActivityResourceType
+    }
+    return 0 as ActivityResourceType
+  }
+
   private mapLogDto(raw: Record<string, unknown>): ActivityLogDto {
+    const rawResourceType = raw.resourceType ?? raw.ResourceType ?? raw.resourceTypeName ?? raw.ResourceTypeName
     return {
       id: String(raw.id ?? raw.Id ?? ''),
       formattedId: String(raw.formattedId ?? raw.FormattedId ?? ''),
@@ -30,7 +43,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
       action: String(raw.action ?? raw.Action ?? ''),
       actionAr: raw.actionAr != null ? String(raw.actionAr ?? raw.ActionAr) : undefined,
       actionEn: raw.actionEn != null ? String(raw.actionEn ?? raw.ActionEn) : undefined,
-      resourceType: Number(raw.resourceType ?? raw.ResourceType ?? 0),
+      resourceType: this.parseResourceType(rawResourceType),
       resourceTypeArabic: String(raw.resourceTypeArabic ?? raw.ResourceTypeArabic ?? ''),
       resourceTypeEnglish: String(raw.resourceTypeEnglish ?? raw.ResourceTypeEnglish ?? ''),
       resourceTypeName: String(raw.resourceTypeName ?? raw.ResourceTypeName ?? ''),
@@ -73,7 +86,8 @@ export class ActivityLogRepository implements IActivityLogRepository {
 
     if (params?.search) queryParams.Search = params.search
     if (params?.resourceType !== undefined && params?.resourceType !== null && params?.resourceType !== '') {
-      queryParams.ResourceType = params.resourceType
+      const parsed = this.parseResourceType(params.resourceType)
+      queryParams.ResourceType = parsed > 0 ? parsed : params.resourceType
     }
     if (params?.pageNumber) queryParams.PageNumber = params.pageNumber
     if (params?.pageSize) queryParams.PageSize = params.pageSize

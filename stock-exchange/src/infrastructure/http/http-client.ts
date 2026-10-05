@@ -23,6 +23,32 @@ export class HttpClient {
   }> = []
   private interceptors: RequestInterceptor[] = []
 
+  private static detectedClientIp: string | null = null
+
+  static {
+    if (typeof window !== 'undefined') {
+      try {
+        HttpClient.detectedClientIp = window.sessionStorage.getItem('stock_client_ip')
+      } catch {}
+
+      if (!HttpClient.detectedClientIp) {
+        fetch('https://api.ipify.org?format=json')
+          .then((res) => res.json())
+          .then((data: { ip?: string }) => {
+            if (data?.ip) {
+              HttpClient.detectedClientIp = data.ip
+              try {
+                window.sessionStorage.setItem('stock_client_ip', data.ip)
+              } catch {}
+            }
+          })
+          .catch(() => {
+            // Silently ignore network failures; backend will use server/proxy headers
+          })
+      }
+    }
+  }
+
   constructor(
     tokenStore: TokenStore,
     baseUrl: string = import.meta.env?.VITE_API_URL || '/api/v1'
@@ -31,6 +57,14 @@ export class HttpClient {
     this.baseUrl = baseUrl.replace(/\/+$/, '')
     // Register the global auth interceptor — injects Bearer token on every authenticated request
     this.addInterceptor(this.authInterceptor.bind(this))
+    this.addInterceptor(this.clientIpInterceptor.bind(this))
+  }
+
+  /** Client IP interceptor: sends X-Client-IP header if detected */
+  private clientIpInterceptor(headers: Headers): void {
+    if (HttpClient.detectedClientIp) {
+      headers.set('X-Client-IP', HttpClient.detectedClientIp)
+    }
   }
 
   /**

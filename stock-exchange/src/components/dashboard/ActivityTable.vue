@@ -46,36 +46,62 @@ const formatTimeAgo = (dateStr: string) => {
   return isAr.value ? `منذ ${diffDays} يوم` : `${diffDays}d ago`
 }
 
-const getResourceTypeLabel = (type: string) => {
-  switch (type.toLowerCase()) {
+const getResourceTypeLabel = (type: string | number) => {
+  const key = String(type ?? '').toLowerCase().trim()
+  switch (key) {
+    case '1':
     case 'userregistrations':
+      return isAr.value ? 'تسجيل مستخدم' : 'User Registration'
+    case '2':
     case 'users':
-      return isAr.value ? 'مستخدم' : 'User'
+      return isAr.value ? 'المستخدمين' : 'Users'
+    case '3':
     case 'articles':
-      return isAr.value ? 'مقال' : 'Article'
+      return isAr.value ? 'المقالات' : 'Articles'
+    case '4':
     case 'videos':
-      return isAr.value ? 'فيديو' : 'Video'
+      return isAr.value ? 'الفيديوهات' : 'Videos'
+    case '5':
     case 'news':
-      return isAr.value ? 'أخبار' : 'News'
-    case 'services':
-      return isAr.value ? 'خدمة' : 'Service'
+      return isAr.value ? 'الأخبار' : 'News'
+    case '6':
     case 'helpcenter':
       return isAr.value ? 'مركز المساعدة' : 'Help Center'
+    case '7':
     case 'subscriptionplans':
-      return isAr.value ? 'خطط الاشتراك' : 'Subscription'
+      return isAr.value ? 'خطط الاشتراك' : 'Subscription Plans'
+    case '8':
+    case 'aboutus':
+      return isAr.value ? 'من نحن' : 'About Us'
+    case '9':
+    case 'termsandconditions':
+      return isAr.value ? 'الشروط والأحكام' : 'Terms & Conditions'
+    case '10':
+    case 'privacypolicy':
+      return isAr.value ? 'سياسة الخصوصية' : 'Privacy Policy'
+    case 'services':
+      return isAr.value ? 'الخدمات' : 'Services'
     default:
-      return type
+      return String(type ?? '')
   }
 }
 
-const getBadgeVariant = (type: string): 'info' | 'success' | 'warning' | 'neutral' => {
-  switch (type.toLowerCase()) {
+const getBadgeVariant = (type: string | number): 'info' | 'success' | 'warning' | 'neutral' => {
+  const key = String(type ?? '').toLowerCase().trim()
+  switch (key) {
+    case '1':
     case 'userregistrations':
+    case '2':
     case 'users':
       return 'success'
+    case '3':
     case 'articles':
+    case '5':
     case 'news':
+    case '6':
+    case 'helpcenter':
       return 'info'
+    case '4':
     case 'videos':
       return 'warning'
     default:
