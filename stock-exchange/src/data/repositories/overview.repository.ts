@@ -10,6 +10,7 @@ import type {
 import type { IOverviewRepository } from '@/domain/ports/overview-repository.port'
 import type { HttpClient } from '@/infrastructure/http/http-client'
 import { ApiEndpoints } from '@/data/endpoints'
+import { userAvatarCache } from '@/utils/avatar-cache'
 
 export class OverviewRepository implements IOverviewRepository {
   private httpClient: HttpClient
@@ -73,13 +74,45 @@ export class OverviewRepository implements IOverviewRepository {
     }
   }
 
+  private extractRawAvatar(raw: Record<string, unknown>): string | null {
+    const candidate =
+      raw.userProfilePictureUrl ??
+      raw.UserProfilePictureUrl ??
+      raw.profilePictureUrl ??
+      raw.ProfilePictureUrl ??
+      raw.avatarUrl ??
+      raw.AvatarUrl ??
+      raw.userAvatar ??
+      raw.UserAvatar ??
+      raw.userPicture ??
+      raw.UserPicture ??
+      raw.pictureUrl ??
+      raw.PictureUrl
+
+    if (candidate != null && typeof candidate === 'string' && candidate.trim() !== '') {
+      return candidate.trim()
+    }
+    return null
+  }
+
   private mapActivityLog(raw: Record<string, unknown>): OverviewActivityLogDto {
+    const userId = raw.userId != null ? String(raw.userId ?? raw.UserId) : null
+    const userName = String(raw.userName ?? raw.UserName ?? 'Admin')
+    const userEmail = String(raw.userEmail ?? raw.UserEmail ?? '')
+
+    const rawPic = this.extractRawAvatar(raw)
+    if (rawPic) {
+      userAvatarCache.set(userId, userEmail, rawPic)
+    }
+
+    const resolvedPic = rawPic || userAvatarCache.get(userId, userEmail)
+
     return {
       id: String(raw.id ?? raw.Id ?? ''),
-      userId: raw.userId != null ? String(raw.userId ?? raw.UserId) : null,
-      userName: String(raw.userName ?? raw.UserName ?? 'Admin'),
-      userEmail: String(raw.userEmail ?? raw.UserEmail ?? ''),
-      userProfilePictureUrl: raw.userProfilePictureUrl != null ? String(raw.userProfilePictureUrl ?? raw.UserProfilePictureUrl) : null,
+      userId,
+      userName,
+      userEmail,
+      userProfilePictureUrl: resolvedPic,
       action: String(raw.action ?? raw.Action ?? ''),
       actionAr: raw.actionAr != null ? String(raw.actionAr ?? raw.ActionAr) : undefined,
       actionEn: raw.actionEn != null ? String(raw.actionEn ?? raw.ActionEn) : undefined,
@@ -114,6 +147,16 @@ export class OverviewRepository implements IOverviewRepository {
     const rawTopVideos = Array.isArray(raw.topVideoCategories ?? raw.TopVideoCategories)
       ? ((raw.topVideoCategories ?? raw.TopVideoCategories) as Record<string, unknown>[])
       : []
+
+    // Pass 1: Harvest avatars
+    for (const a of rawRecentActivities) {
+      const pic = this.extractRawAvatar(a)
+      if (pic) {
+        const uId = a.userId != null ? String(a.userId ?? a.UserId) : null
+        const uEmail = a.userEmail != null ? String(a.userEmail ?? a.UserEmail) : null
+        userAvatarCache.set(uId, uEmail, pic)
+      }
+    }
 
     return {
       stats: this.mapStats(rawStats),

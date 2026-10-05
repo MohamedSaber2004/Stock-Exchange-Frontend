@@ -22,6 +22,7 @@ import {
 } from '@/domain/models/activity-log.model'
 import type { AppError } from '@/domain/models/common.model'
 import { resolveAttachmentUrl, handleImageError } from '@/utils/attachment'
+import { userAvatarCache } from '@/utils/avatar-cache'
 
 const { toast } = useFeedback()
 const { t, locale } = useI18n()
@@ -78,6 +79,32 @@ const fetchLogs = async (showLoading = true) => {
     totalPages.value = response.logs?.totalPages || 1
     totalCount.value = response.logs?.totalCount || 0
     summary.value = response.summary
+
+    // Background enrichment: for any user whose avatar is still missing, attempt lookup by userId
+    const missingUserIds = new Set<string>()
+    for (const item of logs.value) {
+      if (!item.userProfilePictureUrl && item.userId) {
+        missingUserIds.add(item.userId)
+      }
+    }
+
+    if (missingUserIds.size > 0) {
+      Promise.allSettled(
+        Array.from(missingUserIds).map(async (uid) => {
+          const avatar = await userAvatarCache.fetchAndCache(uid, async (id) => {
+            const userDetails = await coreServices.users.getById(id)
+            return userDetails?.profilePictureUrl
+          })
+          if (avatar) {
+            for (const item of logs.value) {
+              if (item.userId === uid && !item.userProfilePictureUrl) {
+                item.userProfilePictureUrl = avatar
+              }
+            }
+          }
+        })
+      ).catch(() => {})
+    }
   } catch (err: unknown) {
     const appErr = err as AppError
     errorMessage.value = appErr?.message || (isAr.value ? 'فشل تحميل سجل النشاطات' : 'Failed to load activity logs')
@@ -130,6 +157,12 @@ const formatDate = (dateString?: string | null): string => {
 }
 
 const openDetails = (log: ActivityLogDto) => {
+  if (!log.userProfilePictureUrl) {
+    const cached = userAvatarCache.get(log.userId, log.userEmail)
+    if (cached) {
+      log.userProfilePictureUrl = cached
+    }
+  }
   selectedLog.value = log
   isDetailsOpen.value = true
 }
@@ -439,7 +472,15 @@ const getResourceTypeBadgeClass = (type: ActivityResourceType | number) => {
             <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100 flex flex-col gap-2">
               <div class="flex items-center justify-between gap-2">
                 <span class="font-bold text-slate-500 uppercase text-[10px]">{{ t('activity.actor') }}</span>
-                <span class="font-bold text-slate-800 text-end">{{ selectedLog.userName }} ({{ selectedLog.userEmail || '-' }})</span>
+                <div class="flex items-center gap-2">
+                  <img 
+                    :src="resolveAttachmentUrl(selectedLog.userProfilePictureUrl, 'avatar')" 
+                    :alt="selectedLog.userName"
+                    @error="handleImageError($event, 'avatar')"
+                    class="w-5 h-5 rounded-full object-cover ring-1 ring-slate-200 shrink-0 bg-slate-100"
+                  />
+                  <span class="font-bold text-slate-800 text-end">{{ selectedLog.userName }} ({{ selectedLog.userEmail || '-' }})</span>
+                </div>
               </div>
               <div class="flex items-center justify-between gap-2">
                 <span class="font-bold text-slate-500 uppercase text-[10px]">{{ t('activity.resourceType') }}</span>

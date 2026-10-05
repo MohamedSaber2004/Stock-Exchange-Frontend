@@ -10,6 +10,7 @@ import {
 import type { IActivityLogRepository } from '@/domain/ports/activity-log-repository.port'
 import type { HttpClient } from '@/infrastructure/http/http-client'
 import { ApiEndpoints } from '@/data/endpoints'
+import { userAvatarCache } from '@/utils/avatar-cache'
 
 export class ActivityLogRepository implements IActivityLogRepository {
   private httpClient: HttpClient
@@ -29,17 +30,47 @@ export class ActivityLogRepository implements IActivityLogRepository {
     return 0 as ActivityResourceType
   }
 
+  private extractRawAvatar(raw: Record<string, unknown>): string | null {
+    const candidate =
+      raw.userProfilePictureUrl ??
+      raw.UserProfilePictureUrl ??
+      raw.profilePictureUrl ??
+      raw.ProfilePictureUrl ??
+      raw.avatarUrl ??
+      raw.AvatarUrl ??
+      raw.userAvatar ??
+      raw.UserAvatar ??
+      raw.userPicture ??
+      raw.UserPicture ??
+      raw.pictureUrl ??
+      raw.PictureUrl
+
+    if (candidate != null && typeof candidate === 'string' && candidate.trim() !== '') {
+      return candidate.trim()
+    }
+    return null
+  }
+
   private mapLogDto(raw: Record<string, unknown>): ActivityLogDto {
     const rawResourceType = raw.resourceType ?? raw.ResourceType ?? raw.resourceTypeName ?? raw.ResourceTypeName
+    const userId = raw.userId != null ? String(raw.userId ?? raw.UserId) : null
+    const userName = String(raw.userName ?? raw.UserName ?? '')
+    const userEmail = String(raw.userEmail ?? raw.UserEmail ?? '')
+
+    const rawPic = this.extractRawAvatar(raw)
+    if (rawPic) {
+      userAvatarCache.set(userId, userEmail, rawPic)
+    }
+
+    const resolvedPic = rawPic || userAvatarCache.get(userId, userEmail)
+
     return {
       id: String(raw.id ?? raw.Id ?? ''),
       formattedId: String(raw.formattedId ?? raw.FormattedId ?? ''),
-      userId: raw.userId != null ? String(raw.userId ?? raw.UserId) : null,
-      userName: String(raw.userName ?? raw.UserName ?? ''),
-      userEmail: String(raw.userEmail ?? raw.UserEmail ?? ''),
-      userProfilePictureUrl: raw.userProfilePictureUrl != null 
-        ? String(raw.userProfilePictureUrl ?? raw.UserProfilePictureUrl) 
-        : null,
+      userId,
+      userName,
+      userEmail,
+      userProfilePictureUrl: resolvedPic,
       action: String(raw.action ?? raw.Action ?? ''),
       actionAr: raw.actionAr != null ? String(raw.actionAr ?? raw.ActionAr) : undefined,
       actionEn: raw.actionEn != null ? String(raw.actionEn ?? raw.ActionEn) : undefined,
@@ -106,6 +137,17 @@ export class ActivityLogRepository implements IActivityLogRepository {
       ? (rawLogs.items ?? rawLogs.Items) as Record<string, unknown>[] 
       : []
 
+    // Pass 1: Harvest any available profile pictures across the entire batch
+    for (const item of rawItems) {
+      const pic = this.extractRawAvatar(item)
+      if (pic) {
+        const uId = item.userId != null ? String(item.userId ?? item.UserId) : null
+        const uEmail = item.userEmail != null ? String(item.userEmail ?? item.UserEmail) : null
+        userAvatarCache.set(uId, uEmail, pic)
+      }
+    }
+
+    // Pass 2: Map items with cross-record avatar enrichment
     const items = rawItems.map(item => this.mapLogDto(item))
 
     const rawSummary = (rawData.summary ?? rawData.Summary ?? {}) as Record<string, unknown>
