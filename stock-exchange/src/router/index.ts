@@ -162,6 +162,14 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Our Experts', requiresAuth: true },
   },
 
+  // Expert Details
+  {
+    path: '/experts/:id',
+    name: 'expert-details',
+    component: () => import('@/views/experts/ExpertDetailsView.vue'),
+    meta: { title: 'Expert Details', requiresAuth: true },
+  },
+
   // 10b. Categories Management
   {
     path: '/categories',

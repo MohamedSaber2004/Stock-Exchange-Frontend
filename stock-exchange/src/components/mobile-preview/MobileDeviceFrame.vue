@@ -13,20 +13,24 @@ import {
   Wifi,
   Battery,
   Calendar,
-  Layers
+  Layers,
+  User,
+  Star
 } from 'lucide-vue-next'
 import { resolveAttachmentUrl, handleImageError } from '@/utils/attachment'
 import type { ArticleDto } from '@/domain/models/article.model'
 import type { VideoDto } from '@/domain/models/video.model'
 import type { ServiceDto } from '@/domain/models/service.model'
 import type { NewsDto } from '@/domain/models/news.model'
+import type { ExpertDto } from '@/domain/models/expert.model'
 
 interface Props {
-  type: 'article' | 'video' | 'service' | 'news'
+  type: 'article' | 'video' | 'service' | 'news' | 'expert'
   article?: ArticleDto | null
   video?: VideoDto | null
   service?: ServiceDto | null
   news?: NewsDto | null
+  expert?: ExpertDto | null
   defaultLang?: 'ar' | 'en'
 }
 
@@ -396,6 +400,84 @@ const formatDate = (dateStr?: string) => {
               <span>{{ isAr ? 'المصدر: غرفة أخبار البورصة' : 'Source: Market News Desk' }}</span>
               <span>#FinWiseNews</span>
             </div>
+          </div>
+
+          <!-- ================= EXPERT VIEW ================= -->
+          <div v-else-if="type === 'expert' && expert" class="space-y-4">
+            <!-- Simulated Top Badge -->
+            <div class="flex items-center justify-between">
+              <span class="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[9px] font-bold uppercase tracking-wider border border-emerald-100">
+                {{ isAr ? 'خبير معتمد' : 'Verified Expert' }}
+              </span>
+              <span
+                v-if="expert.isFeaturedOnHome"
+                class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[9px] font-bold border border-amber-200/60"
+              >
+                <Star class="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
+                <span>{{ isAr ? 'مميز بالرئيسية' : 'Featured' }}</span>
+              </span>
+            </div>
+
+            <!-- Profile Hero in App -->
+            <div class="p-5 rounded-3xl bg-gradient-to-br from-slate-900 to-slate-800 text-white shadow-md flex flex-col items-center text-center gap-3">
+              <div class="w-20 h-20 rounded-full overflow-hidden bg-white/10 border-2 border-white/20 shadow-inner flex items-center justify-center shrink-0">
+                <img
+                  v-if="expert.avatarUrl"
+                  :src="resolveAttachmentUrl(expert.avatarUrl, 'avatar')"
+                  :alt="expert.fullNameEn"
+                  class="w-full h-full object-cover"
+                  @error="handleImageError($event, 'avatar')"
+                />
+                <User v-else class="w-10 h-10 text-slate-300" />
+              </div>
+
+              <div>
+                <h2 class="text-sm font-black text-white">
+                  {{ isAr ? (expert.fullNameAr || expert.fullNameEn) : (expert.fullNameEn || expert.fullNameAr) }}
+                </h2>
+                <p class="text-[10px] text-emerald-300 font-semibold mt-0.5">
+                  {{ isAr ? (expert.titleAr || expert.titleEn) : (expert.titleEn || expert.titleAr) }}
+                </p>
+              </div>
+
+              <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-bold"
+                :class="expert.isActive ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/30' : 'bg-slate-700 text-slate-300'"
+              >
+                <span class="w-1.5 h-1.5 rounded-full" :class="expert.isActive ? 'bg-emerald-400' : 'bg-slate-400'"></span>
+                <span>{{ expert.isActive ? (isAr ? 'متاح للاستشارات والتحليل' : 'Active Analyst') : (isAr ? 'غير متاح حالياً' : 'Currently Inactive') }}</span>
+              </div>
+            </div>
+
+            <!-- Expert Info Card -->
+            <div class="bg-white rounded-2xl border border-slate-100 p-3.5 shadow-2xs space-y-2.5">
+              <h3 class="text-xs font-black text-slate-800">
+                {{ isAr ? 'المجالات الاستشارية:' : 'Consultation Areas:' }}
+              </h3>
+              <div class="space-y-2 text-[11px] text-slate-600">
+                <div class="flex items-start gap-2">
+                  <CheckCircle class="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>{{ isAr ? 'تحليل القوائم المالية وتقارير الشركات' : 'Financial statements & company report analysis' }}</span>
+                </div>
+                <div class="flex items-start gap-2">
+                  <CheckCircle class="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>{{ isAr ? 'متابعة حركة السيولة والمؤشرات الفنية' : 'Liquidity trends & technical chart patterns' }}</span>
+                </div>
+                <div class="flex items-start gap-2">
+                  <CheckCircle class="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>{{ isAr ? 'تقديم رؤى استثمارية وتوصيات إرشادية' : 'Market insights & strategic investment guidance' }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Disclaimer Box -->
+            <div class="p-3 rounded-2xl bg-slate-50 border border-slate-100 text-[10px] text-slate-500 leading-relaxed text-center">
+              {{ isAr ? 'تحليلات الخبير تعبر عن رؤيته المهنية بهدف التوعية والتثقيف المالي.' : 'Expert views represent professional commentary intended for market awareness.' }}
+            </div>
+          </div>
+
+          <!-- Slot Fallback -->
+          <div v-else-if="$slots.default">
+            <slot />
           </div>
 
           <!-- Empty fallback -->

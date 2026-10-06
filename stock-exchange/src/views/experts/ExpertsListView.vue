@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   Plus,
   Search,
@@ -23,6 +24,7 @@ import type { ExpertDto, CreateExpertPayload, UpdateExpertPayload } from '@/doma
 import type { AppError } from '@/domain/models/common.model'
 import { resolveAttachmentUrl, handleImageError } from '@/utils/attachment'
 
+const router = useRouter()
 const { toast, confirm } = useFeedback()
 const { t, locale } = useI18n()
 const isAr = computed(() => locale.value === 'ar')
@@ -279,8 +281,13 @@ const handleDelete = async (expert: ExpertDto) => {
   }
 }
 
+const goToDetails = (expert: ExpertDto) => {
+  router.push(`/experts/${expert.id}`)
+}
+
 const handleAction = (act: string, item: ExpertDto) => {
-  if (act === 'edit') openEditModal(item)
+  if (act === 'view') goToDetails(item)
+  else if (act === 'edit') openEditModal(item)
   else if (act === 'delete') handleDelete(item)
 }
 
@@ -385,8 +392,12 @@ onMounted(() => {
                 >
                   <!-- Avatar & Full Name -->
                   <td class="py-3.5 px-4 text-start">
-                    <div class="flex items-center gap-3">
-                      <div class="w-10 h-10 rounded-full overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
+                    <div
+                      @click="goToDetails(expert)"
+                      class="flex items-center gap-3 cursor-pointer group"
+                      :title="t('experts.viewDetails')"
+                    >
+                      <div class="w-10 h-10 rounded-full overflow-hidden bg-slate-100 border border-slate-200 group-hover:border-emerald-500 transition-colors flex items-center justify-center shrink-0">
                         <img
                           v-if="expert.avatarUrl"
                           :src="resolveAttachmentUrl(expert.avatarUrl, 'avatar')"
@@ -394,10 +405,10 @@ onMounted(() => {
                           class="w-full h-full object-cover"
                           @error="handleImageError"
                         />
-                        <User v-else class="w-5 h-5 text-slate-400" />
+                        <User v-else class="w-5 h-5 text-slate-400 group-hover:text-emerald-600 transition-colors" />
                       </div>
                       <div class="flex flex-col min-w-0">
-                        <span class="font-bold text-slate-900 truncate">
+                        <span class="font-bold text-slate-900 group-hover:text-emerald-600 transition-colors truncate">
                           {{ isAr ? (expert.fullNameAr || expert.fullNameEn) : (expert.fullNameEn || expert.fullNameAr) }}
                         </span>
                         <span class="text-[11px] text-slate-400 truncate">
@@ -456,6 +467,7 @@ onMounted(() => {
                   <td class="py-3.5 px-4 text-end">
                     <ActionMenu
                       :items="[
+                        { id: 'view', label: t('experts.viewDetails') },
                         { id: 'edit', label: t('common.edit') },
                         { id: 'delete', label: t('common.delete'), danger: true }
                       ]"
