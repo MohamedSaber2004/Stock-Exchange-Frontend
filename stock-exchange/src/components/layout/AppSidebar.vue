@@ -14,7 +14,6 @@ import {
   LogOut,
   TrendingUp,
   Activity,
-  Bell,
   Tags,
   Briefcase,
   Award,
@@ -78,7 +77,6 @@ const navSections = computed<NavSection[]>(() => [
   {
     title: t('nav.app'),
     items: [
-      { id: 'notifications', label: t('nav.notifications'), to: '/notifications', icon: Bell },
       { id: 'activity', label: t('nav.activity'), to: '/activity', icon: Activity },
       { id: 'help-center', label: t('nav.helpCenter'), to: '/help-center', icon: HelpCircle },
       { id: 'terms', label: t('nav.termsAndConditions'), to: '/terms', icon: ShieldCheck },

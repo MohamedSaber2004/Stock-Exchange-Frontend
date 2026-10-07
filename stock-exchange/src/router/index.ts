@@ -281,13 +281,7 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Country Management', requiresAuth: true },
   },
 
-  // 20. Notifications
-  {
-    path: '/notifications',
-    name: 'notifications',
-    component: () => import('@/views/notifications/NotificationsView.vue'),
-    meta: { title: 'Notifications', requiresAuth: true },
-  },
+
 
   // Catch-all 404 redirect
   {

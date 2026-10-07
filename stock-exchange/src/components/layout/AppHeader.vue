@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bell, ChevronRight, Menu, Globe, User, LogOut, ChevronDown, Check } from 'lucide-vue-next'
+import { ChevronRight, Menu, Globe, User, LogOut, ChevronDown, Check } from 'lucide-vue-next'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useFeedback } from '@/composables/useFeedback'
@@ -125,17 +125,11 @@ const breadcrumbs = computed(() => {
     crumbs.push({ label: t('common.profile'), to: '/profile' })
   } else if (path.startsWith('/activity')) {
     crumbs.push({ label: t('nav.activity'), to: '/activity' })
-  } else if (path.startsWith('/notifications')) {
-    crumbs.push({ label: t('nav.notifications'), to: '/notifications' })
   }
   
   return crumbs
 })
 
-const navigateToNotifications = () => {
-  closeMenu()
-  router.push('/notifications')
-}
 </script>
 
 <template>
@@ -169,17 +163,7 @@ const navigateToNotifications = () => {
 
     <!-- Right Controls -->
     <div class="flex items-center gap-1.5 sm:gap-2.5 md:gap-3 shrink-0">
-      <!-- Notifications -->
-      <button
-        type="button"
-        @click="navigateToNotifications"
-        class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300 flex items-center justify-center text-slate-600 hover:text-slate-900 transition-all relative cursor-pointer shrink-0 ms-1 me-1 sm:ms-1.5 sm:me-1.5 md:ms-2 md:me-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 active:scale-95 shadow-2xs"
-        :title="t('nav.notifications')"
-        :aria-label="t('nav.notifications')"
-      >
-        <Bell class="w-4 h-4 sm:w-4.5 sm:h-4.5" />
-        <span class="w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white absolute top-1.5 end-1.5" />
-      </button>
+
 
       <!-- Switcher & Profile Dropdown Container -->
       <div class="relative" ref="menuRef">

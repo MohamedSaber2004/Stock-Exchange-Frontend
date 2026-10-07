@@ -115,7 +115,6 @@ const adminPages = [
   { titleEn: 'Privacy Policy', titleAr: 'سياسة الخصوصية', path: '/privacy', icon: FileText, badgeEn: 'Legal', badgeAr: 'قانوني' },
   { titleEn: 'About FinWise', titleAr: 'عن منصة FinWise', path: '/about', icon: Compass, badgeEn: 'About', badgeAr: 'عن المنصة' },
   { titleEn: 'Admin Profile & Settings', titleAr: 'الملف الشخصي والإعدادات', path: '/settings', icon: Users, badgeEn: 'Account', badgeAr: 'حساب' },
-  { titleEn: 'System Notifications', titleAr: 'الإشعارات والتنبيهات', path: '/notifications', icon: Compass, badgeEn: 'Alerts', badgeAr: 'تنبيهات' },
 ]
 
 const matchedPages = computed<GlobalSearchItem[]>(() => {
