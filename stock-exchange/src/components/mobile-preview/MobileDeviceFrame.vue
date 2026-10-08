@@ -272,10 +272,11 @@ const formatDate = (dateStr?: string) => {
                 <span>{{ isAr ? 'تحديد نقاط الدخول والخروج' : 'Entry & exit timing' }}</span>
               </div>
             </div>
+
             <!-- Related / Up Next Lessons -->
             <div v-if="video.relatedVideos && video.relatedVideos.length > 0" class="pt-3 border-t border-slate-100 space-y-2">
               <div class="flex items-center justify-between">
-                <span class="text-[11px] font-black text-slate-900">{{ isAr ? 'ÙÙŠØ¯ÙŠÙˆÙ‡Ø§Øª Ø°Ø§Øª ØµÙ„Ø©' : 'Related Lessons' }}</span>
+                <span class="text-[11px] font-black text-slate-900">{{ isAr ? 'فيديوهات ذات صلة' : 'Related Lessons' }}</span>
                 <span class="text-[9px] font-semibold text-emerald-600 font-mono">{{ video.relatedVideos.length }}</span>
               </div>
               <div class="space-y-2">
@@ -292,7 +293,7 @@ const formatDate = (dateStr?: string) => {
                       class="w-full h-full object-cover"
                       @error="handleImageError($event, 'image')"
                     />
-                    <div v-else class="w-full h-full flex items-center justify-center bg-slate-800 text-slate-500">
+                    <div v-else class="w-full h-full flex items-center justify-center bg-slate-900 text-slate-500">
                       <Play class="w-3 h-3 fill-white/80 text-white/80" />
                     </div>
                     <span class="absolute bottom-0.5 right-0.5 text-[7px] font-mono font-bold bg-black/80 text-white px-1 rounded">
@@ -304,7 +305,7 @@ const formatDate = (dateStr?: string) => {
                       {{ isAr ? (rel.titleAr || rel.titleEn) : (rel.titleEn || rel.titleAr) }}
                     </p>
                     <p class="text-[9px] text-slate-400 truncate mt-0.5">
-                      {{ rel.instructorName || (isAr ? 'Ù…Ø¯Ø±Ø¨ Ù…Ø¹ØªÙ…Ø¯' : 'Instructor') }}
+                      {{ rel.instructorName || (isAr ? 'مدرب معتمد' : 'Instructor') }}
                     </p>
                   </div>
                 </div>
