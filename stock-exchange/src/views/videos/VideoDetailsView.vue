@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowLeft,
@@ -11,7 +11,9 @@ import {
   CheckCircle2,
   XCircle,
   Video as VideoIcon,
-  ShieldCheck
+  ShieldCheck,
+  Play,
+  ArrowUpRight
 } from 'lucide-vue-next'
 import AppShell from '@/components/layout/AppShell.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
@@ -20,7 +22,7 @@ import MobileDeviceFrame from '@/components/mobile-preview/MobileDeviceFrame.vue
 import { useFeedback } from '@/composables/useFeedback'
 import { useI18n } from 'vue-i18n'
 import { coreServices } from '@/di'
-import { resolveAttachmentUrl } from '@/utils/attachment'
+import { resolveAttachmentUrl, handleImageError } from '@/utils/attachment'
 import type { VideoDto } from '@/domain/models/video.model'
 import type { AppError } from '@/domain/models/common.model'
 
@@ -30,26 +32,36 @@ const { toast, confirm } = useFeedback()
 const { t, locale } = useI18n()
 const isAr = computed(() => locale.value === 'ar')
 
-const videoId = route.params.id as string
 const video = ref<VideoDto | null>(null)
 const isLoading = ref(true)
 const errorMessage = ref<string | null>(null)
 const activeTab = ref<'ar' | 'en'>('ar')
 
-const loadVideo = async () => {
+const loadVideo = async (targetId?: string) => {
+  const id = targetId || (route.params.id as string)
+  if (!id) return
   isLoading.value = true
   errorMessage.value = null
   try {
-    const data = await coreServices.videos.getById(videoId)
+    const data = await coreServices.videos.getById(id)
     video.value = data
   } catch (err: unknown) {
     const appErr = err as AppError
-    errorMessage.value = appErr?.message || (isAr.value ? 'تعذر تحميل بيانات الفيديو' : 'Failed to load video details')
+    errorMessage.value = appErr?.message || (isAr.value ? 'ÙØ´Ù„ ØªØ­Ù…ÙŠÙ„ ØªÙØ§ØµÙŠÙ„ Ø§Ù„ÙÙŠØ¯ÙŠÙˆ' : 'Failed to load video details')
     toast.error(errorMessage.value)
   } finally {
     isLoading.value = false
   }
 }
+
+watch(
+  () => route.params.id,
+  (newId) => {
+    if (newId) {
+      loadVideo(newId as string)
+    }
+  }
+)
 
 const handleDelete = async () => {
   if (!video.value) return
@@ -66,11 +78,11 @@ const handleDelete = async () => {
 
   try {
     await coreServices.videos.delete(video.value.id)
-    toast.success(isAr.value ? 'تم حذف الفيديو بنجاح' : 'Video deleted successfully')
+    toast.success(isAr.value ? 'ØªÙ… Ø­Ø°Ù Ø§Ù„ÙÙŠØ¯ÙŠÙˆ Ø¨Ù†Ø¬Ø§Ø­' : 'Video deleted successfully')
     router.push('/videos')
   } catch (err: unknown) {
     const appErr = err as AppError
-    toast.error(appErr?.message || (isAr.value ? 'فشل حذف الفيديو' : 'Failed to delete video'))
+    toast.error(appErr?.message || (isAr.value ? 'ÙØ´Ù„ Ø­Ø°Ù Ø§Ù„ÙÙŠØ¯ÙŠÙˆ' : 'Failed to delete video'))
   }
 }
 
@@ -92,8 +104,8 @@ onMounted(() => {
       
       <!-- Top Header & Actions -->
       <PageHeader
-        :title="isAr ? (video?.titleAr || video?.titleEn || 'تفاصيل الفيديو') : (video?.titleEn || video?.titleAr || 'Video Details')"
-        :description="isAr ? 'مشاهدة الفيديو ومراجعة بياناته ومعاينته على تطبيق الجوال' : 'Review video playback, metadata, and Flutter mobile preview'"
+        :title="isAr ? (video?.titleAr || video?.titleEn || 'ØªÙØ§ØµÙŠÙ„ Ø§Ù„ÙÙŠØ¯ÙŠÙˆ') : (video?.titleEn || video?.titleAr || 'Video Details')"
+        :description="isAr ? 'Ù…Ø¹Ø§ÙŠÙ†Ø© Ø§Ù„ÙÙŠØ¯ÙŠÙˆ ÙˆØ¨ÙŠØ§Ù†Ø§ØªÙ‡ ÙˆÙ…Ø­Ø§ÙƒØ§ØªÙ‡ Ø§Ù„Ù…Ø¨Ø§Ø´Ø±Ø© Ø¹Ù„Ù‰ ØªØ·Ø¨ÙŠÙ‚ Ø§Ù„Ù‡Ø§ØªÙ' : 'Review video playback, metadata, and Flutter mobile preview'"
       >
         <template #actions>
           <div class="flex items-center gap-2">
@@ -103,7 +115,7 @@ onMounted(() => {
               class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all shadow-2xs cursor-pointer"
             >
               <component :is="isAr ? ArrowRight : ArrowLeft" class="w-3.5 h-3.5" />
-              {{ isAr ? 'العودة لقائمة الفيديوهات' : 'Back to Videos' }}
+              {{ isAr ? 'Ø§Ù„Ø¹ÙˆØ¯Ø© Ø¥Ù„Ù‰ Ø§Ù„ÙÙŠØ¯ÙŠÙˆÙ‡Ø§Øª' : 'Back to Videos' }}
             </button>
 
             <button
@@ -150,11 +162,11 @@ onMounted(() => {
                 :poster="video.thumbnailUrl ? resolveAttachmentUrl(video.thumbnailUrl, 'image') : undefined"
               >
                 <source :src="resolveAttachmentUrl(video.videoUrl, 'video')" type="video/mp4" />
-                {{ isAr ? 'المتصفح لا يدعم تشغيل الفيديو' : 'Your browser does not support HTML5 video.' }}
+                {{ isAr ? 'Ø§Ù„Ù…ØªØµÙØ­ Ù„Ø§ ÙŠØ¯Ø¹Ù… ØªØ´ØºÙŠÙ„ Ø§Ù„ÙÙŠØ¯ÙŠÙˆ' : 'Your browser does not support HTML5 video.' }}
               </video>
               <div v-else class="w-full aspect-video flex flex-col items-center justify-center text-slate-400 gap-2 bg-slate-950">
                 <VideoIcon class="w-12 h-12 stroke-1 text-slate-600" />
-                <span class="text-xs font-semibold">{{ isAr ? 'لا يوجد ملف فيديو مرفوع' : 'No video file uploaded' }}</span>
+                <span class="text-xs font-semibold">{{ isAr ? 'Ù„Ø§ ÙŠÙˆØ¬Ø¯ Ù…Ù„Ù ÙÙŠØ¯ÙŠÙˆ Ù…Ø±ÙÙˆØ¹' : 'No video file uploaded' }}</span>
               </div>
             </div>
 
@@ -167,7 +179,7 @@ onMounted(() => {
                   <CheckCircle2 v-if="video.isActive" class="w-4 h-4 text-emerald-600" />
                   <XCircle v-else class="w-4 h-4 text-slate-400" />
                   <span class="text-xs font-black text-slate-900">
-                    {{ video.isActive ? (isAr ? 'نشط' : 'Active') : (isAr ? 'غير نشط' : 'Inactive') }}
+                    {{ video.isActive ? (isAr ? 'Ù†Ø´Ø·' : 'Active') : (isAr ? 'ØºÙŠØ± Ù†Ø´Ø·' : 'Inactive') }}
                   </span>
                 </div>
               </div>
@@ -185,12 +197,12 @@ onMounted(() => {
 
               <!-- Preview Access -->
               <div class="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-2xs flex flex-col gap-1">
-                <span class="text-[11px] font-bold text-slate-400">{{ isAr ? 'صلاحية المشاهدة' : 'Access' }}</span>
+                <span class="text-[11px] font-bold text-slate-400">{{ isAr ? 'ØµÙ„Ø§Ø­ÙŠØ© Ø§Ù„Ù…Ø´Ø§Ù‡Ø¯Ø©' : 'Access' }}</span>
                 <div class="flex items-center gap-1.5 mt-0.5">
                   <ShieldCheck v-if="video.isPreviewable" class="w-4 h-4 text-blue-600" />
                   <ShieldCheck v-else class="w-4 h-4 text-amber-500" />
                   <span class="text-xs font-black text-slate-900">
-                    {{ video.isPreviewable ? (isAr ? 'مجاني' : 'Free Preview') : (isAr ? 'للمشتركين' : 'Subscribers') }}
+                    {{ video.isPreviewable ? (isAr ? 'Ù…Ø¬Ø§Ù†ÙŠ' : 'Free Preview') : (isAr ? 'Ù„Ù„Ù…Ø´ØªØ±ÙƒÙŠÙ†' : 'Subscribers') }}
                   </span>
                 </div>
               </div>
@@ -216,7 +228,7 @@ onMounted(() => {
                   class="pb-3 px-3 text-xs font-black transition-all border-b-2 cursor-pointer"
                   :class="activeTab === 'ar' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-slate-400 hover:text-slate-700'"
                 >
-                  العربية (Arabic)
+                  Ø§Ù„Ø¹Ø±Ø¨ÙŠØ© (Arabic)
                 </button>
                 <button
                   type="button"
@@ -232,16 +244,16 @@ onMounted(() => {
                 <!-- Arabic Tab -->
                 <div v-if="activeTab === 'ar'" dir="rtl" class="flex flex-col gap-3">
                   <div>
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">عنوان الفيديو</span>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Ø¹Ù†ÙˆØ§Ù† Ø§Ù„ÙÙŠØ¯ÙŠÙˆ</span>
                     <h2 class="text-lg font-black text-slate-900 mt-1">
-                      {{ video.titleAr || 'لا يوجد عنوان بالعربية' }}
+                      {{ video.titleAr || 'Ù„Ø§ ÙŠÙˆØ¬Ø¯ Ø¹Ù†ÙˆØ§Ù† Ø¨Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©' }}
                     </h2>
                   </div>
 
                   <div>
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">وصف الفيديو</span>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">ÙˆØµÙ Ø§Ù„ÙÙŠØ¯ÙŠÙˆ</span>
                     <div class="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-xs text-slate-700 leading-relaxed mt-1">
-                      {{ video.descriptionAr || 'لا يوجد وصف تفصيلي بالعربية للفيديو.' }}
+                      {{ video.descriptionAr || 'Ù„Ø§ ÙŠÙˆØ¬Ø¯ ÙˆØµÙ ØªÙØµÙŠÙ„ÙŠ Ø¨Ø§Ù„Ø¹Ø±Ø¨ÙŠØ© Ù„Ù„ÙÙŠØ¯ÙŠÙˆ.' }}
                     </div>
                   </div>
                 </div>
@@ -261,6 +273,118 @@ onMounted(() => {
                       {{ video.descriptionEn || 'No English description provided for this video.' }}
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Related Videos Section -->
+            <div class="bg-white rounded-3xl border border-slate-200/80 shadow-2xs overflow-hidden">
+              <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <VideoIcon class="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 class="text-sm font-black text-slate-900">
+                      {{ isAr ? 'ÙÙŠØ¯ÙŠÙˆÙ‡Ø§Øª Ø°Ø§Øª ØµÙ„Ø©' : 'Related Videos' }}
+                    </h3>
+                    <p class="text-[11px] text-slate-400 font-medium">
+                      {{ isAr ? 'Ù…Ù‚Ø§Ø·Ø¹ Ù…Ù‚ØªØ±Ø­Ø© Ù…Ù† Ù†ÙØ³ Ø§Ù„ØªØµÙ†ÙŠÙ Ø£Ùˆ Ù…Ø­ØªÙˆÙ‰ ØªØ¹Ù„ÙŠÙ…ÙŠ Ù…Ø±ØªØ¨Ø·' : 'Suggested videos from the same category or related topics' }}
+                    </p>
+                  </div>
+                </div>
+
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold font-mono bg-emerald-50 text-emerald-700 border border-emerald-100">
+                  {{ video.relatedVideos?.length || 0 }} {{ isAr ? 'ÙÙŠØ¯ÙŠÙˆ' : 'videos' }}
+                </span>
+              </div>
+
+              <div class="p-5">
+                <!-- If Related Videos Exist -->
+                <div
+                  v-if="video.relatedVideos && video.relatedVideos.length > 0"
+                  class="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                >
+                  <div
+                    v-for="rel in video.relatedVideos"
+                    :key="rel.id"
+                    @click="router.push(`/videos/${rel.id}`)"
+                    class="group relative bg-slate-50/70 hover:bg-slate-100/90 border border-slate-200/70 hover:border-emerald-300 rounded-2xl p-3 transition-all duration-200 cursor-pointer flex flex-col justify-between shadow-2xs hover:shadow-sm"
+                  >
+                    <!-- Thumbnail with duration & preview badges -->
+                    <div class="aspect-video w-full rounded-xl overflow-hidden bg-slate-950 relative border border-slate-200/60">
+                      <img
+                        v-if="rel.thumbnailUrl"
+                        :src="resolveAttachmentUrl(rel.thumbnailUrl, 'image')"
+                        :alt="rel.titleEn"
+                        class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        @error="handleImageError($event, 'image')"
+                      />
+                      <div v-else class="w-full h-full flex items-center justify-center bg-slate-900 text-slate-600">
+                        <VideoIcon class="w-8 h-8 stroke-1" />
+                      </div>
+
+                      <!-- Play Overlay Hover -->
+                      <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <div class="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                          <Play class="w-4 h-4 fill-white ml-0.5" />
+                        </div>
+                      </div>
+
+                      <!-- Access Badge (Top-left) -->
+                      <span
+                        class="absolute top-2 left-2 text-[9px] font-bold px-2 py-0.5 rounded-md shadow-xs backdrop-blur-xs"
+                        :class="rel.isPreviewable ? 'bg-blue-600/90 text-white' : 'bg-slate-900/90 text-slate-200'"
+                      >
+                        {{ rel.isPreviewable ? (isAr ? 'Ù…Ø¬Ø§Ù†ÙŠ' : 'Free Preview') : (isAr ? 'Ù„Ù„Ù…Ø´ØªØ±ÙƒÙŠÙ†' : 'Subscribers') }}
+                      </span>
+
+                      <!-- Duration Badge (Bottom-right) -->
+                      <span class="absolute bottom-2 right-2 text-[10px] font-mono font-bold bg-black/80 backdrop-blur-xs text-white px-1.5 py-0.5 rounded">
+                        {{ formatDuration(rel.durationSeconds) }}
+                      </span>
+                    </div>
+
+                    <!-- Title & Details -->
+                    <div class="mt-3 flex flex-col gap-1.5 flex-1">
+                      <h4 class="text-xs font-black text-slate-900 group-hover:text-emerald-700 transition-colors line-clamp-2 leading-snug">
+                        {{ isAr ? (rel.titleAr || rel.titleEn) : (rel.titleEn || rel.titleAr) }}
+                      </h4>
+
+                      <div class="flex items-center gap-1.5 text-[11px] text-slate-500">
+                        <User class="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span class="truncate">{{ rel.instructorName || (isAr ? 'Ù…Ø¯Ø±Ø¨ ØºÙŠØ± Ù…Ø­Ø¯Ø¯' : 'No instructor') }}</span>
+                      </div>
+                    </div>
+
+                    <!-- Card Footer: Category & Action -->
+                    <div class="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center justify-between text-[10px]">
+                      <span class="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md truncate max-w-[130px]">
+                        {{ isAr ? (rel.categoryArName || rel.categoryAr || rel.categoryEn || 'ØªØ¹Ù„ÙŠÙ…ÙŠ') : (rel.categoryEnName || rel.categoryEn || rel.categoryAr || 'Educational') }}
+                      </span>
+
+                      <div class="flex items-center gap-1 text-slate-400 group-hover:text-emerald-600 transition-colors font-bold">
+                        <span>{{ isAr ? 'Ø¹Ø±Ø¶' : 'View' }}</span>
+                        <ArrowUpRight class="w-3 h-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Empty State -->
+                <div
+                  v-else
+                  class="py-8 px-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col items-center justify-center text-center gap-2"
+                >
+                  <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center">
+                    <VideoIcon class="w-5 h-5 stroke-1" />
+                  </div>
+                  <p class="text-xs font-bold text-slate-700">
+                    {{ isAr ? 'Ù„Ø§ ØªÙˆØ¬Ø¯ ÙÙŠØ¯ÙŠÙˆÙ‡Ø§Øª Ø°Ø§Øª ØµÙ„Ø© Ø­Ø§Ù„ÙŠØ§Ù‹' : 'No related videos available' }}
+                  </p>
+                  <p class="text-[11px] text-slate-400 max-w-sm">
+                    {{ isAr ? 'Ø³ÙŠØªÙ… Ø±Ø¨Ø· ÙˆØ¥Ø¸Ù‡Ø§Ø± Ø§Ù„ÙÙŠØ¯ÙŠÙˆÙ‡Ø§Øª Ø§Ù„Ù…Ø´Ø§Ø¨Ù‡Ø© ØªÙ„Ù‚Ø§Ø¦ÙŠØ§Ù‹ Ø¹Ù†Ø¯ Ø¥Ø¶Ø§ÙØ© Ø§Ù„Ù…Ø²ÙŠØ¯ Ù…Ù† Ø§Ù„Ø¯Ø±ÙˆØ³ ÙÙŠ Ù†ÙØ³ Ø§Ù„ØªØµÙ†ÙŠÙ.' : 'Similar lessons will appear here automatically when more videos are added to the same category.' }}
+                  </p>
                 </div>
               </div>
             </div>

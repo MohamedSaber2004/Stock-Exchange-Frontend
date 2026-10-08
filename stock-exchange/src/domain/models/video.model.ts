@@ -22,6 +22,7 @@ export interface VideoDto {
   title?: string
   description?: string
   category?: string
+  relatedVideos?: VideoDto[]
 }
 
 export interface GetVideosParams {
@@ -29,6 +30,7 @@ export interface GetVideosParams {
   pageSize?: number
   search?: string
   category?: string
+  relatedVideos?: VideoDto[]
   videoCategoryId?: string
   categoryId?: string
   isActive?: boolean
