@@ -170,20 +170,43 @@ const openEditModal = (service: ServiceDto) => {
 const validateForm = (): boolean => {
   const errors: Record<string, string> = {}
 
-  if (!form.value.titleEn.trim() && !form.value.titleAr.trim()) {
-    errors.title = isAr.value
-      ? 'يرجى إدخال عنوان الخدمة بلغة واحدة على الأقل'
-      : 'Service title is required in at least one language'
+  if (!form.value.titleAr.trim()) {
+    errors.titleAr = isAr.value
+      ? 'يرجى إدخال عنوان الخدمة بالعربية'
+      : 'Service Arabic title is required'
   }
 
-  if (!form.value.descriptionEn.trim() && !form.value.descriptionAr.trim()) {
-    errors.description = isAr.value
-      ? 'يرجى إدخال وصف الخدمة بلغة واحدة على الأقل'
-      : 'Service description is required in at least one language'
+  if (!form.value.titleEn.trim()) {
+    errors.titleEn = isAr.value
+      ? 'يرجى إدخال عنوان الخدمة بالإنجليزية'
+      : 'Service English title is required'
+  }
+
+  if (!form.value.descriptionAr.trim()) {
+    errors.descriptionAr = isAr.value
+      ? 'يرجى إدخال وصف الخدمة بالعربية'
+      : 'Service Arabic description is required'
+  }
+
+  if (!form.value.descriptionEn.trim()) {
+    errors.descriptionEn = isAr.value
+      ? 'يرجى إدخال وصف الخدمة بالإنجليزية'
+      : 'Service English description is required'
+  }
+
+  if (!form.value.imageUrl?.trim()) {
+    errors.imageUrl = isAr.value
+      ? 'يرجى رفع صورة الغلاف للخدمة'
+      : 'Service cover image is required'
   }
 
   formErrors.value = errors
-  return Object.keys(errors).length === 0
+  if (Object.keys(errors).length > 0) {
+    const firstError = Object.values(errors)[0]
+    if (firstError) toast.error(firstError)
+    return false
+  }
+  return true
 }
 
 const handleSubmit = async () => {
@@ -498,7 +521,10 @@ onMounted(() => {
               />
             </div>
           </div>
-          <p v-if="formErrors.title" class="text-xs text-rose-500 font-semibold">{{ formErrors.title }}</p>
+          <div v-if="formErrors.titleAr || formErrors.titleEn" class="flex flex-col gap-1">
+            <p v-if="formErrors.titleAr" class="text-xs text-rose-500 font-semibold">{{ formErrors.titleAr }}</p>
+            <p v-if="formErrors.titleEn" class="text-xs text-rose-500 font-semibold">{{ formErrors.titleEn }}</p>
+          </div>
 
           <!-- Descriptions (Bilingual) -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -528,7 +554,10 @@ onMounted(() => {
               ></textarea>
             </div>
           </div>
-          <p v-if="formErrors.description" class="text-xs text-rose-500 font-semibold">{{ formErrors.description }}</p>
+          <div v-if="formErrors.descriptionAr || formErrors.descriptionEn" class="flex flex-col gap-1">
+            <p v-if="formErrors.descriptionAr" class="text-xs text-rose-500 font-semibold">{{ formErrors.descriptionAr }}</p>
+            <p v-if="formErrors.descriptionEn" class="text-xs text-rose-500 font-semibold">{{ formErrors.descriptionEn }}</p>
+          </div>
 
           <!-- Rich Content Details / Features (Bilingual) -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -585,13 +614,14 @@ onMounted(() => {
 
           <!-- Cover Image Upload -->
           <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-bold text-slate-700">{{ t('services.imageUrl') }}</label>
+            <label class="text-xs font-bold text-slate-700">{{ t('services.imageUrl') }} *</label>
             <ImageUploader
               v-model="form.imageUrl"
-              :label="t('services.imageUrl')"
+              :label="t('services.imageUrl') + ' *'"
               hint="PNG, JPG or WEBP (Max 5MB)"
               aspect-ratio="aspect-video"
             />
+            <p v-if="formErrors.imageUrl" class="text-xs text-rose-500 font-semibold">{{ formErrors.imageUrl }}</p>
           </div>
         </form>
 

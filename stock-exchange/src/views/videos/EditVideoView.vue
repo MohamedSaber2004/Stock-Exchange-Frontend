@@ -126,6 +126,18 @@ const handleSave = async () => {
     )
     return
   }
+  if (!form.value.descriptionAr.trim()) {
+    toast.error(isAr.value ? 'يرجى إدخال وصف الفيديو بالعربية' : 'Please enter video description in Arabic')
+    return
+  }
+  if (!form.value.descriptionEn.trim()) {
+    toast.error(isAr.value ? 'يرجى إدخال وصف الفيديو بالإنجليزية' : 'Please enter video description in English')
+    return
+  }
+  if (!form.value.thumbnailUrl) {
+    toast.error(isAr.value ? 'يرجى توفير صورة مصغرة (غلاف) للفيديو' : 'Please provide a video thumbnail')
+    return
+  }
 
   const selectedCat = categories.value.find((c) => c.id === form.value.categoryId)
   const catEn = selectedCat?.categoryEnName || originalVideo.value?.categoryEn || 'General'
@@ -256,7 +268,7 @@ onMounted(async () => {
 
             <!-- Description Arabic -->
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-bold text-slate-700">{{ isAr ? 'وصف الفيديو (عربي)' : 'Video Description (Arabic)' }}</label>
+              <label class="text-xs font-bold text-slate-700">{{ isAr ? 'وصف الفيديو (عربي) *' : 'Video Description (Arabic) *' }}</label>
               <textarea
                 v-model="form.descriptionAr"
                 rows="3"
@@ -268,7 +280,7 @@ onMounted(async () => {
 
             <!-- Description English -->
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-bold text-slate-700">{{ isAr ? 'وصف الفيديو (إنجليزي)' : 'Video Description (English)' }}</label>
+              <label class="text-xs font-bold text-slate-700">{{ isAr ? 'وصف الفيديو (إنجليزي) *' : 'Video Description (English) *' }}</label>
               <textarea
                 v-model="form.descriptionEn"
                 rows="3"
@@ -295,7 +307,7 @@ onMounted(async () => {
             <ImageUploader
               v-model="form.thumbnailUrl"
               :old-file-name="originalVideo?.thumbnailUrl || undefined"
-              :label="isAr ? 'الصورة المصغرة (الغلاف)' : 'Video Thumbnail'"
+              :label="isAr ? 'الصورة المصغرة (الغلاف) *' : 'Video Thumbnail *'"
               :hint="isAr ? 'تُلتقط تلقائياً من الفيديو أو يمكنك اختيار صورة مخصصة' : 'Auto-captured from video or choose custom image'"
             />
 

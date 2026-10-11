@@ -167,20 +167,43 @@ const openEditModal = (expert: ExpertDto) => {
 const validateForm = (): boolean => {
   const errors: Record<string, string> = {}
 
-  if (!form.value.fullNameEn.trim() && !form.value.fullNameAr.trim()) {
-    errors.name = isAr.value
-      ? 'يرجى إدخال اسم الخبير بلغة واحدة على الأقل'
-      : 'Expert full name is required in at least one language'
+  if (!form.value.fullNameAr.trim()) {
+    errors.fullNameAr = isAr.value
+      ? 'يرجى إدخال اسم الخبير بالعربية'
+      : 'Expert Arabic full name is required'
   }
 
-  if (!form.value.titleEn.trim() && !form.value.titleAr.trim()) {
-    errors.title = isAr.value
-      ? 'يرجى إدخال المسمى المهني بلغة واحدة على الأقل'
-      : 'Professional title is required in at least one language'
+  if (!form.value.fullNameEn.trim()) {
+    errors.fullNameEn = isAr.value
+      ? 'يرجى إدخال اسم الخبير بالإنجليزية'
+      : 'Expert English full name is required'
+  }
+
+  if (!form.value.titleAr.trim()) {
+    errors.titleAr = isAr.value
+      ? 'يرجى إدخال المسمى المهني بالعربية'
+      : 'Professional title in Arabic is required'
+  }
+
+  if (!form.value.titleEn.trim()) {
+    errors.titleEn = isAr.value
+      ? 'يرجى إدخال المسمى المهني بالإنجليزية'
+      : 'Professional title in English is required'
+  }
+
+  if (!form.value.avatarUrl?.trim()) {
+    errors.avatarUrl = isAr.value
+      ? 'يرجى رفع الصورة الشخصية للخبير'
+      : 'Expert avatar picture is required'
   }
 
   formErrors.value = errors
-  return Object.keys(errors).length === 0
+  if (Object.keys(errors).length > 0) {
+    const firstError = Object.values(errors)[0]
+    if (firstError) toast.error(firstError)
+    return false
+  }
+  return true
 }
 
 const handleSubmit = async () => {
@@ -549,7 +572,10 @@ onMounted(() => {
               />
             </div>
           </div>
-          <p v-if="formErrors.name" class="text-xs text-rose-500 font-semibold">{{ formErrors.name }}</p>
+          <div v-if="formErrors.fullNameAr || formErrors.fullNameEn" class="flex flex-col gap-1">
+            <p v-if="formErrors.fullNameAr" class="text-xs text-rose-500 font-semibold">{{ formErrors.fullNameAr }}</p>
+            <p v-if="formErrors.fullNameEn" class="text-xs text-rose-500 font-semibold">{{ formErrors.fullNameEn }}</p>
+          </div>
 
           <!-- Professional Titles / Roles (Bilingual) -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -579,7 +605,10 @@ onMounted(() => {
               />
             </div>
           </div>
-          <p v-if="formErrors.title" class="text-xs text-rose-500 font-semibold">{{ formErrors.title }}</p>
+          <div v-if="formErrors.titleAr || formErrors.titleEn" class="flex flex-col gap-1">
+            <p v-if="formErrors.titleAr" class="text-xs text-rose-500 font-semibold">{{ formErrors.titleAr }}</p>
+            <p v-if="formErrors.titleEn" class="text-xs text-rose-500 font-semibold">{{ formErrors.titleEn }}</p>
+          </div>
 
           <!-- Display Order -->
           <div class="flex flex-col gap-1.5">
@@ -594,13 +623,14 @@ onMounted(() => {
 
           <!-- Avatar Image Upload -->
           <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-bold text-slate-700">{{ t('experts.avatarUrl') }}</label>
+            <label class="text-xs font-bold text-slate-700">{{ t('experts.avatarUrl') }} *</label>
             <ImageUploader
               v-model="form.avatarUrl"
-              :label="t('experts.avatarUrl')"
+              :label="t('experts.avatarUrl') + ' *'"
               hint="Square portrait (PNG, JPG or WEBP)"
               aspect-ratio="aspect-square"
             />
+            <p v-if="formErrors.avatarUrl" class="text-xs text-rose-500 font-semibold">{{ formErrors.avatarUrl }}</p>
           </div>
 
           <!-- Feature on Home & Active Toggles -->

@@ -6,7 +6,6 @@ import {
   ArrowRight,
   Edit,
   Trash2,
-  Briefcase,
   Calendar,
   Layers,
   CheckCircle2,
@@ -112,12 +111,24 @@ const openEditModal = () => {
 }
 
 const handleSaveEdit = async () => {
-  if (!form.value.titleEn.trim() && !form.value.titleAr.trim()) {
-    toast.error(isAr.value ? 'يرجى إدخال عنوان الخدمة' : 'Service title is required')
+  if (!form.value.titleAr.trim()) {
+    toast.error(isAr.value ? 'يرجى إدخال عنوان الخدمة بالعربية' : 'Service Arabic title is required')
     return
   }
-  if (!form.value.descriptionEn.trim() && !form.value.descriptionAr.trim()) {
-    toast.error(isAr.value ? 'يرجى إدخال وصف الخدمة' : 'Service description is required')
+  if (!form.value.titleEn.trim()) {
+    toast.error(isAr.value ? 'يرجى إدخال عنوان الخدمة بالإنجليزية' : 'Service English title is required')
+    return
+  }
+  if (!form.value.descriptionAr.trim()) {
+    toast.error(isAr.value ? 'يرجى إدخال وصف الخدمة بالعربية' : 'Service Arabic description is required')
+    return
+  }
+  if (!form.value.descriptionEn.trim()) {
+    toast.error(isAr.value ? 'يرجى إدخال وصف الخدمة بالإنجليزية' : 'Service English description is required')
+    return
+  }
+  if (!form.value.imageUrl?.trim()) {
+    toast.error(isAr.value ? 'يرجى رفع صورة الغلاف للخدمة' : 'Service cover image is required')
     return
   }
 
@@ -480,7 +491,7 @@ onMounted(() => {
             <!-- Image Uploader -->
             <ImageUploader
               v-model="form.imageUrl"
-              :label="isAr ? 'صورة الغلاف' : 'Cover Image'"
+              :label="isAr ? 'صورة الغلاف *' : 'Cover Image *'"
               :hint="isAr ? 'صورة معبرة عن الخدمة للمعاينة في التطبيق' : 'Informative service preview image'"
             />
           </form>

@@ -98,6 +98,22 @@ const handleSaveChanges = async () => {
     toast.error(isAr.value ? 'يرجى إدخال الوصف المختصر بالعربية' : 'Please provide Arabic excerpt')
     return
   }
+  if (!form.value.categoryId) {
+    toast.error(isAr.value ? 'يرجى اختيار تصنيف المقال' : 'Please select an article category')
+    return
+  }
+  if (!form.value.imageUrl?.trim()) {
+    toast.error(isAr.value ? 'يرجى رفع صورة الغلاف للمقال' : 'Please upload a cover image for the article')
+    return
+  }
+  if (!form.value.contentAr.trim()) {
+    toast.error(isAr.value ? 'يرجى إدخال المحتوى الكامل للمقال بالعربية' : 'Please provide Arabic article content')
+    return
+  }
+  if (!form.value.contentEn.trim()) {
+    toast.error(isAr.value ? 'يرجى إدخال المحتوى الكامل للمقال بالإنجليزية' : 'Please provide English article content')
+    return
+  }
 
   isSubmitting.value = true
   try {
@@ -181,12 +197,12 @@ onMounted(async () => {
 
             <!-- Category -->
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-bold text-slate-700">{{ isAr ? 'التصنيف' : 'Category' }}</label>
+              <label class="text-xs font-bold text-slate-700">{{ isAr ? 'التصنيف *' : 'Category *' }}</label>
               <select
                 v-model="form.categoryId"
                 class="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 cursor-pointer font-medium"
               >
-                <option value="">{{ isAr ? 'بدون تصنيف' : 'No category' }}</option>
+                <option value="">{{ isAr ? 'اختر التصنيف *' : 'Select category *' }}</option>
                 <option v-for="cat in categories" :key="cat.id" :value="cat.id">
                   {{ isAr ? cat.categoryArName : cat.categoryEnName }}
                 </option>
@@ -220,7 +236,7 @@ onMounted(async () => {
             <!-- Full Content English -->
             <RichTextEditor
               v-model="form.contentEn"
-              :label="isAr ? 'المحتوى الكامل للمقال (إنجليزي)' : 'Full Article Content (English)'"
+              :label="isAr ? 'المحتوى الكامل للمقال (إنجليزي) *' : 'Full Article Content (English) *'"
               :placeholder="isAr ? 'اكتب المحتوى الكامل للمقال بالإنجليزية...' : 'Write full article content in English...'"
               :rows="8"
             />
@@ -228,7 +244,7 @@ onMounted(async () => {
             <!-- Full Content Arabic -->
             <RichTextEditor
               v-model="form.contentAr"
-              :label="isAr ? 'المحتوى الكامل للمقال (عربي)' : 'Full Article Content (Arabic)'"
+              :label="isAr ? 'المحتوى الكامل للمقال (عربي) *' : 'Full Article Content (Arabic) *'"
               :placeholder="isAr ? 'اكتب المحتوى الكامل للمقال بالعربية...' : 'Write full article content in Arabic...'"
               :rows="8"
             />
@@ -240,7 +256,7 @@ onMounted(async () => {
             <ImageUploader
               v-model="form.imageUrl"
               :old-file-name="initialImageUrl"
-              :label="isAr ? 'صورة الغلاف' : 'Cover Image'"
+              :label="isAr ? 'صورة الغلاف *' : 'Cover Image *'"
               :hint="isAr ? 'الحجم الموصى به: 1200×675' : 'Recommended size: 1200×675'"
             />
 

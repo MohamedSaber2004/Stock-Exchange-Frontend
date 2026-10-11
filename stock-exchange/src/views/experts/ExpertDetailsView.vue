@@ -170,18 +170,38 @@ const openEditModal = () => {
 
 const validateEditForm = (): boolean => {
   const errors: Record<string, string> = {}
-  if (!editForm.value.fullNameEn.trim() && !editForm.value.fullNameAr.trim()) {
-    errors.name = isAr.value
-      ? 'يرجى إدخال اسم الخبير بلغة واحدة على الأقل'
-      : 'Expert full name is required in at least one language'
+  if (!editForm.value.fullNameAr.trim()) {
+    errors.fullNameAr = isAr.value
+      ? 'يرجى إدخال اسم الخبير بالعربية'
+      : 'Expert Arabic full name is required'
   }
-  if (!editForm.value.titleEn.trim() && !editForm.value.titleAr.trim()) {
-    errors.title = isAr.value
-      ? 'يرجى إدخال المسمى المهني بلغة واحدة على الأقل'
-      : 'Professional title is required in at least one language'
+  if (!editForm.value.fullNameEn.trim()) {
+    errors.fullNameEn = isAr.value
+      ? 'يرجى إدخال اسم الخبير بالإنجليزية'
+      : 'Expert English full name is required'
+  }
+  if (!editForm.value.titleAr.trim()) {
+    errors.titleAr = isAr.value
+      ? 'يرجى إدخال المسمى المهني بالعربية'
+      : 'Professional title in Arabic is required'
+  }
+  if (!editForm.value.titleEn.trim()) {
+    errors.titleEn = isAr.value
+      ? 'يرجى إدخال المسمى المهني بالإنجليزية'
+      : 'Professional title in English is required'
+  }
+  if (!editForm.value.avatarUrl?.trim()) {
+    errors.avatarUrl = isAr.value
+      ? 'يرجى رفع الصورة الشخصية للخبير'
+      : 'Expert avatar picture is required'
   }
   editErrors.value = errors
-  return Object.keys(errors).length === 0
+  if (Object.keys(errors).length > 0) {
+    const first = Object.values(errors)[0]
+    if (first) toast.error(first)
+    return false
+  }
+  return true
 }
 
 const handleSaveEdit = async () => {
@@ -590,20 +610,23 @@ onMounted(() => {
           <!-- Avatar Uploader -->
           <div>
             <label class="block text-xs font-bold text-slate-700 mb-1.5">
-              {{ t('experts.avatarUrl') }}
+              {{ t('experts.avatarUrl') }} *
             </label>
             <ImageUploader
               v-model="editForm.avatarUrl"
               entity-type="avatar"
               aspect-ratio="1:1"
             />
+            <p v-if="editErrors.avatarUrl" class="text-[11px] text-red-500 font-semibold mt-1">
+              {{ editErrors.avatarUrl }}
+            </p>
           </div>
 
           <!-- Bilingual Names -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label class="block text-xs font-bold text-slate-700 mb-1">
-                {{ t('experts.fullNameAr') }}
+                {{ t('experts.fullNameAr') }} *
               </label>
               <input
                 v-model="editForm.fullNameAr"
@@ -614,7 +637,7 @@ onMounted(() => {
             </div>
             <div>
               <label class="block text-xs font-bold text-slate-700 mb-1">
-                {{ t('experts.fullNameEn') }}
+                {{ t('experts.fullNameEn') }} *
               </label>
               <input
                 v-model="editForm.fullNameEn"
@@ -624,15 +647,20 @@ onMounted(() => {
               />
             </div>
           </div>
-          <p v-if="editErrors.name" class="text-[11px] text-red-500 font-semibold">
-            {{ editErrors.name }}
-          </p>
+          <div v-if="editErrors.fullNameAr || editErrors.fullNameEn" class="flex flex-col gap-0.5">
+            <p v-if="editErrors.fullNameAr" class="text-[11px] text-red-500 font-semibold">
+              {{ editErrors.fullNameAr }}
+            </p>
+            <p v-if="editErrors.fullNameEn" class="text-[11px] text-red-500 font-semibold">
+              {{ editErrors.fullNameEn }}
+            </p>
+          </div>
 
           <!-- Bilingual Titles / Roles -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label class="block text-xs font-bold text-slate-700 mb-1">
-                {{ t('experts.titleAr') }}
+                {{ t('experts.titleAr') }} *
               </label>
               <input
                 v-model="editForm.titleAr"
@@ -643,7 +671,7 @@ onMounted(() => {
             </div>
             <div>
               <label class="block text-xs font-bold text-slate-700 mb-1">
-                {{ t('experts.titleEn') }}
+                {{ t('experts.titleEn') }} *
               </label>
               <input
                 v-model="editForm.titleEn"
@@ -653,9 +681,14 @@ onMounted(() => {
               />
             </div>
           </div>
-          <p v-if="editErrors.title" class="text-[11px] text-red-500 font-semibold">
-            {{ editErrors.title }}
-          </p>
+          <div v-if="editErrors.titleAr || editErrors.titleEn" class="flex flex-col gap-0.5">
+            <p v-if="editErrors.titleAr" class="text-[11px] text-red-500 font-semibold">
+              {{ editErrors.titleAr }}
+            </p>
+            <p v-if="editErrors.titleEn" class="text-[11px] text-red-500 font-semibold">
+              {{ editErrors.titleEn }}
+            </p>
+          </div>
 
           <!-- Display Order -->
           <div>

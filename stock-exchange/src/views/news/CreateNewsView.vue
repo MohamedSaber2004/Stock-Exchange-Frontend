@@ -42,8 +42,32 @@ const handleBadgeChange = (val: string) => {
 }
 
 const handlePublish = async () => {
-  if (!form.value.titleAr.trim() && !form.value.titleEn.trim()) {
-    toast.error(isAr.value ? 'يرجى إدخال عنوان الخبر بلغة واحدة على الأقل' : 'Please enter headline in at least one language')
+  if (!form.value.titleAr.trim()) {
+    toast.error(isAr.value ? 'يرجى إدخال عنوان الخبر بالعربية' : 'Arabic headline is required')
+    return
+  }
+  if (!form.value.titleEn.trim()) {
+    toast.error(isAr.value ? 'يرجى إدخال عنوان الخبر بالإنجليزية' : 'English headline is required')
+    return
+  }
+  if (!form.value.summaryAr.trim()) {
+    toast.error(isAr.value ? 'يرجى إدخال ملخص الخبر بالعربية' : 'Arabic news summary is required')
+    return
+  }
+  if (!form.value.summaryEn.trim()) {
+    toast.error(isAr.value ? 'يرجى إدخال ملخص الخبر بالإنجليزية' : 'English news summary is required')
+    return
+  }
+  if (!form.value.contentAr.trim()) {
+    toast.error(isAr.value ? 'يرجى إدخال القصة الكاملة للخبر بالعربية' : 'Arabic news story content is required')
+    return
+  }
+  if (!form.value.contentEn.trim()) {
+    toast.error(isAr.value ? 'يرجى إدخال القصة الكاملة للخبر بالإنجليزية' : 'English news story content is required')
+    return
+  }
+  if (!form.value.imageUrl?.trim()) {
+    toast.error(isAr.value ? 'يرجى رفع الصورة البارزة للخبر' : 'Featured image is required')
     return
   }
 
@@ -164,14 +188,14 @@ const handlePublish = async () => {
             <div class="flex flex-col gap-4">
               <RichTextEditor
                 v-model="form.summaryAr"
-                :label="t('news.summaryAr')"
+                :label="t('news.summaryAr') + ' *'"
                 placeholder="اكتب تفاصيل أو ملخص الخبر بالعربية..."
                 :rows="4"
               />
 
               <RichTextEditor
                 v-model="form.summaryEn"
-                :label="t('news.summaryEn')"
+                :label="t('news.summaryEn') + ' *'"
                 placeholder="Write news summary or details in English..."
                 :rows="3"
               />
@@ -179,14 +203,14 @@ const handlePublish = async () => {
               <!-- Full News Story Content -->
               <RichTextEditor
                 v-model="form.contentAr"
-                :label="isAr ? 'القصة الكاملة للخبر (عربي)' : 'Full News Story (Arabic)'"
+                :label="(isAr ? 'القصة الكاملة للخبر (عربي)' : 'Full News Story (Arabic)') + ' *'"
                 :placeholder="isAr ? 'اكتب التفاصيل الكاملة للخبر بالعربية...' : 'Write full news story in Arabic...'"
                 :rows="6"
               />
 
               <RichTextEditor
                 v-model="form.contentEn"
-                :label="isAr ? 'القصة الكاملة للخبر (إنجليزي)' : 'Full News Story (English)'"
+                :label="(isAr ? 'القصة الكاملة للخبر (إنجليزي)' : 'Full News Story (English)') + ' *'"
                 :placeholder="isAr ? 'اكتب التفاصيل الكاملة للخبر بالإنجليزية...' : 'Write full news story in English...'"
                 :rows="6"
               />
@@ -219,7 +243,7 @@ const handlePublish = async () => {
             <!-- Featured Image Upload -->
             <ImageUploader
               v-model="form.imageUrl"
-              :label="t('news.featuredImage')"
+              :label="t('news.featuredImage') + ' *'"
               :hint="isAr ? 'الحجم الموصى به: 1200×675' : 'Recommended size: 1200×675'"
               aspect-ratio="aspect-video"
             />
