@@ -9,6 +9,23 @@ export interface RequestOptions extends RequestInit {
   cancelKey?: string
 }
 
+export interface UploadProgressInfo {
+  loaded: number
+  total: number
+  percentage: number
+  bytesPerSecond?: number
+  etaSeconds?: number
+}
+
+export interface UploadRequestOptions {
+  method?: 'POST' | 'PUT' | 'PATCH'
+  params?: Record<string, string | number | boolean | undefined | null>
+  requiresAuth?: boolean
+  headers?: Record<string, string>
+  signal?: AbortSignal
+  onProgress?: (progress: UploadProgressInfo) => void
+}
+
 /** Interceptor called before every fetch — receives the mutable Headers object and the request path. */
 export type RequestInterceptor = (headers: Headers, path: string, requiresAuth: boolean) => void | Promise<void>
 
@@ -389,5 +406,165 @@ export class HttpClient {
 
   delete<T>(path: string, options?: RequestOptions): Promise<T> {
     return this.request<T>(path, { ...options, method: 'DELETE' })
+  }
+
+  /**
+   * Upload FormData with real progress tracking, upload speed calculation, ETA, and cancellation.
+   * Uses XMLHttpRequest because native browser fetch() does not support upload progress events.
+   */
+  async upload<T>(path: string, formData: FormData, options: UploadRequestOptions = {}): Promise<T> {
+    const { method = 'POST', params, requiresAuth = true, headers: customHeaders, signal, onProgress } = options
+    const targetUrl = this.buildUrl(path, params)
+
+    const headers = new Headers(customHeaders || {})
+    if (!headers.has('Accept')) {
+      headers.set('Accept', 'application/json')
+    }
+    if (!headers.has('Accept-Language')) {
+      headers.set('Accept-Language', this.getCurrentLanguage())
+    }
+
+    await this.runInterceptors(headers, path, requiresAuth)
+
+    return new Promise<T>((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      xhr.open(method, targetUrl, true)
+
+      // Copy headers to XHR (do NOT set Content-Type so browser sets boundary automatically)
+      headers.forEach((val, key) => {
+        if (key.toLowerCase() !== 'content-type') {
+          xhr.setRequestHeader(key, val)
+        }
+      })
+
+      if (signal) {
+        if (signal.aborted) {
+          return reject(this.normalizeError(new DOMException('Upload aborted', 'AbortError')))
+        }
+        signal.addEventListener('abort', () => xhr.abort(), { once: true })
+      }
+
+      let lastTime = Date.now()
+      let lastLoaded = 0
+      let currentSpeed = 0
+
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable && event.total > 0) {
+          const now = Date.now()
+          const timeDelta = (now - lastTime) / 1000
+          if (timeDelta >= 0.2) {
+            const bytesDelta = event.loaded - lastLoaded
+            const instantSpeed = bytesDelta / timeDelta
+            currentSpeed = currentSpeed === 0 ? instantSpeed : 0.7 * currentSpeed + 0.3 * instantSpeed
+            lastTime = now
+            lastLoaded = event.loaded
+          }
+          const percentage = Math.min(99, Math.round((event.loaded / event.total) * 100))
+          const remainingBytes = event.total - event.loaded
+          const etaSeconds = currentSpeed > 0 ? Math.max(1, Math.round(remainingBytes / currentSpeed)) : undefined
+
+          onProgress?.({
+            loaded: event.loaded,
+            total: event.total,
+            percentage,
+            bytesPerSecond: currentSpeed,
+            etaSeconds,
+          })
+        }
+      }
+
+      xhr.onload = () => {
+        const status = xhr.status
+        const contentType = xhr.getResponseHeader('content-type') || ''
+        let payload: unknown = null
+        if (contentType.includes('application/json')) {
+          try {
+            payload = JSON.parse(xhr.responseText)
+          } catch {
+            payload = xhr.responseText
+          }
+        } else {
+          payload = xhr.responseText
+        }
+
+        if (status >= 400 || status === 0) {
+          const isAr = this.getCurrentLanguage() === 'ar'
+          if (status === 405) {
+            const err: AppError = {
+              code: 'HTTP_405',
+              statusCode: 405,
+              status: 405,
+              message: isAr
+                ? 'خطأ 405 (Method Not Allowed): الخادم رفض طريقة الرفع أو حجم الملف. يرجى التأكد من مسار الـ Proxy وتفعيل CORS للـ OPTIONS على السيرفر، أو التأكد من حجم الفيديو (الحد الأقصى المعتاد للاستضافة 30MB).'
+                : 'Error 405 (Method Not Allowed): Server rejected the upload request or body size. Check CORS/proxy configuration or reduce video file size (typical limit 30MB).',
+              details: payload,
+            }
+            return reject(err)
+          }
+          if (status === 413) {
+            const err: AppError = {
+              code: 'HTTP_413',
+              statusCode: 413,
+              status: 413,
+              message: isAr
+                ? 'حجم ملف الفيديو كبير جداً ويتجاوز الحد الأقصى المسموح به على الخادم (413 Payload Too Large).'
+                : 'Video file size exceeds maximum limit supported by the server (413 Payload Too Large).',
+              details: payload,
+            }
+            return reject(err)
+          }
+
+          const extracted = extractApiErrors(payload)
+          const err: AppError = {
+            code: `HTTP_${status}`,
+            message: extracted.generalMessage || xhr.statusText || 'Upload failed',
+            status,
+            statusCode: status,
+            allErrors: extracted.allErrors,
+            fieldErrors: extracted.fieldErrors,
+            details: payload,
+          }
+          return reject(err)
+        }
+
+        if (payload && typeof payload === 'object' && 'success' in payload && (payload as { success?: boolean }).success === false) {
+          const extracted = extractApiErrors(payload)
+          const payObj = payload as { statusCode?: number }
+          const err: AppError = {
+            code: `API_ERROR_${payObj.statusCode || 400}`,
+            message: extracted.generalMessage || 'Operation failed',
+            status: payObj.statusCode || 400,
+            statusCode: payObj.statusCode || 400,
+            allErrors: extracted.allErrors,
+            fieldErrors: extracted.fieldErrors,
+            details: payload,
+          }
+          return reject(err)
+        }
+
+        // Notify 100% completion
+        const fileEntry = formData.get('File')
+        const totalBytes = fileEntry instanceof File ? fileEntry.size : 0
+        onProgress?.({
+          loaded: totalBytes,
+          total: totalBytes,
+          percentage: 100,
+          bytesPerSecond: currentSpeed,
+          etaSeconds: 0,
+        })
+
+        resolve(payload as T)
+      }
+
+      xhr.onerror = () => {
+        reject(this.normalizeError(new Error('Failed to fetch')))
+      }
+
+      xhr.onabort = () => {
+        reject(this.normalizeError(new DOMException('Upload cancelled', 'AbortError')))
+      }
+
+      xhr.send(formData)
+    })
   }
 }

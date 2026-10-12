@@ -27,10 +27,15 @@ export class AttachmentRepository implements IAttachmentRepository {
     formData.append('MediaType', String(payload.mediaType ?? MediaType.Image))
     formData.append('Place', String(payload.place ?? 0))
 
-    const response = await this.httpClient.post<ApiResponse<string>>(
+    const response = await this.httpClient.upload<ApiResponse<string>>(
       ApiEndpoints.Attachments.Upload,
       formData,
-      { requiresAuth: true }
+      {
+        method: 'POST',
+        requiresAuth: true,
+        signal: payload.signal,
+        onProgress: payload.onProgress,
+      }
     )
 
     if (!response.data && !response.success) {
@@ -53,10 +58,15 @@ export class AttachmentRepository implements IAttachmentRepository {
     formData.append('MediaType', String(payload.mediaType ?? MediaType.Image))
     formData.append('Place', String(payload.place ?? 0))
 
-    const response = await this.httpClient.post<ApiResponse<string>>(
+    const response = await this.httpClient.upload<ApiResponse<string>>(
       ApiEndpoints.Attachments.UploadMultiple,
       formData,
-      { requiresAuth: true }
+      {
+        method: 'POST',
+        requiresAuth: true,
+        signal: payload.signal,
+        onProgress: payload.onProgress,
+      }
     )
 
     if (!response.data && !response.success) {
@@ -82,10 +92,15 @@ export class AttachmentRepository implements IAttachmentRepository {
     formData.append('MediaType', String(payload.mediaType ?? MediaType.Image))
     formData.append('Place', String(payload.place ?? 0))
 
-    const response = await this.httpClient.put<ApiResponse<string>>(
+    const response = await this.httpClient.upload<ApiResponse<string>>(
       ApiEndpoints.Attachments.Update,
       formData,
-      { requiresAuth: true }
+      {
+        method: 'PUT',
+        requiresAuth: true,
+        signal: payload.signal,
+        onProgress: payload.onProgress,
+      }
     )
 
     if (!response.data && !response.success) {

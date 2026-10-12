@@ -48,11 +48,15 @@ const isDragging = ref(false)
 // Upload state
 const isUploading = ref(false)
 const uploadProgress = ref(0)
+const uploadedBytes = ref(0)
+const uploadSpeed = ref(0)
+const uploadEta = ref(0)
 const uploadFileName = ref('')
 const uploadFileSize = ref(0)
 const uploadStatus = ref<'uploading' | 'processing' | 'success' | 'error'>('uploading')
 const uploadError = ref('')
-let progressTimer: ReturnType<typeof setInterval> | null = null
+const uploadErrorHint = ref('')
+const uploadAbortController = ref<AbortController | null>(null)
 
 // Local preview URL (blob: during/immediately after file selection)
 const localPreviewUrl = ref<string>('')
@@ -136,14 +140,19 @@ const safelyDetachAndRevoke = (videoEl: HTMLVideoElement | null, urlToRevoke?: s
 }
 
 const cancelUpload = () => {
-  if (progressTimer) {
-    clearInterval(progressTimer)
-    progressTimer = null
+  if (uploadAbortController.value) {
+    uploadAbortController.value.abort()
+    uploadAbortController.value = null
   }
   isUploading.value = false
   uploadProgress.value = 0
+  uploadedBytes.value = 0
+  uploadSpeed.value = 0
+  uploadEta.value = 0
   uploadFileName.value = ''
   uploadFileSize.value = 0
+  uploadError.value = ''
+  uploadErrorHint.value = ''
   if (localPreviewUrl.value) {
     const url = localPreviewUrl.value
     localPreviewUrl.value = ''
@@ -151,6 +160,14 @@ const cancelUpload = () => {
   }
   selectedFile.value = null
   if (fileInputRef.value) fileInputRef.value.value = ''
+}
+
+const retryUpload = () => {
+  if (selectedFile.value) {
+    processFile(selectedFile.value)
+  } else {
+    triggerUpload()
+  }
 }
 
 const removeVideo = () => {
@@ -439,34 +456,40 @@ const processFile = async (file: File) => {
       })
   }
 
-  // Start real backend upload
+  // Start real backend upload with real progress tracking
   isUploading.value = true
   uploadStatus.value = 'uploading'
-  uploadProgress.value = 10
+  uploadProgress.value = 0
+  uploadedBytes.value = 0
+  uploadSpeed.value = 0
+  uploadEta.value = 0
   uploadFileName.value = file.name
   uploadFileSize.value = file.size
   uploadError.value = ''
+  uploadErrorHint.value = ''
 
-  if (progressTimer) clearInterval(progressTimer)
-  progressTimer = setInterval(() => {
-    if (uploadProgress.value < 85) {
-      uploadProgress.value += Math.floor(Math.random() * 10) + 8
-    } else {
-      uploadStatus.value = 'processing'
-    }
-  }, 150)
+  if (uploadAbortController.value) {
+    uploadAbortController.value.abort()
+  }
+  const controller = new AbortController()
+  uploadAbortController.value = controller
 
   try {
     const savedFileName = await coreServices.attachments.upload({
       file,
       mediaType: MediaType.Video,
       place: FilePlace.General,
+      signal: controller.signal,
+      onProgress: (p) => {
+        uploadProgress.value = p.percentage
+        uploadedBytes.value = p.loaded
+        uploadSpeed.value = p.bytesPerSecond || 0
+        uploadEta.value = p.etaSeconds || 0
+        if (p.percentage >= 99) {
+          uploadStatus.value = 'processing'
+        }
+      },
     })
-
-    if (progressTimer) {
-      clearInterval(progressTimer)
-      progressTimer = null
-    }
 
     uploadProgress.value = 100
     uploadStatus.value = 'success'
@@ -482,17 +505,44 @@ const processFile = async (file: File) => {
     setTimeout(() => {
       isUploading.value = false
       uploadProgress.value = 0
-    }, 400)
+    }, 600)
   } catch (err: unknown) {
-    if (progressTimer) {
-      clearInterval(progressTimer)
-      progressTimer = null
-    }
     uploadStatus.value = 'error'
     const errorDetails = extractApiErrors(err)
-    uploadError.value =
-      errorDetails.generalMessage ||
-      (isAr.value ? 'فشل رفع ملف الفيديو إلى الخادم' : 'Failed to upload video file')
+    const errCode = (err as { code?: string })?.code || ''
+    const errStatus =
+      (err as { statusCode?: number; status?: number })?.statusCode ||
+      (err as { status?: number })?.status ||
+      errorDetails.statusCode
+
+    // Diagnostic messages for HTTP 405 Method Not Allowed and payload size limits
+    if (errStatus === 405 || errCode === 'HTTP_405') {
+      uploadError.value = isAr.value
+        ? 'الخادم رفض طريقة الطلب أو حجم ملف الفيديو (خطأ 405 Method Not Allowed).'
+        : 'Server rejected the upload request or body size (Error 405 Method Not Allowed).'
+      uploadErrorHint.value = isAr.value
+        ? 'السبب المحتمل: عدم تفعيل معالجة CORS preflight (OPTIONS) على السيرفر، أو رفض IIS للملفات الكبيرة (الحد الافتراضي 30MB). يرجى التأكد من مسار الـ Proxy وتفعيل CORS أو تقليل حجم الفيديو.'
+        : 'Likely cause: CORS preflight (OPTIONS) rejected by the backend server, or IIS rejected oversized request (default limit 30MB). Verify API proxy configuration or reduce video size.'
+    } else if (errStatus === 413 || errCode === 'HTTP_413') {
+      uploadError.value = isAr.value
+        ? 'حجم الفيديو كبير جداً ويتجاوز الحد الأقصى للخادم (413 Payload Too Large).'
+        : 'Video file size exceeds server maximum limit (413 Payload Too Large).'
+      uploadErrorHint.value = isAr.value
+        ? 'يرجى ضغط ملف الفيديو أو اختيار ملف أصغر حجماً (أقل من 30 ميجابايت).'
+        : 'Please compress the video file or choose a smaller file (under 30MB).'
+    } else if (errCode === 'REQUEST_ABORTED') {
+      uploadError.value = isAr.value ? 'تم إلغاء رفع الفيديو' : 'Video upload was cancelled'
+      uploadErrorHint.value = ''
+    } else {
+      uploadError.value =
+        errorDetails.generalMessage ||
+        (isAr.value ? 'فشل رفع ملف الفيديو إلى الخادم' : 'Failed to upload video file')
+      if (file.size > 30 * 1024 * 1024) {
+        uploadErrorHint.value = isAr.value
+          ? 'ملاحظة: حجم الفيديو يتجاوز 30MB وقد ترفضه خوادم الاستضافة المشتركة (IIS).'
+          : 'Note: Video exceeds 30MB which may be blocked by shared server limits (IIS).'
+      }
+    }
   }
 }
 
@@ -518,7 +568,9 @@ const handleKeydown = (event: KeyboardEvent) => {
 }
 
 onUnmounted(() => {
-  if (progressTimer) clearInterval(progressTimer)
+  if (uploadAbortController.value) {
+    uploadAbortController.value.abort()
+  }
   if (localPreviewUrl.value) {
     const url = localPreviewUrl.value
     localPreviewUrl.value = ''
@@ -556,12 +608,17 @@ onUnmounted(() => {
         :progress="uploadProgress"
         :file-name="uploadFileName"
         :file-size="uploadFileSize"
+        :uploaded-bytes="uploadedBytes"
+        :bytes-per-second="uploadSpeed"
+        :eta-seconds="uploadEta"
         :status="uploadStatus"
         :error-message="uploadError"
+        :error-hint="uploadErrorHint"
         :can-cancel="uploadStatus === 'uploading'"
         :can-retry="uploadStatus === 'error'"
+        media-type="video"
         @cancel="cancelUpload"
-        @retry="triggerUpload"
+        @retry="retryUpload"
         @remove="cancelUpload"
       />
     </div>

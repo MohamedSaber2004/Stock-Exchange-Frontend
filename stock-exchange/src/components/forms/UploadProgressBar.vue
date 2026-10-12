@@ -1,23 +1,41 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { X, RefreshCw, CheckCircle2, AlertCircle, FileIcon } from 'lucide-vue-next'
+import {
+  X,
+  RefreshCw,
+  CheckCircle2,
+  AlertCircle,
+  FileIcon,
+  Film,
+  Image as ImageIcon,
+  Loader2,
+  Zap,
+  Clock,
+  Info
+} from 'lucide-vue-next'
 import { useLocale } from '@/composables/useLocale'
 
 interface Props {
   progress: number // 0 - 100
   fileName: string
   fileSize?: number | string // in bytes or formatted string
+  uploadedBytes?: number // real bytes transferred
+  bytesPerSecond?: number // upload speed in B/s
+  etaSeconds?: number // estimated seconds remaining
   status?: 'uploading' | 'processing' | 'success' | 'error' | 'idle'
   errorMessage?: string
+  errorHint?: string
   canCancel?: boolean
   canRetry?: boolean
+  mediaType?: 'video' | 'image' | 'file' | 'audio'
 }
 
 const props = withDefaults(defineProps<Props>(), {
   progress: 0,
   status: 'uploading',
   canCancel: true,
-  canRetry: true
+  canRetry: true,
+  mediaType: 'file'
 })
 
 const emit = defineEmits<{
@@ -28,18 +46,56 @@ const emit = defineEmits<{
 
 const { isAr } = useLocale()
 
-// Format file size
-const formattedSize = computed(() => {
-  if (!props.fileSize) return ''
-  if (typeof props.fileSize === 'string') return props.fileSize
-  const bytes = props.fileSize
+const formatBytes = (bytes: number): string => {
+  if (isNaN(bytes) || bytes <= 0) return '0 B'
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
+}
+
+const formattedTotalSize = computed(() => {
+  if (!props.fileSize) return ''
+  if (typeof props.fileSize === 'string') return props.fileSize
+  return formatBytes(props.fileSize)
+})
+
+const formattedTransfer = computed(() => {
+  if (props.uploadedBytes !== undefined && props.uploadedBytes > 0 && typeof props.fileSize === 'number' && props.fileSize > 0) {
+    const uploaded = formatBytes(props.uploadedBytes)
+    const total = formatBytes(props.fileSize)
+    return `${uploaded} / ${total}`
+  }
+  return formattedTotalSize.value
+})
+
+const formattedSpeed = computed(() => {
+  if (!props.bytesPerSecond || props.bytesPerSecond <= 0 || props.status !== 'uploading') return ''
+  const speed = formatBytes(props.bytesPerSecond)
+  return isAr.value ? `${speed}/ث` : `${speed}/s`
+})
+
+const formattedEta = computed(() => {
+  if (props.etaSeconds === undefined || props.etaSeconds <= 0 || props.status !== 'uploading') return ''
+  const secs = props.etaSeconds
+  if (secs < 60) {
+    return isAr.value ? `${secs} ثانية متبقية` : `${secs}s left`
+  }
+  const mins = Math.floor(secs / 60)
+  const remainingSecs = secs % 60
+  if (mins < 60) {
+    return isAr.value
+      ? `${mins} د و ${remainingSecs} ث متبقية`
+      : `${mins}m ${remainingSecs}s left`
+  }
+  const hours = Math.floor(mins / 60)
+  return isAr.value ? `${hours} ساعة متبقية` : `${hours}h left`
 })
 
 const clampedProgress = computed(() => {
-  return Math.min(100, Math.max(0, Math.round(props.progress)))
+  if (props.status === 'success') return 100
+  if (props.status === 'processing') return 100
+  return Math.min(99, Math.max(0, Math.round(props.progress)))
 })
 
 const statusText = computed(() => {
@@ -50,7 +106,7 @@ const statusText = computed(() => {
     return props.errorMessage || (isAr.value ? 'فشل الرفع، يرجى المحاولة ثانية' : 'Upload failed, please retry')
   }
   if (props.status === 'processing') {
-    return isAr.value ? 'جاري المعالجة والتحقق...' : 'Processing & validating...'
+    return isAr.value ? 'جاري المعالجة والتحقق على الخادم...' : 'Processing & verifying on server...'
   }
   return isAr.value
     ? `جاري الرفع... ${clampedProgress.value}%`
@@ -58,17 +114,24 @@ const statusText = computed(() => {
 })
 
 const ariaValueText = computed(() => {
-  return `${props.fileName}: ${statusText.value}`
+  return `${props.fileName}: ${statusText.value} (${clampedProgress.value}%)`
+})
+
+const mediaIcon = computed(() => {
+  if (props.mediaType === 'video') return Film
+  if (props.mediaType === 'image') return ImageIcon
+  return FileIcon
 })
 </script>
 
 <template>
   <div
-    class="w-full bg-white rounded-xl border border-slate-200/90 p-3.5 shadow-2xs transition-all"
+    class="w-full bg-white rounded-xl border p-4 shadow-xs transition-all duration-300"
     :class="{
-      'border-emerald-300 bg-emerald-50/20': status === 'success',
-      'border-rose-300 bg-rose-50/20': status === 'error',
-      'border-slate-200': status === 'uploading' || status === 'processing'
+      'border-emerald-300/80 bg-emerald-50/25': status === 'success',
+      'border-rose-300/80 bg-rose-50/30': status === 'error',
+      'border-indigo-300/80 bg-indigo-50/20': status === 'processing',
+      'border-slate-200/90 hover:border-slate-300': status === 'uploading' || status === 'idle'
     }"
   >
     <!-- Screen Reader Live Status -->
@@ -81,60 +144,89 @@ const ariaValueText = computed(() => {
       {{ ariaValueText }}
     </div>
 
-    <!-- Header info: File Name, Size & Actions -->
-    <div class="flex items-center justify-between gap-3 mb-2">
-      <div class="flex items-center gap-2.5 min-w-0">
+    <!-- Header info: File Icon, Name, Size & Actions -->
+    <div class="flex items-start justify-between gap-3 mb-2.5">
+      <div class="flex items-center gap-3 min-w-0">
+        <!-- Status / Media Icon Badge -->
         <div
-          class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors"
+          class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors shadow-2xs"
           :class="{
-            'bg-emerald-100 text-emerald-700': status === 'success',
-            'bg-rose-100 text-rose-700': status === 'error',
-            'bg-slate-100 text-slate-700': status === 'uploading' || status === 'processing'
+            'bg-emerald-100 text-emerald-700 ring-2 ring-emerald-200/50': status === 'success',
+            'bg-rose-100 text-rose-700 ring-2 ring-rose-200/50': status === 'error',
+            'bg-indigo-100 text-indigo-700 ring-2 ring-indigo-200/50 animate-pulse': status === 'processing',
+            'bg-slate-100 text-slate-700': status === 'uploading' || status === 'idle'
           }"
         >
-          <CheckCircle2 v-if="status === 'success'" class="w-4 h-4" />
-          <AlertCircle v-else-if="status === 'error'" class="w-4 h-4" />
-          <FileIcon v-else class="w-4 h-4" />
+          <CheckCircle2 v-if="status === 'success'" class="w-5 h-5 text-emerald-600" />
+          <AlertCircle v-else-if="status === 'error'" class="w-5 h-5 text-rose-600" />
+          <Loader2 v-else-if="status === 'processing'" class="w-5 h-5 text-indigo-600 animate-spin" />
+          <component :is="mediaIcon" v-else class="w-5 h-5 text-slate-600" />
         </div>
 
         <div class="flex flex-col min-w-0">
           <span class="text-xs font-bold text-slate-800 truncate" :title="fileName">
             {{ fileName }}
           </span>
-          <div class="flex items-center gap-2 text-[11px] text-slate-500">
-            <span v-if="formattedSize">{{ formattedSize }}</span>
-            <span v-if="formattedSize" class="text-slate-300">•</span>
+          <div class="flex items-center flex-wrap gap-2 text-[11px] text-slate-500 mt-0.5">
+            <span v-if="formattedTransfer" class="font-medium text-slate-600 tabular-nums">
+              {{ formattedTransfer }}
+            </span>
+            <span v-if="formattedTransfer" class="text-slate-300">•</span>
             <span
               :class="{
                 'text-emerald-700 font-semibold': status === 'success',
                 'text-rose-600 font-semibold': status === 'error',
-                'text-slate-500': status === 'uploading' || status === 'processing'
+                'text-indigo-600 font-semibold flex items-center gap-1': status === 'processing',
+                'text-slate-600': status === 'uploading'
               }"
             >
+              <Loader2 v-if="status === 'processing'" class="w-3 h-3 animate-spin inline" />
               {{ statusText }}
             </span>
           </div>
         </div>
       </div>
 
-      <!-- Action Buttons -->
-      <div class="flex items-center gap-1.5 shrink-0">
+      <!-- Action Buttons & Live Stats -->
+      <div class="flex items-center gap-2 shrink-0">
+        <!-- Live Speed & ETA Pill (while uploading) -->
+        <div
+          v-if="status === 'uploading' && (formattedSpeed || formattedEta)"
+          class="hidden sm:flex items-center gap-2 text-[11px] bg-slate-50 border border-slate-200/80 rounded-lg px-2 py-1 text-slate-600"
+        >
+          <span v-if="formattedSpeed" class="flex items-center gap-1 font-medium text-emerald-700 tabular-nums">
+            <Zap class="w-3 h-3 text-emerald-500" />
+            {{ formattedSpeed }}
+          </span>
+          <span v-if="formattedSpeed && formattedEta" class="text-slate-300">|</span>
+          <span v-if="formattedEta" class="flex items-center gap-1 text-slate-500 tabular-nums">
+            <Clock class="w-3 h-3 text-slate-400" />
+            {{ formattedEta }}
+          </span>
+        </div>
+
+        <!-- Clamped Percentage Badge -->
         <span
           v-if="status === 'uploading' || status === 'processing'"
-          class="text-xs font-bold text-emerald-700 tabular-nums px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-100/80"
+          class="text-xs font-bold tabular-nums px-2.5 py-1 rounded-lg border shadow-2xs transition-colors"
+          :class="{
+            'bg-indigo-50 text-indigo-700 border-indigo-200/80': status === 'processing',
+            'bg-emerald-50 text-emerald-700 border-emerald-200/80': status === 'uploading'
+          }"
         >
           {{ clampedProgress }}%
         </span>
 
-        <!-- Retry Button -->
+        <!-- Retry Button (Text + Icon on Error) -->
         <button
           v-if="status === 'error' && canRetry"
           type="button"
           @click="emit('retry')"
-          class="p-1.5 rounded-lg text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none cursor-pointer"
+          class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs transition-colors cursor-pointer"
           :aria-label="isAr ? `إعادة محاولة رفع ${fileName}` : `Retry uploading ${fileName}`"
         >
-          <RefreshCw class="w-4 h-4" />
+          <RefreshCw class="w-3.5 h-3.5" />
+          <span>{{ isAr ? 'إعادة المحاولة' : 'Retry' }}</span>
         </button>
 
         <!-- Cancel / Remove Button -->
@@ -143,6 +235,7 @@ const ariaValueText = computed(() => {
           type="button"
           @click="status === 'uploading' ? emit('cancel') : emit('remove')"
           class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:outline-none cursor-pointer"
+          :title="status === 'uploading' ? (isAr ? 'إلغاء الرفع' : 'Cancel upload') : (isAr ? 'حذف' : 'Remove')"
           :aria-label="
             status === 'uploading'
               ? (isAr ? `إلغاء رفع ${fileName}` : `Cancel uploading ${fileName}`)
@@ -154,30 +247,42 @@ const ariaValueText = computed(() => {
       </div>
     </div>
 
-    <!-- Accessible Progress Bar -->
+    <!-- Accessible Progress Bar Track & Fill -->
     <div
       role="progressbar"
       :aria-valuenow="clampedProgress"
       aria-valuemin="0"
       aria-valuemax="100"
       :aria-valuetext="ariaValueText"
-      class="w-full h-2 rounded-full bg-slate-100 overflow-hidden relative"
+      class="w-full h-2.5 rounded-full bg-slate-100 overflow-hidden relative shadow-inner"
     >
       <div
-        class="h-full rounded-full transition-all duration-200 ease-out relative"
+        class="h-full rounded-full transition-all duration-300 ease-out relative"
         :class="{
           'bg-emerald-500': status === 'success',
           'bg-rose-500': status === 'error',
-          'bg-linear-to-r from-emerald-500 via-teal-400 to-emerald-600': status === 'uploading' || status === 'processing'
+          'bg-linear-to-r from-indigo-500 via-purple-500 to-indigo-600': status === 'processing',
+          'bg-linear-to-r from-emerald-500 via-teal-400 to-emerald-600': status === 'uploading'
         }"
         :style="{ width: `${clampedProgress}%` }"
       >
-        <!-- Animated Shimmer for Active Upload -->
+        <!-- Animated Shimmer Stripe for Active Upload or Processing -->
         <div
           v-if="status === 'uploading' || status === 'processing'"
-          class="absolute inset-0 bg-white/30 animate-pulse"
+          class="absolute inset-0 bg-white/35 animate-pulse"
         />
       </div>
+    </div>
+
+    <!-- Error Diagnostic Hint Callout (e.g. for 405 Method Not Allowed / IIS Size Limits) -->
+    <div
+      v-if="status === 'error' && errorHint"
+      class="mt-2.5 p-2.5 rounded-lg bg-rose-50/70 border border-rose-200/80 flex items-start gap-2 text-xs text-rose-800"
+    >
+      <Info class="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+      <span class="leading-relaxed">
+        {{ errorHint }}
+      </span>
     </div>
   </div>
 </template>

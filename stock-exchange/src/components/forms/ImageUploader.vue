@@ -42,12 +42,17 @@ const fileInput = ref<HTMLInputElement | null>(null)
 // Upload progress states
 const isUploading = ref(false)
 const uploadProgress = ref(0)
+const uploadedBytes = ref(0)
+const uploadSpeed = ref(0)
+const uploadEta = ref(0)
 const uploadFileName = ref('')
 const uploadFileSize = ref(0)
 const uploadStatus = ref<'uploading' | 'processing' | 'success' | 'error'>('uploading')
 const uploadError = ref('')
+const uploadErrorHint = ref('')
 const localPreviewUrl = ref('')
-let progressTimer: ReturnType<typeof setInterval> | null = null
+const selectedFile = ref<File | null>(null)
+const uploadAbortController = ref<AbortController | null>(null)
 
 const resolvedPreviewUrl = computed(() => {
   if (localPreviewUrl.value) return localPreviewUrl.value
@@ -68,16 +73,30 @@ const defaultHint = computed(() => {
 })
 
 const cancelUpload = () => {
-  if (progressTimer) {
-    clearInterval(progressTimer)
-    progressTimer = null
+  if (uploadAbortController.value) {
+    uploadAbortController.value.abort()
+    uploadAbortController.value = null
   }
   isUploading.value = false
   uploadProgress.value = 0
+  uploadedBytes.value = 0
+  uploadSpeed.value = 0
+  uploadEta.value = 0
   uploadFileName.value = ''
   uploadFileSize.value = 0
+  uploadError.value = ''
+  uploadErrorHint.value = ''
   localPreviewUrl.value = ''
+  selectedFile.value = null
   if (fileInput.value) fileInput.value.value = ''
+}
+
+const retryUpload = () => {
+  if (selectedFile.value) {
+    processFile(selectedFile.value)
+  } else {
+    triggerUpload()
+  }
 }
 
 const processFile = async (file: File) => {
@@ -112,43 +131,55 @@ const processFile = async (file: File) => {
     return
   }
 
-  // Real backend upload flow
+  selectedFile.value = file
+
+  // Real backend upload flow with real progress tracking
   isUploading.value = true
   uploadStatus.value = 'uploading'
-  uploadProgress.value = 15
+  uploadProgress.value = 0
+  uploadedBytes.value = 0
+  uploadSpeed.value = 0
+  uploadEta.value = 0
   uploadFileName.value = file.name
   uploadFileSize.value = file.size
   uploadError.value = ''
+  uploadErrorHint.value = ''
 
-  if (progressTimer) clearInterval(progressTimer)
-  progressTimer = setInterval(() => {
-    if (uploadProgress.value < 85) {
-      uploadProgress.value += 12
-    } else {
-      uploadStatus.value = 'processing'
-    }
-  }, 100)
+  if (uploadAbortController.value) {
+    uploadAbortController.value.abort()
+  }
+  const controller = new AbortController()
+  uploadAbortController.value = controller
 
   try {
     let savedFileName = ''
+    const onProgress = (p: { percentage: number; loaded: number; bytesPerSecond?: number; etaSeconds?: number }) => {
+      uploadProgress.value = p.percentage
+      uploadedBytes.value = p.loaded
+      uploadSpeed.value = p.bytesPerSecond || 0
+      uploadEta.value = p.etaSeconds || 0
+      if (p.percentage >= 99) {
+        uploadStatus.value = 'processing'
+      }
+    }
+
     if (props.oldFileName) {
       savedFileName = await coreServices.attachments.update({
         file,
         oldFileName: props.oldFileName,
         mediaType: MediaType.Image,
-        place: FilePlace.General
+        place: FilePlace.General,
+        signal: controller.signal,
+        onProgress,
       })
     } else {
       savedFileName = await coreServices.attachments.upload({
         file,
         mediaType: MediaType.Image,
-        place: FilePlace.General
+        place: FilePlace.General,
+        signal: controller.signal,
+        onProgress,
       })
-    }
-
-    if (progressTimer) {
-      clearInterval(progressTimer)
-      progressTimer = null
     }
 
     uploadProgress.value = 100
@@ -158,21 +189,40 @@ const processFile = async (file: File) => {
     emit('upload-success', {
       fileName: savedFileName,
       previewUrl: objectUrl,
-      file
+      file,
     })
 
     setTimeout(() => {
       isUploading.value = false
       uploadProgress.value = 0
-    }, 400)
+    }, 500)
   } catch (err: unknown) {
-    if (progressTimer) {
-      clearInterval(progressTimer)
-      progressTimer = null
-    }
     uploadStatus.value = 'error'
     const errorDetails = extractApiErrors(err)
-    uploadError.value = errorDetails.generalMessage || (isAr.value ? 'فشل رفع الصورة إلى الخادم' : 'Failed to upload image')
+    const errCode = (err as { code?: string })?.code || ''
+    const errStatus =
+      (err as { statusCode?: number; status?: number })?.statusCode ||
+      (err as { status?: number })?.status ||
+      errorDetails.statusCode
+
+    if (errStatus === 405 || errCode === 'HTTP_405') {
+      uploadError.value = isAr.value
+        ? 'الخادم رفض طريقة الطلب أو حجم الصورة (خطأ 405 Method Not Allowed).'
+        : 'Server rejected the upload request or body size (Error 405 Method Not Allowed).'
+      uploadErrorHint.value = isAr.value
+        ? 'السبب المحتمل: عدم تفعيل معالجة CORS preflight (OPTIONS) على السيرفر. يرجى التأكد من مسار الـ proxy.'
+        : 'Likely cause: CORS preflight (OPTIONS) rejected by the backend server. Verify API proxy configuration.'
+    } else if (errStatus === 413 || errCode === 'HTTP_413') {
+      uploadError.value = isAr.value
+        ? 'حجم الصورة يتجاوز الحد الأقصى للخادم (413 Payload Too Large).'
+        : 'Image file size exceeds server maximum limit (413 Payload Too Large).'
+    } else if (errCode === 'REQUEST_ABORTED') {
+      uploadError.value = isAr.value ? 'تم إلغاء رفع الصورة' : 'Image upload was cancelled'
+    } else {
+      uploadError.value =
+        errorDetails.generalMessage ||
+        (isAr.value ? 'فشل رفع الصورة إلى الخادم' : 'Failed to upload image')
+    }
   }
 }
 
@@ -234,12 +284,17 @@ const removeImage = () => {
         :progress="uploadProgress"
         :file-name="uploadFileName"
         :file-size="uploadFileSize"
+        :uploaded-bytes="uploadedBytes"
+        :bytes-per-second="uploadSpeed"
+        :eta-seconds="uploadEta"
         :status="uploadStatus"
         :error-message="uploadError"
+        :error-hint="uploadErrorHint"
         :can-cancel="uploadStatus === 'uploading'"
         :can-retry="uploadStatus === 'error'"
+        media-type="image"
         @cancel="cancelUpload"
-        @retry="triggerUpload"
+        @retry="retryUpload"
         @remove="cancelUpload"
       />
     </div>

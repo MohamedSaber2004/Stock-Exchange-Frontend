@@ -19,8 +19,14 @@ export interface AttachmentItem {
   size: number // bytes
   url?: string
   progress?: number // 0-100
+  uploadedBytes?: number
+  speed?: number
+  etaSeconds?: number
   status?: 'uploading' | 'processing' | 'success' | 'error'
   errorMessage?: string
+  errorHint?: string
+  rawFile?: File
+  abortController?: AbortController
 }
 
 interface Props {
@@ -112,12 +118,18 @@ const uploadFileReal = async (file: File) => {
     return
   }
 
+  const controller = new AbortController()
   const newItem: AttachmentItem = {
     id: fileId,
     name: file.name,
     size: file.size,
-    progress: 25,
+    progress: 0,
+    uploadedBytes: 0,
+    speed: 0,
+    etaSeconds: 0,
     status: 'uploading',
+    rawFile: file,
+    abortController: controller,
   }
 
   const currentList = props.multiple ? [...props.modelValue, newItem] : [newItem]
@@ -130,6 +142,22 @@ const uploadFileReal = async (file: File) => {
       file,
       mediaType,
       place: 0,
+      signal: controller.signal,
+      onProgress: (p) => {
+        const items = [...props.modelValue]
+        const idx = items.findIndex((i) => i.id === fileId)
+        if (idx !== -1 && items[idx]) {
+          items[idx] = {
+            ...items[idx]!,
+            progress: p.percentage,
+            uploadedBytes: p.loaded,
+            speed: p.bytesPerSecond || 0,
+            etaSeconds: p.etaSeconds || 0,
+            status: p.percentage >= 99 ? 'processing' : 'uploading',
+          }
+          emit('update:modelValue', items)
+        }
+      },
     })
 
     const items = [...props.modelValue]
@@ -143,6 +171,7 @@ const uploadFileReal = async (file: File) => {
         progress: 100,
         status: 'success',
         url: resolveAttachmentUrl(storedFileName),
+        rawFile: file,
       }
       emit('update:modelValue', items)
       emit('file-added', file)
@@ -150,17 +179,40 @@ const uploadFileReal = async (file: File) => {
     }
   } catch (err: unknown) {
     const extracted = extractApiErrors(err)
+    const errCode = (err as { code?: string })?.code || ''
+    const errStatus =
+      (err as { statusCode?: number; status?: number })?.statusCode ||
+      (err as { status?: number })?.status ||
+      extracted.statusCode
+
+    let errorHint = ''
+    let errMsg = extracted.generalMessage || (isAr.value ? 'فشل الرفع' : 'Upload failed')
+
+    if (errStatus === 405 || errCode === 'HTTP_405') {
+      errMsg = isAr.value
+        ? 'الخادم رفض طريقة الطلب أو حجم الملف (خطأ 405 Method Not Allowed).'
+        : 'Server rejected the upload request or body size (Error 405 Method Not Allowed).'
+      errorHint = isAr.value
+        ? 'السبب المحتمل: عدم تفعيل CORS preflight (OPTIONS) على السيرفر أو رفض خادم IIS للملفات الكبيرة. يرجى التأكد من مسار الـ proxy.'
+        : 'Likely cause: CORS preflight (OPTIONS) rejected by the backend server, or IIS rejected oversized request. Verify API proxy configuration.'
+    } else if (errStatus === 413 || errCode === 'HTTP_413') {
+      errMsg = isAr.value
+        ? 'حجم الملف يتجاوز الحد الأقصى المسموح به على الخادم (413 Payload Too Large).'
+        : 'File size exceeds maximum limit supported by the server (413 Payload Too Large).'
+    } else if (errCode === 'REQUEST_ABORTED') {
+      errMsg = isAr.value ? 'تم إلغاء رفع الملف' : 'Upload was cancelled'
+    }
+
     const items = [...props.modelValue]
     const idx = items.findIndex((i) => i.id === fileId)
     if (idx !== -1 && items[idx]) {
       const current = items[idx]!
       items[idx] = {
-        id: current.id,
-        name: current.name,
-        size: current.size,
+        ...current,
         progress: 0,
         status: 'error',
-        errorMessage: extracted.generalMessage || (isAr.value ? 'فشل الرفع' : 'Upload failed'),
+        errorMessage: errMsg,
+        errorHint,
       }
       emit('update:modelValue', items)
     }
@@ -169,11 +221,22 @@ const uploadFileReal = async (file: File) => {
 
 const cancelUpload = (id: string) => {
   const item = props.modelValue.find((i) => i.id === id)
+  if (item?.abortController) {
+    item.abortController.abort()
+  }
   const remaining = props.modelValue.filter((i) => i.id !== id)
   emit('update:modelValue', remaining)
   if (item) {
     emit('file-removed', item)
     uploadAnnounce.value = isAr.value ? `تم إلغاء رفع: ${item.name}` : `Upload cancelled: ${item.name}`
+  }
+}
+
+const retryItem = (item: AttachmentItem) => {
+  if (item.rawFile) {
+    const remaining = props.modelValue.filter((i) => i.id !== item.id)
+    emit('update:modelValue', remaining)
+    uploadFileReal(item.rawFile)
   }
 }
 
@@ -311,9 +374,16 @@ const handleKeydown = (event: KeyboardEvent) => {
           :progress="item.progress || 0"
           :file-name="item.name"
           :file-size="item.size"
+          :uploaded-bytes="item.uploadedBytes"
+          :bytes-per-second="item.speed"
+          :eta-seconds="item.etaSeconds"
           :status="item.status"
+          :error-message="item.errorMessage"
+          :error-hint="item.errorHint"
           :can-cancel="true"
+          :can-retry="!!item.rawFile"
           @cancel="cancelUpload(item.id)"
+          @retry="retryItem(item)"
           @remove="cancelUpload(item.id)"
         />
 
@@ -352,6 +422,16 @@ const handleKeydown = (event: KeyboardEvent) => {
 
           <!-- Actions -->
           <div class="flex items-center gap-1 shrink-0">
+            <button
+              v-if="item.status === 'error' && item.rawFile"
+              type="button"
+              @click="retryItem(item)"
+              class="p-1.5 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition-colors focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none cursor-pointer"
+              :aria-label="isAr ? `إعادة محاولة رفع ${item.name}` : `Retry uploading ${item.name}`"
+              :title="isAr ? 'إعادة المحاولة' : 'Retry'"
+            >
+              <RefreshCw class="w-4 h-4" />
+            </button>
             <button
               v-if="item.status === 'success'"
               type="button"
