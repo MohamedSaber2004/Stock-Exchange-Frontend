@@ -408,13 +408,28 @@ export class HttpClient {
     return this.request<T>(path, { ...options, method: 'DELETE' })
   }
 
-  /**
-   * Upload FormData with real progress tracking, upload speed calculation, ETA, and cancellation.
-   * Uses XMLHttpRequest because native browser fetch() does not support upload progress events.
-   */
+  private buildUploadUrl(path: string, params?: RequestOptions['params']): string {
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return this.buildUrl(path, params)
+    }
+
+    const explicitDirectUrl = (import.meta.env?.VITE_DIRECT_API_URL as string | undefined)?.trim()
+    if (explicitDirectUrl) {
+      const cleanPath = path.startsWith('/') ? path : `/${path}`
+      return this.buildUrl(`${explicitDirectUrl.replace(/\/+$/, '')}${cleanPath}`, params)
+    }
+
+    if (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')) {
+      const cleanPath = path.startsWith('/') ? path : `/${path}`
+      return this.buildUrl(`https://stock-exchange.runasp.net/api/v1${cleanPath}`, params)
+    }
+
+    return this.buildUrl(path, params)
+  }
+
   async upload<T>(path: string, formData: FormData, options: UploadRequestOptions = {}): Promise<T> {
     const { method = 'POST', params, requiresAuth = true, headers: customHeaders, signal, onProgress } = options
-    const targetUrl = this.buildUrl(path, params)
+    const targetUrl = this.buildUploadUrl(path, params)
 
     const headers = new Headers(customHeaders || {})
     if (!headers.has('Accept')) {
