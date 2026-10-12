@@ -48,7 +48,7 @@
 
         // Register Service Worker to neutralize HTTP error codes from Chrome DevTools console
         if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function() {});
+          navigator.serviceWorker.register('/sw.js?v=2', { scope: '/' }).catch(function() {});
         }
       })();
     </script>

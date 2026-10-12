@@ -10,6 +10,14 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = event.request.url
 
+  if (
+    url.includes('/attachments') ||
+    url.includes('/upload') ||
+    event.request.headers.get('x-skip-sw') === 'true'
+  ) {
+    return
+  }
+
   // Only intercept API calls
   if (url.includes('/api/')) {
     event.respondWith(

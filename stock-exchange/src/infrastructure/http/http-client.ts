@@ -438,6 +438,7 @@ export class HttpClient {
     if (!headers.has('Accept-Language')) {
       headers.set('Accept-Language', this.getCurrentLanguage())
     }
+    headers.set('x-skip-sw', 'true')
 
     await this.runInterceptors(headers, path, requiresAuth)
 
