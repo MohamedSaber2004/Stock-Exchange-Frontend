@@ -114,6 +114,27 @@ const triggerUpload = () => {
   fileInputRef.value?.click()
 }
 
+const safelyDetachAndRevoke = (videoEl: HTMLVideoElement | null, urlToRevoke?: string) => {
+  if (videoEl) {
+    try {
+      videoEl.pause()
+      videoEl.removeAttribute('src')
+      videoEl.load()
+    } catch {
+      // ignore
+    }
+  }
+  if (urlToRevoke && urlToRevoke.startsWith('blob:')) {
+    setTimeout(() => {
+      try {
+        URL.revokeObjectURL(urlToRevoke)
+      } catch {
+        // ignore
+      }
+    }, 1000)
+  }
+}
+
 const cancelUpload = () => {
   if (progressTimer) {
     clearInterval(progressTimer)
@@ -123,9 +144,10 @@ const cancelUpload = () => {
   uploadProgress.value = 0
   uploadFileName.value = ''
   uploadFileSize.value = 0
-  if (localPreviewUrl.value && localPreviewUrl.value.startsWith('blob:')) {
-    URL.revokeObjectURL(localPreviewUrl.value)
+  if (localPreviewUrl.value) {
+    const url = localPreviewUrl.value
     localPreviewUrl.value = ''
+    safelyDetachAndRevoke(videoPlayerRef.value, url)
   }
   selectedFile.value = null
   if (fileInputRef.value) fileInputRef.value.value = ''
@@ -157,15 +179,17 @@ const extractThumbnailFromFile = (
     video.playsInline = true
     video.crossOrigin = 'anonymous'
 
+    const isBlobCreated = typeof source !== 'string'
     const url = typeof source === 'string' ? source : URL.createObjectURL(source)
     video.src = url
 
     let hasSeeked = false
 
     const cleanup = () => {
-      if (typeof source !== 'string' && url.startsWith('blob:')) {
-        URL.revokeObjectURL(url)
-      }
+      video.onloadedmetadata = null
+      video.onseeked = null
+      video.onerror = null
+      safelyDetachAndRevoke(video, isBlobCreated ? url : undefined)
     }
 
     video.onloadedmetadata = () => {
@@ -298,19 +322,22 @@ const captureThumbnail = async () => {
   }
 }
 
-const getVideoMetadata = (file: File): Promise<{ duration: number }> => {
+const getVideoMetadata = (source: File | string): Promise<{ duration: number }> => {
   return new Promise((resolve) => {
     const video = document.createElement('video')
     video.preload = 'metadata'
     video.muted = true
     video.playsInline = true
-    const url = URL.createObjectURL(file)
+    const isBlobCreated = typeof source !== 'string'
+    const url = typeof source === 'string' ? source : URL.createObjectURL(source)
     video.src = url
     let finished = false
     const finish = (duration: number) => {
       if (!finished) {
         finished = true
-        URL.revokeObjectURL(url)
+        video.onloadedmetadata = null
+        video.onerror = null
+        safelyDetachAndRevoke(video, isBlobCreated ? url : undefined)
         resolve({ duration })
       }
     }
@@ -351,8 +378,18 @@ const processFile = async (file: File) => {
     return
   }
 
-  // Read and validate duration before upload
-  const meta = await getVideoMetadata(file)
+  // Set local blob preview for immediate feedback
+  if (localPreviewUrl.value) {
+    const oldUrl = localPreviewUrl.value
+    safelyDetachAndRevoke(videoPlayerRef.value, oldUrl)
+  }
+  const blobUrl = URL.createObjectURL(file)
+  localPreviewUrl.value = blobUrl
+  selectedFile.value = file
+  emit('file-selected', file)
+
+  // Read and validate duration before upload using shared blobUrl
+  const meta = await getVideoMetadata(blobUrl)
   if (meta.duration > 0) {
     const detectedSecs = Math.round(meta.duration)
     emit('update:durationSeconds', detectedSecs)
@@ -369,19 +406,10 @@ const processFile = async (file: File) => {
     }
   }
 
-  // Set local blob preview for immediate feedback
-  if (localPreviewUrl.value && localPreviewUrl.value.startsWith('blob:')) {
-    URL.revokeObjectURL(localPreviewUrl.value)
-  }
-  const blobUrl = URL.createObjectURL(file)
-  localPreviewUrl.value = blobUrl
-  selectedFile.value = file
-  emit('file-selected', file)
-
-  // Auto-capture cover frame and upload as image thumbnail automatically
+  // Auto-capture cover frame using shared blobUrl
   if (props.autoCaptureThumbnail) {
     isCapturingThumbnail.value = true
-    extractThumbnailFromFile(file, 1.0)
+    extractThumbnailFromFile(blobUrl, 1.0)
       .then(async ({ file: thumbFile, dataUrl }) => {
         try {
           const thumbAttachmentName = await coreServices.attachments.upload({
@@ -491,8 +519,10 @@ const handleKeydown = (event: KeyboardEvent) => {
 
 onUnmounted(() => {
   if (progressTimer) clearInterval(progressTimer)
-  if (localPreviewUrl.value && localPreviewUrl.value.startsWith('blob:')) {
-    URL.revokeObjectURL(localPreviewUrl.value)
+  if (localPreviewUrl.value) {
+    const url = localPreviewUrl.value
+    localPreviewUrl.value = ''
+    safelyDetachAndRevoke(videoPlayerRef.value, url)
   }
 })
 </script>

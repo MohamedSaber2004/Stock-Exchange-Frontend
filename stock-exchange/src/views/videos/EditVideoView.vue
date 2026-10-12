@@ -138,6 +138,14 @@ const handleSave = async () => {
     toast.error(isAr.value ? 'يرجى توفير صورة مصغرة (غلاف) للفيديو' : 'Please provide a video thumbnail')
     return
   }
+  if (form.value.videoUrl.startsWith('blob:') || form.value.thumbnailUrl.startsWith('blob:')) {
+    toast.error(
+      isAr.value
+        ? 'يرجى الانتظار حتى يكتمل رفع ملف الفيديو وصورة الغلاف إلى الخادم'
+        : 'Please wait until the video file and thumbnail finish uploading to the server'
+    )
+    return
+  }
 
   const selectedCat = categories.value.find((c) => c.id === form.value.categoryId)
   const catEn = selectedCat?.categoryEnName || originalVideo.value?.categoryEn || 'General'

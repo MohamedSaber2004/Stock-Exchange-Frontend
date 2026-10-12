@@ -189,7 +189,7 @@ const handleDownload = async (item: AttachmentItem) => {
       a.href = blobUrl
       a.download = item.name
       a.click()
-      URL.revokeObjectURL(blobUrl)
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
     } catch {
       window.open(resolveAttachmentUrl(item.name), '_blank')
     }

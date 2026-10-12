@@ -30,7 +30,8 @@ export function sanitizeAttachmentName(fileName?: string | null): string {
   if (!fileName || typeof fileName !== 'string') return ''
   const trimmed = fileName.trim()
   if (isStaticUrl(trimmed)) return ''
-  if (trimmed.startsWith('blob:') || trimmed.startsWith('data:')) return trimmed
+  if (trimmed.startsWith('blob:')) return ''
+  if (trimmed.startsWith('data:')) return trimmed
   let cleanName = trimmed.replace(/^\.?\/+/, '')
   if (cleanName.startsWith('files/')) {
     cleanName = cleanName.substring(6).replace(/^\/+/, '')
@@ -67,9 +68,16 @@ export function resolveAttachmentUrl(
     return getFallback()
   }
 
-  // Local object URLs or Data URIs
-  if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
+  // Data URIs are self-contained
+  if (trimmed.startsWith('data:')) {
     return trimmed
+  }
+
+  // Blob URLs only exist in local browser memory during the current session.
+  // If a backend record somehow stored a blob: URL, resolving it in another session
+  // or across clients will always fail with net::ERR_FILE_NOT_FOUND.
+  if (trimmed.startsWith('blob:')) {
+    return getFallback()
   }
 
   // If already an absolute URL to /files/
