@@ -16,12 +16,12 @@ import {
 import { useLocale } from '@/composables/useLocale'
 
 interface Props {
-  progress: number // 0 - 100
+  progress: number
   fileName: string
-  fileSize?: number | string // in bytes or formatted string
-  uploadedBytes?: number // real bytes transferred
-  bytesPerSecond?: number // upload speed in B/s
-  etaSeconds?: number // estimated seconds remaining
+  fileSize?: number | string
+  uploadedBytes?: number
+  bytesPerSecond?: number
+  etaSeconds?: number
   status?: 'uploading' | 'processing' | 'success' | 'error' | 'idle'
   errorMessage?: string
   errorHint?: string
