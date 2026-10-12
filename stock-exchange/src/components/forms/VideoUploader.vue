@@ -533,6 +533,13 @@ const processFile = async (file: File) => {
     } else if (errCode === 'REQUEST_ABORTED') {
       uploadError.value = isAr.value ? 'تم إلغاء رفع الفيديو' : 'Video upload was cancelled'
       uploadErrorHint.value = ''
+    } else if (errCode === 'UPLOAD_TIMEOUT') {
+      uploadError.value = isAr.value
+        ? 'انتهت مهلة رفع أحد أجزاء الفيديو بسبب بطء الاتصال'
+        : 'Chunk upload timed out due to slow connection'
+      uploadErrorHint.value = isAr.value
+        ? 'يمكنك النقر على "إعادة المحاولة" للمتابعة من جديد.'
+        : 'Click "Retry" to attempt the upload again.'
     } else if (errCode === 'CHUNK_UPLOAD_FAILED') {
       uploadError.value =
         errorDetails.generalMessage ||

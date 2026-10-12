@@ -92,10 +92,12 @@ export class AttachmentRepository implements IAttachmentRepository {
 
   async uploadChunked(payload: UploadChunkedFilePayload): Promise<string> {
     const { file, mediaType = MediaType.Video, place = 0, onProgress, signal } = payload
-    const chunkSize = payload.chunkSize || 5 * 1024 * 1024 // 5 MB per chunk
+    // Use 2 MB chunks: vastly superior reliability on varying connections (especially ~250-500 KB/s)
+    // Minimizes risk of IIS/reverse proxy connection drops and timeout issues
+    const chunkSize = payload.chunkSize || 2 * 1024 * 1024
     const totalSize = file.size
 
-    // If file is small (<= 5MB), standard single upload is faster
+    // If file is small (<= 2MB), standard single upload is faster
     if (totalSize <= chunkSize) {
       return await this.upload({
         file,
@@ -132,12 +134,13 @@ export class AttachmentRepository implements IAttachmentRepository {
       const chunkBlob = file.slice(start, end)
       const currentChunkSize = end - start
 
-      // Upload with retry (up to 3 attempts on temporary network failure)
+      // Upload with retry (up to 5 attempts with resilient exponential backoff for network stability)
       let attempt = 0
+      const maxAttempts = 5
       let chunkSuccess = false
       let lastErr: unknown = null
 
-      while (attempt < 3 && !chunkSuccess) {
+      while (attempt < maxAttempts && !chunkSuccess) {
         if (signal?.aborted) {
           throw {
             code: 'REQUEST_ABORTED',
@@ -198,9 +201,10 @@ export class AttachmentRepository implements IAttachmentRepository {
           if (errCode === 'REQUEST_ABORTED' || signal?.aborted) {
             throw err
           }
-          if (attempt < 3) {
-            // Exponential backoff before retry (1s, 2s)
-            await new Promise((resolve) => setTimeout(resolve, attempt * 1000))
+          if (attempt < maxAttempts) {
+            // Exponential backoff before retry (2s, 4s, 8s, 10s...)
+            const backoffMs = Math.min(10000, Math.pow(2, attempt) * 1000)
+            await new Promise((resolve) => setTimeout(resolve, backoffMs))
           }
         }
       }

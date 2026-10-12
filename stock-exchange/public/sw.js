@@ -8,6 +8,16 @@ self.addEventListener('activate', (event) => {
 })
 
 self.addEventListener('fetch', (event) => {
+  // Never intercept non-GET requests (file uploads, mutations)
+  if (event.request.method !== 'GET') {
+    return
+  }
+
+  // Never intercept cross-origin requests (e.g. direct backend at runasp.net)
+  if (!event.request.url.startsWith(self.location.origin)) {
+    return
+  }
+
   const url = event.request.url
 
   if (

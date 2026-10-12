@@ -572,6 +572,21 @@ export class HttpClient {
         resolve(payload as T)
       }
 
+      // 90 seconds timeout per chunk upload to prevent indefinite browser freeze
+      xhr.timeout = 90000
+
+      xhr.ontimeout = () => {
+        const err: AppError = {
+          code: 'UPLOAD_TIMEOUT',
+          message:
+            this.getCurrentLanguage() === 'ar'
+              ? 'انتهت مهلة رفع جزء الملف، جاري إعادة المحاولة تلقائياً...'
+              : 'Upload chunk timed out, retrying...',
+          statusCode: 408,
+        }
+        reject(err)
+      }
+
       xhr.onerror = () => {
         reject(this.normalizeError(new Error('Failed to fetch')))
       }
