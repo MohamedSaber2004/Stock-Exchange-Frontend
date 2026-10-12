@@ -240,7 +240,8 @@ onMounted(loadCategories)
               v-model:thumbnail-url="form.thumbnailUrl"
               v-model:duration-seconds="form.durationSeconds"
               :label="isAr ? 'رفع ملف الفيديو *' : 'Upload Video File *'"
-              :hint="isAr ? 'صيغ: MP4, MOV, MKV (يتم رفعه والتقاط الغلاف تلقائياً)' : 'Formats: MP4, MOV, MKV (uploaded & cover auto-captured)'"
+              :max-duration-seconds="3600"
+              :hint="isAr ? 'صيغ: MP4, MOV, MKV (حتى ساعة واحدة / يتم رفعه والتقاط الغلاف تلقائياً)' : 'Formats: MP4, MOV, MKV (up to 1 hour / uploaded & cover auto-captured)'"
               @thumbnail-captured="handleThumbnailCaptured"
             />
 

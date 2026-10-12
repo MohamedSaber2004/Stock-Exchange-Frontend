@@ -14,7 +14,8 @@ interface Props {
   durationSeconds?: number
   label?: string
   hint?: string
-  maxSizeBytes?: number // e.g. 200MB default
+  maxSizeBytes?: number // e.g. 2GB default (supports up to 1-hour videos)
+  maxDurationSeconds?: number // e.g. 3600 (1 hour in seconds)
   autoCaptureThumbnail?: boolean // default true
 }
 
@@ -24,7 +25,8 @@ const props = withDefaults(defineProps<Props>(), {
   durationSeconds: 0,
   label: '',
   hint: '',
-  maxSizeBytes: 200 * 1024 * 1024, // 200MB default
+  maxSizeBytes: 2 * 1024 * 1024 * 1024, // 2GB default (supports videos up to 1 hour)
+  maxDurationSeconds: 3600, // 3600 seconds = 1 hour
   autoCaptureThumbnail: true,
 })
 
@@ -78,17 +80,34 @@ const formatDuration = (seconds: number): string => {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
 
+const formatFileSize = (bytes: number): string => {
+  if (bytes >= 1024 * 1024 * 1024) {
+    const gb = bytes / (1024 * 1024 * 1024)
+    const formatted = gb % 1 === 0 ? gb.toFixed(0) : gb.toFixed(1)
+    return isAr.value ? `${formatted} جيجابايت` : `${formatted} GB`
+  }
+  const mb = bytes / (1024 * 1024)
+  const formatted = mb % 1 === 0 ? mb.toFixed(0) : mb.toFixed(1)
+  return isAr.value ? `${formatted} ميجابايت` : `${formatted} MB`
+}
+
 const defaultLabel = computed(() => {
   return props.label || (isAr.value ? 'ملف الفيديو' : 'Video File')
 })
 
 const defaultHint = computed(() => {
-  return (
-    props.hint ||
-    (isAr.value
-      ? 'صيغ الفيديو المدعومة: MP4, MOV, MKV, AVI بحد أقصى 200MB'
-      : 'Supported video formats: MP4, MOV, MKV, AVI up to 200MB')
-  )
+  if (props.hint) return props.hint
+  const sizeText = formatFileSize(props.maxSizeBytes)
+  const durationText =
+    props.maxDurationSeconds && props.maxDurationSeconds > 0
+      ? isAr.value
+        ? `مدة تصل لـ ${formatDuration(props.maxDurationSeconds)}`
+        : `up to ${formatDuration(props.maxDurationSeconds)}`
+      : ''
+  const details = [durationText, sizeText].filter(Boolean).join(' / ')
+  return isAr.value
+    ? `صيغ الفيديو المدعومة: MP4, MOV, MKV, AVI (${details})`
+    : `Supported video formats: MP4, MOV, MKV, AVI (${details})`
 })
 
 const triggerUpload = () => {
@@ -279,6 +298,32 @@ const captureThumbnail = async () => {
   }
 }
 
+const getVideoMetadata = (file: File): Promise<{ duration: number }> => {
+  return new Promise((resolve) => {
+    const video = document.createElement('video')
+    video.preload = 'metadata'
+    video.muted = true
+    video.playsInline = true
+    const url = URL.createObjectURL(file)
+    video.src = url
+    let finished = false
+    const finish = (duration: number) => {
+      if (!finished) {
+        finished = true
+        URL.revokeObjectURL(url)
+        resolve({ duration })
+      }
+    }
+    video.onloadedmetadata = () => {
+      finish(video.duration || 0)
+    }
+    video.onerror = () => {
+      finish(0)
+    }
+    setTimeout(() => finish(0), 4000)
+  })
+}
+
 const processFile = async (file: File) => {
   const validExtensions = ['.mp4', '.avi', '.mkv', '.mov', '.wmv', '.webm']
   const fileExt = file.name.substring(file.name.lastIndexOf('.')).toLowerCase()
@@ -298,12 +343,30 @@ const processFile = async (file: File) => {
   if (file.size > props.maxSizeBytes) {
     uploadStatus.value = 'error'
     uploadError.value = isAr.value
-      ? `حجم الفيديو كبير جداً، الحد الأقصى هو ${(props.maxSizeBytes / (1024 * 1024)).toFixed(0)} ميجابايت`
-      : `File too large, max size is ${(props.maxSizeBytes / (1024 * 1024)).toFixed(0)} MB`
+      ? `حجم الفيديو كبير جداً، الحد الأقصى هو ${formatFileSize(props.maxSizeBytes)}`
+      : `File too large, max size is ${formatFileSize(props.maxSizeBytes)}`
     isUploading.value = true
     uploadFileName.value = file.name
     uploadFileSize.value = file.size
     return
+  }
+
+  // Read and validate duration before upload
+  const meta = await getVideoMetadata(file)
+  if (meta.duration > 0) {
+    const detectedSecs = Math.round(meta.duration)
+    emit('update:durationSeconds', detectedSecs)
+
+    if (props.maxDurationSeconds && props.maxDurationSeconds > 0 && meta.duration > props.maxDurationSeconds + 5) {
+      uploadStatus.value = 'error'
+      uploadError.value = isAr.value
+        ? `مدة الفيديو (${formatDuration(meta.duration)}) تتجاوز الحد الأقصى المسموح (${formatDuration(props.maxDurationSeconds)} - ساعة واحدة)`
+        : `Video duration (${formatDuration(meta.duration)}) exceeds maximum allowed limit (${formatDuration(props.maxDurationSeconds)})`
+      isUploading.value = true
+      uploadFileName.value = file.name
+      uploadFileSize.value = file.size
+      return
+    }
   }
 
   // Set local blob preview for immediate feedback
