@@ -54,3 +54,31 @@ export interface AttachmentUploadResult {
   mediaType: MediaType
   size: number
 }
+
+export interface UploadChunkResultDto {
+  isCompleted: boolean
+  storedFileName?: string | null
+  chunkIndex: number
+  totalChunks: number
+}
+
+export interface UploadChunkPayload {
+  uploadId: string
+  chunkIndex: number
+  totalChunks: number
+  fileName: string
+  mediaType?: MediaType
+  place?: number
+  chunk: Blob | File
+  onProgress?: (progress: UploadProgressEvent) => void
+  signal?: AbortSignal
+}
+
+export interface UploadChunkedFilePayload {
+  file: File
+  chunkSize?: number
+  mediaType?: MediaType
+  place?: number
+  onProgress?: (progress: UploadProgressEvent) => void
+  signal?: AbortSignal
+}

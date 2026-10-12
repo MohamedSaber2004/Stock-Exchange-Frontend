@@ -23,6 +23,7 @@ export class ApiEndpoints {
   public static readonly Attachments = {
     Base: '/attachments',
     Upload: '/attachments/upload',
+    UploadChunk: '/attachments/upload-chunk',
     UploadMultiple: '/attachments/upload-multiple',
     Update: '/attachments/update',
     Download: '/attachments/download',

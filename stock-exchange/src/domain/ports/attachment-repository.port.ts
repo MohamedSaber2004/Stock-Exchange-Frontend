@@ -3,11 +3,16 @@ import type {
   MediaType,
   UpdateAttachmentPayload,
   UploadAttachmentPayload,
+  UploadChunkPayload,
+  UploadChunkResultDto,
+  UploadChunkedFilePayload,
   UploadMultipleAttachmentsPayload,
 } from '../models/attachment.model'
 
 export interface IAttachmentRepository {
   upload(payload: UploadAttachmentPayload): Promise<string>
+  uploadChunk(payload: UploadChunkPayload): Promise<UploadChunkResultDto>
+  uploadChunked(payload: UploadChunkedFilePayload): Promise<string>
   uploadMultiple(payload: UploadMultipleAttachmentsPayload): Promise<string[]>
   download(payload: DownloadAttachmentPayload): Promise<Blob>
   update(payload: UpdateAttachmentPayload): Promise<string>

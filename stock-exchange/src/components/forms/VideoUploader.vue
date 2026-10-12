@@ -475,7 +475,7 @@ const processFile = async (file: File) => {
   uploadAbortController.value = controller
 
   try {
-    const savedFileName = await coreServices.attachments.upload({
+    const savedFileName = await coreServices.attachments.uploadChunked({
       file,
       mediaType: MediaType.Video,
       place: FilePlace.General,
@@ -521,27 +521,32 @@ const processFile = async (file: File) => {
         ? 'الخادم رفض طريقة الطلب أو حجم ملف الفيديو (خطأ 405 Method Not Allowed).'
         : 'Server rejected the upload request or body size (Error 405 Method Not Allowed).'
       uploadErrorHint.value = isAr.value
-        ? 'السبب المحتمل: عدم تفعيل معالجة CORS preflight (OPTIONS) على السيرفر، أو رفض IIS للملفات الكبيرة (الحد الافتراضي 30MB). يرجى التأكد من مسار الـ Proxy وتفعيل CORS أو تقليل حجم الفيديو.'
-        : 'Likely cause: CORS preflight (OPTIONS) rejected by the backend server, or IIS rejected oversized request (default limit 30MB). Verify API proxy configuration or reduce video size.'
+        ? 'السبب المحتمل: عدم تفعيل معالجة CORS preflight (OPTIONS) على السيرفر. يرجى التأكد من مسار الـ Proxy وتفعيل CORS.'
+        : 'Likely cause: CORS preflight (OPTIONS) rejected by the backend server. Verify API proxy configuration.'
     } else if (errStatus === 413 || errCode === 'HTTP_413') {
       uploadError.value = isAr.value
         ? 'حجم الفيديو كبير جداً ويتجاوز الحد الأقصى للخادم (413 Payload Too Large).'
         : 'Video file size exceeds server maximum limit (413 Payload Too Large).'
       uploadErrorHint.value = isAr.value
-        ? 'يرجى ضغط ملف الفيديو أو اختيار ملف أصغر حجماً (أقل من 30 ميجابايت).'
-        : 'Please compress the video file or choose a smaller file (under 30MB).'
+        ? 'يرجى ضغط ملف الفيديو أو اختيار ملف أصغر حجماً.'
+        : 'Please compress the video file or choose a smaller file.'
     } else if (errCode === 'REQUEST_ABORTED') {
       uploadError.value = isAr.value ? 'تم إلغاء رفع الفيديو' : 'Video upload was cancelled'
       uploadErrorHint.value = ''
+    } else if (errCode === 'CHUNK_UPLOAD_FAILED') {
+      uploadError.value =
+        errorDetails.generalMessage ||
+        (isAr.value ? 'تعذر رفع أجزاء الفيديو بسبب انقطاع الاتصال' : 'Failed to upload video chunks due to connection issue')
+      uploadErrorHint.value = isAr.value
+        ? 'يمكنك النقر على "إعادة المحاولة" لإعادة رفع الأجزاء المتبقية.'
+        : 'You can click "Retry" to continue uploading remaining chunks.'
     } else {
       uploadError.value =
         errorDetails.generalMessage ||
         (isAr.value ? 'فشل رفع ملف الفيديو إلى الخادم' : 'Failed to upload video file')
-      if (file.size > 30 * 1024 * 1024) {
-        uploadErrorHint.value = isAr.value
-          ? 'ملاحظة: حجم الفيديو يتجاوز 30MB وقد ترفضه خوادم الاستضافة المشتركة (IIS).'
-          : 'Note: Video exceeds 30MB which may be blocked by shared server limits (IIS).'
-      }
+      uploadErrorHint.value = isAr.value
+        ? 'يرجى التأكد من اتصال الإنترنت أو النقر على "إعادة المحاولة".'
+        : 'Please check your internet connection or click "Retry".'
     }
   }
 }
