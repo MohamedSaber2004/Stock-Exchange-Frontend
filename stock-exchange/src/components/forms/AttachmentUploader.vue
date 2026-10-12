@@ -47,6 +47,7 @@ const props = withDefaults(defineProps<Props>(), {
   accept: '.pdf,.doc,.docx,.xls,.xlsx,.csv,.zip,.rar,.png,.jpg,.jpeg'
 })
 
+
 const emit = defineEmits<{
   (e: 'update:modelValue', items: AttachmentItem[]): void
   (e: 'file-added', file: File): void
