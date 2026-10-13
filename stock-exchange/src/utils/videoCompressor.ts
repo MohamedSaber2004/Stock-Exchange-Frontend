@@ -6,7 +6,7 @@ export type VideoQuality = 'standard' | 'high' | 'compact'
 export interface CompressionOptions {
   quality?: VideoQuality
   maxHeight?: number
-  onProgress?: (progress: { ratio: number; percentage: number; time?: number }) => void
+  onProgress?: (progress: { ratio: number; percentage: number; time?: number; etaSeconds?: number }) => void
   onStatusChange?: (status: 'loading' | 'compressing' | 'completed' | 'aborted' | 'error', message?: string) => void
   signal?: AbortSignal
 }
@@ -23,10 +23,6 @@ let ffmpegSingleton: FFmpeg | null = null
 let isLoadingEngine = false
 let engineLoadPromise: Promise<FFmpeg> | null = null
 
-/**
- * Lazily initialize and load the FFmpeg WASM singleton.
- * Tries local /ffmpeg/ files first, falls back to unpkg CDN if needed.
- */
 export async function getFFmpeg(onStatus?: (msg: string) => void): Promise<FFmpeg> {
   if (ffmpegSingleton && ffmpegSingleton.loaded) {
     return ffmpegSingleton
@@ -44,9 +40,10 @@ export async function getFFmpeg(onStatus?: (msg: string) => void): Promise<FFmpe
 
     // Strategy 1: Load from local public directory /ffmpeg/
     try {
+      const classWorkerURL = await toBlobURL('/ffmpeg/ffmpeg-worker.js', 'text/javascript')
       const coreURL = await toBlobURL('/ffmpeg/ffmpeg-core.js', 'text/javascript')
       const wasmURL = await toBlobURL('/ffmpeg/ffmpeg-core.wasm', 'application/wasm')
-      await ffmpeg.load({ coreURL, wasmURL })
+      await ffmpeg.load({ classWorkerURL, coreURL, wasmURL })
       ffmpegSingleton = ffmpeg
       isLoadingEngine = false
       return ffmpeg
@@ -57,9 +54,10 @@ export async function getFFmpeg(onStatus?: (msg: string) => void): Promise<FFmpe
     // Strategy 2: CDN fallback (unpkg)
     try {
       const cdnBase = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm'
+      const classWorkerURL = await toBlobURL('/ffmpeg/ffmpeg-worker.js', 'text/javascript')
       const coreURL = await toBlobURL(`${cdnBase}/ffmpeg-core.js`, 'text/javascript')
       const wasmURL = await toBlobURL(`${cdnBase}/ffmpeg-core.wasm`, 'application/wasm')
-      await ffmpeg.load({ coreURL, wasmURL })
+      await ffmpeg.load({ classWorkerURL, coreURL, wasmURL })
       ffmpegSingleton = ffmpeg
       isLoadingEngine = false
       return ffmpeg
@@ -91,7 +89,7 @@ export function resetFFmpegInstance(): void {
 
 /**
  * Compresses a video File using FFmpeg WebAssembly.
- * 
+ *
  * Target profiles:
  * - 'standard' (Recommended): 720p HD, CRF 28, AAC 128k, faststart. Reduces size by 60-80% with crisp visual quality.
  * - 'high': 1080p Full HD, CRF 26, AAC 128k, faststart.
@@ -112,16 +110,17 @@ export async function compressVideo(
     throw new DOMException('Compression cancelled by user', 'AbortError')
   }
 
-  // Determine parameters based on quality preset
+  // Determine parameters based on quality preset:
+  // Using 'ultrafast' is essential in WebAssembly (WASM) to eliminate multi-minute CPU bottlenecks.
   let targetHeight = 720
   let crf = '28'
-  let preset = 'veryfast'
+  let preset = 'ultrafast'
   let audioBitrate = '128k'
 
   if (quality === 'high') {
     targetHeight = 1080
     crf = '26'
-    preset = 'veryfast'
+    preset = 'ultrafast'
     audioBitrate = '128k'
   } else if (quality === 'compact') {
     targetHeight = 480
@@ -166,12 +165,31 @@ export async function compressVideo(
 
   signal?.addEventListener('abort', abortHandler, { once: true })
 
+  // Track start time for accurate ETA calculation
+  let encodeStartTime = 0
+  let smoothedEta = 0
+
   // Attach progress listener
   const progressCallback = ({ progress, time }: { progress: number; time: number }) => {
     if (signal?.aborted) return
     const ratio = Math.max(0, Math.min(1, progress))
     const percentage = Math.min(99, Math.max(0, Math.round(ratio * 100)))
-    onProgress?.({ ratio, percentage, time })
+
+    if (!encodeStartTime) {
+      encodeStartTime = Date.now()
+    }
+
+    let etaSeconds = 0
+    const elapsedSecs = (Date.now() - encodeStartTime) / 1000
+
+    if (ratio > 0.03 && elapsedSecs > 1.5) {
+      const totalExpected = elapsedSecs / ratio
+      const rawRemaining = Math.max(0, Math.round(totalExpected - elapsedSecs))
+      smoothedEta = smoothedEta === 0 ? rawRemaining : Math.round(smoothedEta * 0.7 + rawRemaining * 0.3)
+      etaSeconds = smoothedEta
+    }
+
+    onProgress?.({ ratio, percentage, time, etaSeconds })
   }
 
   ffmpeg.on('progress', progressCallback)
@@ -187,28 +205,39 @@ export async function compressVideo(
     await ffmpeg.writeFile(inputFileName, inputData)
 
     onStatusChange?.('compressing', 'Compressing video...')
+    encodeStartTime = Date.now()
 
-    // FFmpeg execution command:
-    // - scale=-2:min(ih\,targetHeight): Scales height up to targetHeight, keeping aspect ratio & even dimensions.
-    // - libx264: Universally supported H.264 video codec
-    // - aac: AAC audio codec
-    // - pix_fmt yuv420p: Ensures compatibility with iOS, Safari, Android & all web browsers
-    // - movflags +faststart: Moves MOOV atom to beginning for instantaneous video streaming playback
+    // Highly optimized FFmpeg execution command for WebAssembly:
+    // - -threads 0: utilizes available Web Worker capacity
+    // - scale=-2:min(ih\,targetHeight):flags=fast_bilinear: fast bilinear scaling prevents CPU choke
+    // - -r 30: caps framerate to 30fps (halves processing time for 60fps mobile videos with zero perceptible loss)
+    // - -preset ultrafast: essential for responsive client-side encoding
+    // - -tune fastdecode: optimizes CABAC and loop filters for instant decoding
+    // - -pix_fmt yuv420p: universal playback across iOS, Safari, Chrome & Android
+    // - -movflags +faststart: allows immediate progressive streaming playback without downloading full video
     const execArgs = [
       '-i',
       inputFileName,
+      '-threads',
+      '0',
       '-vf',
-      `scale=-2:min(ih\\,${targetHeight})`,
+      `scale=-2:min(ih\\,${targetHeight}):flags=fast_bilinear`,
+      '-r',
+      '30',
       '-c:v',
       'libx264',
       '-crf',
       crf,
       '-preset',
       preset,
+      '-tune',
+      'fastdecode',
       '-c:a',
       'aac',
       '-b:a',
       audioBitrate,
+      '-ar',
+      '44100',
       '-pix_fmt',
       'yuv420p',
       '-movflags',

@@ -92,9 +92,9 @@ export class AttachmentRepository implements IAttachmentRepository {
 
   async uploadChunked(payload: UploadChunkedFilePayload): Promise<string> {
     const { file, mediaType = MediaType.Video, place = 0, onProgress, signal } = payload
-    // Use 2 MB chunks: vastly superior reliability on varying connections (especially ~250-500 KB/s)
-    // Minimizes risk of IIS/reverse proxy connection drops and timeout issues
-    const chunkSize = payload.chunkSize || 2 * 1024 * 1024
+    const defaultChunkSize =
+      file.size > 40 * 1024 * 1024 ? 5 * 1024 * 1024 : 2.5 * 1024 * 1024
+    const chunkSize = Math.round(payload.chunkSize || defaultChunkSize)
     const totalSize = file.size
 
     // If file is small (<= 2MB), standard single upload is faster

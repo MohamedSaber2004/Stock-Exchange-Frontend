@@ -208,6 +208,24 @@ export function getCleanPhoneInfo(
   }
 }
 
+/**
+ * Generates user initials (1-2 uppercase letters) from full name.
+ * Handles both Arabic and English names cleanly.
+ */
+export function getUserInitials(name?: string | null): string {
+  if (!name || typeof name !== 'string') return 'AD'
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  const firstPart = parts[0]
+  if (!firstPart) return 'AD'
+  if (parts.length === 1) {
+    return (firstPart.length >= 2 ? firstPart.substring(0, 2) : firstPart).toUpperCase()
+  }
+  const lastPart = parts[parts.length - 1]
+  const firstChar = firstPart[0] || 'A'
+  const secondChar = (lastPart && lastPart[0]) ? lastPart[0] : ''
+  return (firstChar + secondChar).toUpperCase()
+}
+
 export const getAttachmentUrl = resolveAttachmentUrl
 export const resolveAttachment = resolveAttachmentUrl
 

@@ -21,7 +21,7 @@ import {
   type ActivityLogsSummaryDto 
 } from '@/domain/models/activity-log.model'
 import type { AppError } from '@/domain/models/common.model'
-import { resolveAttachmentUrl, handleImageError } from '@/utils/attachment'
+import { resolveAttachmentUrl, getUserInitials } from '@/utils/attachment'
 import { userAvatarCache } from '@/utils/avatar-cache'
 
 const { toast } = useFeedback()
@@ -34,6 +34,14 @@ const summary = ref<ActivityLogsSummaryDto | null>(null)
 const isLoading = ref(true)
 const isRefreshing = ref(false)
 const errorMessage = ref<string | null>(null)
+
+// Avatar Error Fallback State
+const failedAvatars = ref<Set<string>>(new Set())
+
+const onAvatarError = (id: string | number, url?: string | null) => {
+  if (url) userAvatarCache.markFailed(url)
+  failedAvatars.value = new Set(failedAvatars.value.add(String(id)))
+}
 
 // Filter & Search State
 const searchQuery = ref('')
@@ -351,12 +359,21 @@ const getResourceTypeBadgeClass = (type: ActivityResourceType | number) => {
                   <!-- User Actor -->
                   <td class="py-3.5 px-5 text-start">
                     <div class="flex items-center gap-2.5">
-                      <img 
-                        :src="resolveAttachmentUrl(act.userProfilePictureUrl, 'avatar')" 
-                        :alt="act.userName"
-                        @error="handleImageError($event, 'avatar')"
-                        class="w-7 h-7 rounded-full object-cover ring-1 ring-slate-200 shrink-0 bg-slate-100"
-                      />
+                      <div class="relative shrink-0">
+                        <img 
+                          v-if="act.userProfilePictureUrl && !failedAvatars.has(String(act.id)) && !userAvatarCache.isFailed(act.userProfilePictureUrl)"
+                          :src="resolveAttachmentUrl(act.userProfilePictureUrl, 'avatar')" 
+                          :alt="act.userName"
+                          @error="onAvatarError(act.id, act.userProfilePictureUrl)"
+                          class="w-7 h-7 rounded-full object-cover ring-1 ring-slate-200 shrink-0 bg-slate-100"
+                        />
+                        <div
+                          v-else
+                          class="w-7 h-7 rounded-full bg-linear-to-tr from-emerald-600 to-teal-500 text-white text-[10px] font-bold flex items-center justify-center shadow-2xs shrink-0"
+                        >
+                          {{ getUserInitials(act.userName) }}
+                        </div>
+                      </div>
                       <div class="flex flex-col min-w-0">
                         <span class="font-bold text-slate-900 truncate">{{ act.userName || (isAr ? 'مستخدم' : 'User') }}</span>
                         <span class="text-[10px] text-slate-400 font-medium truncate">{{ act.userEmail || '-' }}</span>
@@ -473,12 +490,21 @@ const getResourceTypeBadgeClass = (type: ActivityResourceType | number) => {
               <div class="flex items-center justify-between gap-2">
                 <span class="font-bold text-slate-500 uppercase text-[10px]">{{ t('activity.actor') }}</span>
                 <div class="flex items-center gap-2">
-                  <img 
-                    :src="resolveAttachmentUrl(selectedLog.userProfilePictureUrl, 'avatar')" 
-                    :alt="selectedLog.userName"
-                    @error="handleImageError($event, 'avatar')"
-                    class="w-5 h-5 rounded-full object-cover ring-1 ring-slate-200 shrink-0 bg-slate-100"
-                  />
+                  <div class="relative shrink-0">
+                    <img 
+                      v-if="selectedLog.userProfilePictureUrl && !failedAvatars.has(String(selectedLog.id)) && !userAvatarCache.isFailed(selectedLog.userProfilePictureUrl)"
+                      :src="resolveAttachmentUrl(selectedLog.userProfilePictureUrl, 'avatar')" 
+                      :alt="selectedLog.userName"
+                      @error="onAvatarError(selectedLog.id, selectedLog.userProfilePictureUrl)"
+                      class="w-6 h-6 rounded-full object-cover ring-1 ring-slate-200 shrink-0 bg-slate-100"
+                    />
+                    <div
+                      v-else
+                      class="w-6 h-6 rounded-full bg-linear-to-tr from-emerald-600 to-teal-500 text-white text-[9px] font-bold flex items-center justify-center shadow-2xs shrink-0"
+                    >
+                      {{ getUserInitials(selectedLog.userName) }}
+                    </div>
+                  </div>
                   <span class="font-bold text-slate-800 text-end">{{ selectedLog.userName }} ({{ selectedLog.userEmail || '-' }})</span>
                 </div>
               </div>

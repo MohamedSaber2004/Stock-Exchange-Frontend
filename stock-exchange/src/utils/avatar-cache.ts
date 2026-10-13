@@ -7,18 +7,33 @@ class UserAvatarCache {
   private cache = new Map<string, string>()
   private inFlight = new Map<string, Promise<string | null>>()
 
+  private failedUrls = new Set<string>()
+
   private normalizeKey(key?: string | null): string {
     return (key || '').trim().toLowerCase()
+  }
+
+  isFailed(url?: string | null): boolean {
+    if (!url || typeof url !== 'string') return false
+    return this.failedUrls.has(this.normalizeKey(url))
+  }
+
+  markFailed(url?: string | null): void {
+    if (!url || typeof url !== 'string') return
+    const key = this.normalizeKey(url)
+    if (key) {
+      this.failedUrls.add(key)
+    }
   }
 
   get(userId?: string | null, email?: string | null): string | null {
     if (userId) {
       const found = this.cache.get(this.normalizeKey(userId))
-      if (found) return found
+      if (found && !this.isFailed(found)) return found
     }
     if (email) {
       const found = this.cache.get(this.normalizeKey(email))
-      if (found) return found
+      if (found && !this.isFailed(found)) return found
     }
     return null
   }
@@ -26,6 +41,8 @@ class UserAvatarCache {
   set(userId?: string | null, email?: string | null, avatarUrl?: string | null): void {
     if (!avatarUrl || typeof avatarUrl !== 'string' || !avatarUrl.trim()) return
     const cleanUrl = avatarUrl.trim()
+    const normUrl = this.normalizeKey(cleanUrl)
+    this.failedUrls.delete(normUrl)
     if (userId && userId.trim()) {
       this.cache.set(this.normalizeKey(userId), cleanUrl)
     }

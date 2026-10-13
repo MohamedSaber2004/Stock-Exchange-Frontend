@@ -1,7 +1,21 @@
-import { fileURLToPath, URL } from 'node:url'
-import { defineConfig } from 'vite'
+﻿import { fileURLToPath, URL } from 'node:url'
+import { defineConfig, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
+
+function fixEnvDefinesPlugin(): Plugin {
+  return {
+    name: 'vite-plugin-fix-env-defines',
+    transform(code, id) {
+      if (id.includes('env.mjs')) {
+        return {
+          code: code.replace(/__DEFINES__/g, '{}'),
+          map: null,
+        }
+      }
+    },
+  }
+}
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -16,6 +30,7 @@ export default defineConfig({
     __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,
   },
   plugins: [
+    fixEnvDefinesPlugin(),
     vue(),
     tailwindcss(),
   ],

@@ -92,7 +92,13 @@ const formattedSpeed = computed(() => {
 })
 
 const formattedEta = computed(() => {
-  if (props.etaSeconds === undefined || props.etaSeconds <= 0 || props.status !== 'uploading') return ''
+  if (
+    props.etaSeconds === undefined ||
+    props.etaSeconds <= 0 ||
+    (props.status !== 'uploading' && props.status !== 'compressing')
+  ) {
+    return ''
+  }
   const secs = props.etaSeconds
   if (secs < 60) {
     return isAr.value ? `${secs} ثانية متبقية` : `${secs}s left`

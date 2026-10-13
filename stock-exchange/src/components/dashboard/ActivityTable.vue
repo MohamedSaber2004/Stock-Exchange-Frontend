@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import StatusBadge from '@/components/ui/StatusBadge.vue'
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
-import { resolveAttachmentUrl, handleImageError } from '@/utils/attachment'
+import { resolveAttachmentUrl, getUserInitials } from '@/utils/attachment'
+import { userAvatarCache } from '@/utils/avatar-cache'
 import { coreServices } from '@/di'
 import type { OverviewActivityLogDto } from '@/domain/models/overview.model'
 
@@ -109,12 +110,11 @@ const getBadgeVariant = (type: string | number): 'info' | 'success' | 'warning' 
   }
 }
 
-const getUserInitials = (name?: string) => {
-  if (!name) return 'AD'
-  const parts = name.trim().split(/\s+/)
-  const first = parts[0]?.[0] || 'A'
-  const second = parts[1]?.[0] || ''
-  return (first + second).toUpperCase()
+const failedAvatars = ref<Set<string>>(new Set())
+
+const onAvatarError = (id: string | number, url?: string | null) => {
+  if (url) userAvatarCache.markFailed(url)
+  failedAvatars.value = new Set(failedAvatars.value.add(String(id)))
 }
 
 const activitiesList = computed(() => {
@@ -189,15 +189,15 @@ const activitiesList = computed(() => {
               <div class="flex items-center gap-2.5">
                 <div class="relative shrink-0">
                   <img
-                    v-if="act.userProfilePictureUrl"
-                    :src="resolveAttachmentUrl(act.userProfilePictureUrl)"
+                    v-if="act.userProfilePictureUrl && !failedAvatars.has(String(act.id)) && !userAvatarCache.isFailed(act.userProfilePictureUrl)"
+                    :src="resolveAttachmentUrl(act.userProfilePictureUrl, 'avatar')"
                     :alt="act.userName"
                     class="w-7 h-7 rounded-full object-cover border border-slate-200"
-                    @error="handleImageError"
+                    @error="onAvatarError(act.id, act.userProfilePictureUrl)"
                   />
                   <div
                     v-else
-                    class="w-7 h-7 rounded-full bg-linear-to-tr from-emerald-600 to-teal-500 text-white text-[10px] font-bold flex items-center justify-center shadow-2xs"
+                    class="w-7 h-7 rounded-full bg-linear-to-tr from-emerald-600 to-teal-500 text-white text-[10px] font-bold flex items-center justify-center shadow-2xs shrink-0"
                   >
                     {{ getUserInitials(act.userName) }}
                   </div>

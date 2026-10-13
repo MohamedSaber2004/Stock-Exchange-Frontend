@@ -73,6 +73,7 @@ const compressedStats = ref<{
 const {
   isCompressing,
   compressionProgress,
+  compressionEta,
   compress,
   cancel: cancelCompression,
 } = useVideoCompressor()
@@ -725,13 +726,13 @@ onUnmounted(() => {
         :file-size="uploadFileSize"
         :uploaded-bytes="uploadedBytes"
         :bytes-per-second="uploadSpeed"
-        :eta-seconds="uploadEta"
+        :eta-seconds="uploadStatus === 'compressing' ? compressionEta : uploadEta"
         :status="uploadStatus"
         :status-custom-text="
           uploadStatus === 'compressing'
             ? isAr
-              ? `جاري ضغط ومعالجة الفيديو (${compressionQuality === 'high' ? '1080p FHD' : '720p HD'})... ${compressionProgress}%`
-              : `Compressing & optimizing video (${compressionQuality === 'high' ? '1080p FHD' : '720p HD'})... ${compressionProgress}%`
+              ? `جاري ضغط ومعالجة الفيديو (${compressionQuality === 'high' ? '1080p FHD' : '720p HD'})... ${compressionProgress}%${compressionEta > 0 ? ` (متبقي حوالي ${compressionEta} ثانية)` : ''}`
+              : `Compressing & optimizing video (${compressionQuality === 'high' ? '1080p FHD' : '720p HD'})... ${compressionProgress}%${compressionEta > 0 ? ` (~${compressionEta}s left)` : ''}`
             : ''
         "
         :savings-badge="
