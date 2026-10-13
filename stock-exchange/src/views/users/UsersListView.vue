@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -200,8 +200,8 @@ const handleAction = async (actionId: string, u: UserDto) => {
     const ok = await confirm({
       title: isAr.value ? `حذف حساب "${u.fullName}"` : `Delete Account ("${u.fullName}")`,
       message: isAr.value
-        ? `هل أنت متأكد من رغبتك في حذف حساب "${u.fullName}"؟ سيتم تعطيل الحساب وإلغاء جميع الجلسات الفعالة.`
-        : `Are you sure you want to delete the account for "${u.fullName}"? The account will be deactivated and active sessions revoked.`,
+        ? `هل أنت متأكد من رغبتك في حذف حساب "${u.fullName}" نهائياً؟ سيتم مسح الحساب وكافة البيانات المرتبطة به ولا يمكن استرجاعه.`
+        : `Are you sure you want to permanently delete the account for "${u.fullName}"? The account and all associated data will be permanently removed and cannot be recovered.`,
       confirmText: t('common.delete'),
       cancelText: t('common.cancel'),
       type: 'danger'
