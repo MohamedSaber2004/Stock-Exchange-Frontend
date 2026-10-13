@@ -1,7 +1,16 @@
 <script setup lang="ts">
 import { ref, computed, onUnmounted } from 'vue'
-import { Film, X, RefreshCw, Camera, CheckCircle2 } from 'lucide-vue-next'
+import {
+  Film,
+  X,
+  RefreshCw,
+  Camera,
+  CheckCircle2,
+  Sparkles,
+  Zap,
+} from 'lucide-vue-next'
 import { useLocale } from '@/composables/useLocale'
+import { useVideoCompressor } from '@/composables/useVideoCompressor'
 import UploadProgressBar from './UploadProgressBar.vue'
 import { coreServices } from '@/di'
 import { MediaType, FilePlace } from '@/domain/models/attachment.model'
@@ -17,6 +26,7 @@ interface Props {
   maxSizeBytes?: number // e.g. 2GB default (supports up to 1-hour videos)
   maxDurationSeconds?: number // e.g. 3600 (1 hour in seconds)
   autoCaptureThumbnail?: boolean // default true
+  defaultEnableCompression?: boolean // default true
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -28,6 +38,7 @@ const props = withDefaults(defineProps<Props>(), {
   maxSizeBytes: 2 * 1024 * 1024 * 1024, // 2GB default (supports videos up to 1 hour)
   maxDurationSeconds: 3600, // 3600 seconds = 1 hour
   autoCaptureThumbnail: true,
+  defaultEnableCompression: true,
 })
 
 const emit = defineEmits<{
@@ -37,6 +48,10 @@ const emit = defineEmits<{
   (e: 'file-selected', file: File): void
   (e: 'upload-success', payload: { fileName: string; duration: number; file: File }): void
   (e: 'thumbnail-captured', payload: { file: File; dataUrl: string; attachmentName?: string }): void
+  (
+    e: 'compression-success',
+    payload: { original: number; compressed: number; savedPercentage: number }
+  ): void
 }>()
 
 const { isAr } = useLocale()
@@ -44,6 +59,23 @@ const { isAr } = useLocale()
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const videoPlayerRef = ref<HTMLVideoElement | null>(null)
 const isDragging = ref(false)
+
+// Compression settings & state
+const enableCompression = ref(props.defaultEnableCompression ?? true)
+const compressionQuality = ref<'standard' | 'high'>('standard')
+const skipCompressionRequested = ref(false)
+const compressedStats = ref<{
+  original: number
+  compressed: number
+  savedPercentage: number
+} | null>(null)
+
+const {
+  isCompressing,
+  compressionProgress,
+  compress,
+  cancel: cancelCompression,
+} = useVideoCompressor()
 
 // Upload state
 const isUploading = ref(false)
@@ -53,7 +85,9 @@ const uploadSpeed = ref(0)
 const uploadEta = ref(0)
 const uploadFileName = ref('')
 const uploadFileSize = ref(0)
-const uploadStatus = ref<'uploading' | 'processing' | 'success' | 'error'>('uploading')
+const uploadStatus = ref<
+  'uploading' | 'compressing' | 'processing' | 'success' | 'error'
+>('uploading')
 const uploadError = ref('')
 const uploadErrorHint = ref('')
 const uploadAbortController = ref<AbortController | null>(null)
@@ -118,7 +152,10 @@ const triggerUpload = () => {
   fileInputRef.value?.click()
 }
 
-const safelyDetachAndRevoke = (videoEl: HTMLVideoElement | null, urlToRevoke?: string) => {
+const safelyDetachAndRevoke = (
+  videoEl: HTMLVideoElement | null,
+  urlToRevoke?: string
+) => {
   if (videoEl) {
     try {
       videoEl.pause()
@@ -139,7 +176,15 @@ const safelyDetachAndRevoke = (videoEl: HTMLVideoElement | null, urlToRevoke?: s
   }
 }
 
+const handleSkipCompression = () => {
+  skipCompressionRequested.value = true
+  cancelCompression()
+}
+
 const cancelUpload = () => {
+  if (isCompressing.value) {
+    cancelCompression()
+  }
   if (uploadAbortController.value) {
     uploadAbortController.value.abort()
     uploadAbortController.value = null
@@ -153,6 +198,9 @@ const cancelUpload = () => {
   uploadFileSize.value = 0
   uploadError.value = ''
   uploadErrorHint.value = ''
+  skipCompressionRequested.value = false
+  compressedStats.value = null
+
   if (localPreviewUrl.value) {
     const url = localPreviewUrl.value
     localPreviewUrl.value = ''
@@ -221,12 +269,10 @@ const extractThumbnailFromFile = (
       if (hasSeeked) return
       hasSeeked = true
 
-      // Asynchronously process frame to prevent blocking seeked event loop
       setTimeout(() => {
         try {
           const originalWidth = video.videoWidth || 640
           const originalHeight = video.videoHeight || 360
-          // Scale to max 640px width for fast, lightweight thumbnail capture
           const maxWidth = 640
           const scale = Math.min(1, maxWidth / originalWidth)
           const width = Math.max(1, Math.round(originalWidth * scale))
@@ -301,10 +347,11 @@ const captureThumbnail = async () => {
             return
           }
           try {
-            const thumbFile = new File([blob], `thumb_${Date.now()}.jpg`, { type: 'image/jpeg' })
+            const thumbFile = new File([blob], `thumb_${Date.now()}.jpg`, {
+              type: 'image/jpeg',
+            })
             const dataUrl = URL.createObjectURL(blob)
 
-            // Upload thumbnail to backend attachments endpoint
             const attachmentName = await coreServices.attachments.upload({
               file: thumbFile,
               mediaType: MediaType.Image,
@@ -339,7 +386,9 @@ const captureThumbnail = async () => {
   }
 }
 
-const getVideoMetadata = (source: File | string): Promise<{ duration: number }> => {
+const getVideoMetadata = (
+  source: File | string
+): Promise<{ duration: number }> => {
   return new Promise((resolve) => {
     const video = document.createElement('video')
     video.preload = 'metadata'
@@ -371,7 +420,8 @@ const getVideoMetadata = (source: File | string): Promise<{ duration: number }> 
 const processFile = async (file: File) => {
   const validExtensions = ['.mp4', '.avi', '.mkv', '.mov', '.wmv', '.webm']
   const fileExt = file.name.substring(file.name.lastIndexOf('.')).toLowerCase()
-  const isVideo = file.type.startsWith('video/') || validExtensions.includes(fileExt)
+  const isVideo =
+    file.type.startsWith('video/') || validExtensions.includes(fileExt)
 
   if (!isVideo) {
     uploadStatus.value = 'error'
@@ -405,13 +455,17 @@ const processFile = async (file: File) => {
   selectedFile.value = file
   emit('file-selected', file)
 
-  // Read and validate duration before upload using shared blobUrl
+  // Read and validate duration before upload
   const meta = await getVideoMetadata(blobUrl)
   if (meta.duration > 0) {
     const detectedSecs = Math.round(meta.duration)
     emit('update:durationSeconds', detectedSecs)
 
-    if (props.maxDurationSeconds && props.maxDurationSeconds > 0 && meta.duration > props.maxDurationSeconds + 5) {
+    if (
+      props.maxDurationSeconds &&
+      props.maxDurationSeconds > 0 &&
+      meta.duration > props.maxDurationSeconds + 5
+    ) {
       uploadStatus.value = 'error'
       uploadError.value = isAr.value
         ? `مدة الفيديو (${formatDuration(meta.duration)}) تتجاوز الحد الأقصى المسموح (${formatDuration(props.maxDurationSeconds)} - ساعة واحدة)`
@@ -456,17 +510,61 @@ const processFile = async (file: File) => {
       })
   }
 
-  // Start real backend upload with real progress tracking
   isUploading.value = true
+  uploadFileName.value = file.name
+  uploadFileSize.value = file.size
+  uploadError.value = ''
+  uploadErrorHint.value = ''
+  skipCompressionRequested.value = false
+  compressedStats.value = null
+
+  let fileToUpload: File = file
+
+  // Stage 1: Client-Side Video Compression via @ffmpeg/ffmpeg (if enabled and file is larger than 2MB)
+  if (enableCompression.value && file.size > 2 * 1024 * 1024) {
+    uploadStatus.value = 'compressing'
+    try {
+      const res = await compress(file, {
+        quality: compressionQuality.value,
+        maxHeight: compressionQuality.value === 'high' ? 1080 : 720,
+      })
+      fileToUpload = res.file
+      compressedStats.value = {
+        original: res.originalSize,
+        compressed: res.compressedSize,
+        savedPercentage: res.savedPercentage,
+      }
+      uploadFileSize.value = res.compressedSize
+      uploadFileName.value = res.file.name
+      emit('compression-success', compressedStats.value)
+    } catch (compErr: unknown) {
+      if (skipCompressionRequested.value) {
+        // User explicitly pressed "Skip Compression", upload original
+        fileToUpload = file
+        skipCompressionRequested.value = false
+      } else if ((compErr as Error)?.name === 'AbortError') {
+        // User aborted the process completely
+        isUploading.value = false
+        return
+      } else {
+        // Gracefully fallback to original file if compression engine had an issue
+        console.warn(
+          'Video compression could not be completed, proceeding with original file upload:',
+          compErr
+        )
+        fileToUpload = file
+      }
+    }
+  }
+
+  // Stage 2: Backend Chunked Upload with progress tracking
   uploadStatus.value = 'uploading'
   uploadProgress.value = 0
   uploadedBytes.value = 0
   uploadSpeed.value = 0
   uploadEta.value = 0
-  uploadFileName.value = file.name
-  uploadFileSize.value = file.size
-  uploadError.value = ''
-  uploadErrorHint.value = ''
+  uploadFileName.value = fileToUpload.name
+  uploadFileSize.value = fileToUpload.size
 
   if (uploadAbortController.value) {
     uploadAbortController.value.abort()
@@ -476,7 +574,7 @@ const processFile = async (file: File) => {
 
   try {
     const savedFileName = await coreServices.attachments.uploadChunked({
-      file,
+      file: fileToUpload,
       mediaType: MediaType.Video,
       place: FilePlace.General,
       signal: controller.signal,
@@ -494,12 +592,11 @@ const processFile = async (file: File) => {
     uploadProgress.value = 100
     uploadStatus.value = 'success'
 
-    // Update parent model with the saved attachment name returned by backend
     emit('update:modelValue', savedFileName)
     emit('upload-success', {
       fileName: savedFileName,
       duration: props.durationSeconds,
-      file,
+      file: fileToUpload,
     })
 
     setTimeout(() => {
@@ -515,7 +612,6 @@ const processFile = async (file: File) => {
       (err as { status?: number })?.status ||
       errorDetails.statusCode
 
-    // Diagnostic messages for HTTP 405 Method Not Allowed and payload size limits
     if (errStatus === 405 || errCode === 'HTTP_405') {
       uploadError.value = isAr.value
         ? 'الخادم رفض طريقة الطلب أو حجم ملف الفيديو (خطأ 405 Method Not Allowed).'
@@ -531,7 +627,9 @@ const processFile = async (file: File) => {
         ? 'يرجى ضغط ملف الفيديو أو اختيار ملف أصغر حجماً.'
         : 'Please compress the video file or choose a smaller file.'
     } else if (errCode === 'REQUEST_ABORTED') {
-      uploadError.value = isAr.value ? 'تم إلغاء رفع الفيديو' : 'Video upload was cancelled'
+      uploadError.value = isAr.value
+        ? 'تم إلغاء رفع الفيديو'
+        : 'Video upload was cancelled'
       uploadErrorHint.value = ''
     } else if (errCode === 'UPLOAD_TIMEOUT') {
       uploadError.value = isAr.value
@@ -543,7 +641,9 @@ const processFile = async (file: File) => {
     } else if (errCode === 'CHUNK_UPLOAD_FAILED') {
       uploadError.value =
         errorDetails.generalMessage ||
-        (isAr.value ? 'تعذر رفع أجزاء الفيديو بسبب انقطاع الاتصال' : 'Failed to upload video chunks due to connection issue')
+        (isAr.value
+          ? 'تعذر رفع أجزاء الفيديو بسبب انقطاع الاتصال'
+          : 'Failed to upload video chunks due to connection issue')
       uploadErrorHint.value = isAr.value
         ? 'يمكنك النقر على "إعادة المحاولة" لإعادة رفع الأجزاء المتبقية.'
         : 'You can click "Retry" to continue uploading remaining chunks.'
@@ -580,6 +680,9 @@ const handleKeydown = (event: KeyboardEvent) => {
 }
 
 onUnmounted(() => {
+  if (isCompressing.value) {
+    cancelCompression()
+  }
   if (uploadAbortController.value) {
     uploadAbortController.value.abort()
   }
@@ -592,7 +695,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-1.5 w-full">
+  <div class="flex flex-col gap-2 w-full">
     <!-- Header Label -->
     <div class="flex items-center justify-between">
       <label v-if="defaultLabel" class="text-xs font-bold text-slate-700">
@@ -614,62 +717,166 @@ onUnmounted(() => {
       @change="handleFileSelect"
     />
 
-    <!-- Upload In Progress Bar -->
+    <!-- Upload / Compression In Progress Bar -->
     <div v-if="isUploading" class="w-full">
       <UploadProgressBar
-        :progress="uploadProgress"
+        :progress="uploadStatus === 'compressing' ? compressionProgress : uploadProgress"
         :file-name="uploadFileName"
         :file-size="uploadFileSize"
         :uploaded-bytes="uploadedBytes"
         :bytes-per-second="uploadSpeed"
         :eta-seconds="uploadEta"
         :status="uploadStatus"
+        :status-custom-text="
+          uploadStatus === 'compressing'
+            ? isAr
+              ? `جاري ضغط ومعالجة الفيديو (${compressionQuality === 'high' ? '1080p FHD' : '720p HD'})... ${compressionProgress}%`
+              : `Compressing & optimizing video (${compressionQuality === 'high' ? '1080p FHD' : '720p HD'})... ${compressionProgress}%`
+            : ''
+        "
+        :savings-badge="
+          compressedStats
+            ? isAr
+              ? `توفير ${compressedStats.savedPercentage}%`
+              : `${compressedStats.savedPercentage}% saved`
+            : ''
+        "
         :error-message="uploadError"
         :error-hint="uploadErrorHint"
-        :can-cancel="uploadStatus === 'uploading'"
+        :can-cancel="uploadStatus === 'uploading' || uploadStatus === 'compressing'"
+        :can-skip="uploadStatus === 'compressing'"
         :can-retry="uploadStatus === 'error'"
         media-type="video"
         @cancel="cancelUpload"
+        @skip="handleSkipCompression"
         @retry="retryUpload"
         @remove="cancelUpload"
       />
     </div>
 
-    <!-- Dropzone (When No Video and Not Uploading) -->
-    <div
-      v-else-if="!resolvedVideoUrl"
-      role="button"
-      tabindex="0"
-      :aria-label="isAr ? 'انقر أو اسحب ملف فيديو لرفعه' : 'Click or drag a video file to upload'"
-      @click="triggerUpload"
-      @keydown="handleKeydown"
-      @dragover.prevent="isDragging = true"
-      @dragleave.prevent="isDragging = false"
-      @drop.prevent="handleDrop"
-      :class="[
-        'w-full border-2 border-dashed rounded-2xl p-7 flex flex-col items-center justify-center gap-3 transition-all cursor-pointer select-none bg-slate-50/50 hover:bg-emerald-50/20 hover:border-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
-        isDragging ? 'border-emerald-500 bg-emerald-50/40 ring-2 ring-emerald-500/20' : 'border-slate-200'
-      ]"
-    >
-      <div class="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-xs">
-        <Film class="w-6 h-6" />
+    <!-- Dropzone Mode (When No Video and Not Uploading) -->
+    <div v-else-if="!resolvedVideoUrl" class="flex flex-col gap-2">
+      <!-- Modern Compression Settings Control -->
+      <div
+        class="flex flex-wrap items-center justify-between gap-3 px-3.5 py-2.5 bg-gradient-to-r from-violet-50/80 via-indigo-50/40 to-slate-50 border border-violet-100/90 rounded-xl text-xs transition-all shadow-2xs"
+      >
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div
+            class="w-7 h-7 rounded-lg bg-violet-100 text-violet-700 flex items-center justify-center shrink-0 shadow-2xs"
+          >
+            <Sparkles class="w-3.5 h-3.5 text-violet-600" />
+          </div>
+          <div class="flex flex-col min-w-0">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="font-bold text-slate-800">
+                {{ isAr ? 'ضغط الفيديو قبل الرفع' : 'Compress video before upload' }}
+              </span>
+              <span
+                class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-violet-100 text-violet-700 border border-violet-200 shrink-0"
+              >
+                {{ isAr ? 'توفير حتى 70%' : 'Save up to 70%' }}
+              </span>
+            </div>
+            <span class="text-[11px] text-slate-500 truncate">
+              {{
+                isAr
+                  ? 'يقلل حجم الملف لتسريع الرفع وتقليل استهلاك الباقة'
+                  : 'Reduces file size for faster upload and smooth playback'
+              }}
+            </span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2.5 shrink-0">
+          <!-- Quality Selector (Only when enabled) -->
+          <div
+            v-if="enableCompression"
+            class="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-0.5 shadow-2xs"
+          >
+            <button
+              type="button"
+              @click="compressionQuality = 'standard'"
+              :class="[
+                'px-2 py-0.5 rounded-md text-[11px] font-bold transition-all cursor-pointer',
+                compressionQuality === 'standard'
+                  ? 'bg-violet-600 text-white shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900',
+              ]"
+            >
+              720p HD ({{ isAr ? 'موصى به' : 'Recommended' }})
+            </button>
+            <button
+              type="button"
+              @click="compressionQuality = 'high'"
+              :class="[
+                'px-2 py-0.5 rounded-md text-[11px] font-bold transition-all cursor-pointer',
+                compressionQuality === 'high'
+                  ? 'bg-violet-600 text-white shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900',
+              ]"
+            >
+              1080p FHD
+            </button>
+          </div>
+
+          <!-- Toggle switch -->
+          <label class="relative inline-flex items-center cursor-pointer select-none" :title="isAr ? 'تفعيل أو تعطيل الضغط' : 'Toggle compression'">
+            <input
+              type="checkbox"
+              v-model="enableCompression"
+              class="sr-only peer"
+            />
+            <div
+              class="w-8 h-4.5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-violet-600 shadow-inner"
+            ></div>
+          </label>
+        </div>
       </div>
-      <div class="flex flex-col items-center text-center">
-        <span class="text-xs font-bold text-slate-800">
-          {{ isAr ? 'اسحب ملف الفيديو وأفلته هنا' : 'Drag & drop video file here' }}
-        </span>
-        <span class="text-[11px] text-slate-400 mt-0.5 font-medium">
-          {{ isAr ? 'أو انقر لاختيار ملف من جهازك' : 'or click to browse from device' }}
-        </span>
-        <span class="text-[10px] text-slate-400 mt-2 px-2.5 py-0.5 rounded-md bg-slate-100/80 font-mono">
-          {{ defaultHint }}
-        </span>
+
+      <!-- Main Dropzone Area -->
+      <div
+        role="button"
+        tabindex="0"
+        :aria-label="isAr ? 'انقر أو اسحب ملف فيديو لرفعه' : 'Click or drag a video file to upload'"
+        @click="triggerUpload"
+        @keydown="handleKeydown"
+        @dragover.prevent="isDragging = true"
+        @dragleave.prevent="isDragging = false"
+        @drop.prevent="handleDrop"
+        :class="[
+          'w-full border-2 border-dashed rounded-2xl p-7 flex flex-col items-center justify-center gap-3 transition-all cursor-pointer select-none bg-slate-50/50 hover:bg-emerald-50/20 hover:border-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
+          isDragging
+            ? 'border-emerald-500 bg-emerald-50/40 ring-2 ring-emerald-500/20'
+            : 'border-slate-200',
+        ]"
+      >
+        <div
+          class="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-xs"
+        >
+          <Film class="w-6 h-6" />
+        </div>
+        <div class="flex flex-col items-center text-center">
+          <span class="text-xs font-bold text-slate-800">
+            {{ isAr ? 'اسحب ملف الفيديو وأفلته هنا' : 'Drag & drop video file here' }}
+          </span>
+          <span class="text-[11px] text-slate-400 mt-0.5 font-medium">
+            {{ isAr ? 'أو انقر لاختيار ملف من جهازك' : 'or click to browse from device' }}
+          </span>
+          <span
+            class="text-[10px] text-slate-400 mt-2 px-2.5 py-0.5 rounded-md bg-slate-100/80 font-mono"
+          >
+            {{ defaultHint }}
+          </span>
+        </div>
       </div>
     </div>
 
-    <!-- Video Preview & Player Mode -->
+    <!-- Video Preview & Player Mode (After Upload or When Video is Present) -->
     <div v-else class="flex flex-col gap-2.5">
-      <div class="relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-950 shadow-inner aspect-video flex items-center justify-center">
+      <!-- Video Player -->
+      <div
+        class="relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-950 shadow-inner aspect-video flex items-center justify-center"
+      >
         <video
           ref="videoPlayerRef"
           :src="resolvedVideoUrl"
@@ -681,11 +888,38 @@ onUnmounted(() => {
         ></video>
       </div>
 
+      <!-- Compression Success Savings Callout (If video was compressed) -->
+      <div
+        v-if="compressedStats"
+        class="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-linear-to-r from-emerald-50/90 via-teal-50/50 to-slate-50 border border-emerald-200 text-xs shadow-2xs"
+      >
+        <div class="flex items-center gap-2">
+          <Zap class="w-4 h-4 text-emerald-600 shrink-0" />
+          <span class="font-bold text-emerald-900">
+            {{
+              isAr
+                ? `تم ضغط الفيديو بنجاح: تم تقليل الحجم من ${formatFileSize(compressedStats.original)} إلى ${formatFileSize(compressedStats.compressed)}`
+                : `Video compressed successfully: ${formatFileSize(compressedStats.original)} ➔ ${formatFileSize(compressedStats.compressed)}`
+            }}
+          </span>
+        </div>
+        <span
+          class="px-2 py-0.5 rounded-md bg-emerald-600 text-white font-bold text-[10px] font-mono shadow-2xs shrink-0"
+        >
+          {{ isAr ? `توفير ${compressedStats.savedPercentage}%` : `${compressedStats.savedPercentage}% saved` }}
+        </span>
+      </div>
+
       <!-- Action & Info Toolbar -->
-      <div class="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-slate-50 border border-slate-200/80 rounded-xl">
+      <div
+        class="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-slate-50 border border-slate-200/80 rounded-xl"
+      >
         <div class="flex items-center gap-2 min-w-0">
           <Film class="w-4 h-4 text-emerald-600 shrink-0" />
-          <span class="text-xs font-bold text-slate-800 truncate max-w-[180px] sm:max-w-xs font-mono" :title="modelValue || uploadFileName">
+          <span
+            class="text-xs font-bold text-slate-800 truncate max-w-[180px] sm:max-w-xs font-mono"
+            :title="modelValue || uploadFileName"
+          >
             {{ uploadFileName || modelValue }}
           </span>
           <span
@@ -705,7 +939,10 @@ onUnmounted(() => {
             class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-200 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
             :title="isAr ? 'التقاط إطار كصورة مصغرة' : 'Capture frame as thumbnail'"
           >
-            <CheckCircle2 v-if="thumbnailCapturedSuccess" class="w-3.5 h-3.5 text-emerald-600" />
+            <CheckCircle2
+              v-if="thumbnailCapturedSuccess"
+              class="w-3.5 h-3.5 text-emerald-600"
+            />
             <Camera v-else class="w-3.5 h-3.5 text-slate-500" />
             <span>{{ isAr ? 'التقاط غلاف' : 'Capture Frame' }}</span>
           </button>

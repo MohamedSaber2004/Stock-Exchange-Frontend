@@ -11,7 +11,9 @@ import {
   Loader2,
   Zap,
   Clock,
-  Info
+  Info,
+  Sparkles,
+  FastForward,
 } from 'lucide-vue-next'
 import { useLocale } from '@/composables/useLocale'
 
@@ -22,26 +24,35 @@ interface Props {
   uploadedBytes?: number
   bytesPerSecond?: number
   etaSeconds?: number
-  status?: 'uploading' | 'processing' | 'success' | 'error' | 'idle'
+  status?: 'uploading' | 'processing' | 'success' | 'error' | 'idle' | 'compressing'
+  statusCustomText?: string
   errorMessage?: string
   errorHint?: string
   canCancel?: boolean
   canRetry?: boolean
+  canSkip?: boolean
   mediaType?: 'video' | 'image' | 'file' | 'audio'
+  savingsBadge?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   progress: 0,
   status: 'uploading',
+  statusCustomText: '',
+  errorMessage: '',
+  errorHint: '',
   canCancel: true,
   canRetry: true,
-  mediaType: 'file'
+  canSkip: false,
+  mediaType: 'file',
+  savingsBadge: '',
 })
 
 const emit = defineEmits<{
   (e: 'cancel'): void
   (e: 'retry'): void
   (e: 'remove'): void
+  (e: 'skip'): void
 }>()
 
 const { isAr } = useLocale()
@@ -61,7 +72,12 @@ const formattedTotalSize = computed(() => {
 })
 
 const formattedTransfer = computed(() => {
-  if (props.uploadedBytes !== undefined && props.uploadedBytes > 0 && typeof props.fileSize === 'number' && props.fileSize > 0) {
+  if (
+    props.uploadedBytes !== undefined &&
+    props.uploadedBytes > 0 &&
+    typeof props.fileSize === 'number' &&
+    props.fileSize > 0
+  ) {
     const uploaded = formatBytes(props.uploadedBytes)
     const total = formatBytes(props.fileSize)
     return `${uploaded} / ${total}`
@@ -99,6 +115,14 @@ const clampedProgress = computed(() => {
 })
 
 const statusText = computed(() => {
+  if (props.statusCustomText) {
+    return props.statusCustomText
+  }
+  if (props.status === 'compressing') {
+    return isAr.value
+      ? `جاري ضغط الفيديو... ${clampedProgress.value}%`
+      : `Compressing video... ${clampedProgress.value}%`
+  }
   if (props.status === 'success') {
     return isAr.value ? 'اكتمل الرفع بنجاح' : 'Upload completed successfully'
   }
@@ -128,6 +152,7 @@ const mediaIcon = computed(() => {
   <div
     class="w-full bg-white rounded-xl border p-4 shadow-xs transition-all duration-300"
     :class="{
+      'border-violet-300/80 bg-violet-50/25': status === 'compressing',
       'border-emerald-300/80 bg-emerald-50/25': status === 'success',
       'border-rose-300/80 bg-rose-50/30': status === 'error',
       'border-indigo-300/80 bg-indigo-50/20': status === 'processing',
@@ -151,22 +176,35 @@ const mediaIcon = computed(() => {
         <div
           class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors shadow-2xs"
           :class="{
+            'bg-violet-100 text-violet-700 ring-2 ring-violet-200/60 animate-pulse': status === 'compressing',
             'bg-emerald-100 text-emerald-700 ring-2 ring-emerald-200/50': status === 'success',
             'bg-rose-100 text-rose-700 ring-2 ring-rose-200/50': status === 'error',
             'bg-indigo-100 text-indigo-700 ring-2 ring-indigo-200/50 animate-pulse': status === 'processing',
             'bg-slate-100 text-slate-700': status === 'uploading' || status === 'idle'
           }"
         >
-          <CheckCircle2 v-if="status === 'success'" class="w-5 h-5 text-emerald-600" />
+          <Sparkles v-if="status === 'compressing'" class="w-5 h-5 text-violet-600" />
+          <CheckCircle2 v-else-if="status === 'success'" class="w-5 h-5 text-emerald-600" />
           <AlertCircle v-else-if="status === 'error'" class="w-5 h-5 text-rose-600" />
           <Loader2 v-else-if="status === 'processing'" class="w-5 h-5 text-indigo-600 animate-spin" />
           <component :is="mediaIcon" v-else class="w-5 h-5 text-slate-600" />
         </div>
 
         <div class="flex flex-col min-w-0">
-          <span class="text-xs font-bold text-slate-800 truncate" :title="fileName">
-            {{ fileName }}
-          </span>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-slate-800 truncate" :title="fileName">
+              {{ fileName }}
+            </span>
+            <!-- Savings Badge -->
+            <span
+              v-if="savingsBadge"
+              class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-700 text-[10px] font-bold font-mono shrink-0 border border-emerald-200"
+            >
+              <Zap class="w-3 h-3 text-emerald-600" />
+              {{ savingsBadge }}
+            </span>
+          </div>
+
           <div class="flex items-center flex-wrap gap-2 text-[11px] text-slate-500 mt-0.5">
             <span v-if="formattedTransfer" class="font-medium text-slate-600 tabular-nums">
               {{ formattedTransfer }}
@@ -174,13 +212,14 @@ const mediaIcon = computed(() => {
             <span v-if="formattedTransfer" class="text-slate-300">•</span>
             <span
               :class="{
+                'text-violet-700 font-semibold flex items-center gap-1': status === 'compressing',
                 'text-emerald-700 font-semibold': status === 'success',
                 'text-rose-600 font-semibold': status === 'error',
                 'text-indigo-600 font-semibold flex items-center gap-1': status === 'processing',
                 'text-slate-600': status === 'uploading'
               }"
             >
-              <Loader2 v-if="status === 'processing'" class="w-3 h-3 animate-spin inline" />
+              <Loader2 v-if="status === 'processing' || status === 'compressing'" class="w-3 h-3 animate-spin inline" />
               {{ statusText }}
             </span>
           </div>
@@ -207,15 +246,28 @@ const mediaIcon = computed(() => {
 
         <!-- Clamped Percentage Badge -->
         <span
-          v-if="status === 'uploading' || status === 'processing'"
+          v-if="status === 'uploading' || status === 'processing' || status === 'compressing'"
           class="text-xs font-bold tabular-nums px-2.5 py-1 rounded-lg border shadow-2xs transition-colors"
           :class="{
+            'bg-violet-50 text-violet-700 border-violet-200/80': status === 'compressing',
             'bg-indigo-50 text-indigo-700 border-indigo-200/80': status === 'processing',
             'bg-emerald-50 text-emerald-700 border-emerald-200/80': status === 'uploading'
           }"
         >
           {{ clampedProgress }}%
         </span>
+
+        <!-- Skip Compression Button -->
+        <button
+          v-if="status === 'compressing' && canSkip"
+          type="button"
+          @click="emit('skip')"
+          class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-violet-100 hover:bg-violet-200 text-violet-800 border border-violet-200/80 shadow-2xs transition-colors cursor-pointer"
+          :title="isAr ? 'تخطي مرحلة الضغط والبدء في رفع الملف الأصلي فوراً' : 'Skip compression and upload original file directly'"
+        >
+          <FastForward class="w-3.5 h-3.5" />
+          <span class="hidden sm:inline">{{ isAr ? 'تخطي الضغط' : 'Skip Compression' }}</span>
+        </button>
 
         <!-- Retry Button (Text + Icon on Error) -->
         <button
@@ -231,14 +283,14 @@ const mediaIcon = computed(() => {
 
         <!-- Cancel / Remove Button -->
         <button
-          v-if="(status === 'uploading' && canCancel) || status === 'success' || status === 'error'"
+          v-if="((status === 'uploading' || status === 'compressing') && canCancel) || status === 'success' || status === 'error'"
           type="button"
-          @click="status === 'uploading' ? emit('cancel') : emit('remove')"
+          @click="(status === 'uploading' || status === 'compressing') ? emit('cancel') : emit('remove')"
           class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:outline-none cursor-pointer"
-          :title="status === 'uploading' ? (isAr ? 'إلغاء الرفع' : 'Cancel upload') : (isAr ? 'حذف' : 'Remove')"
+          :title="(status === 'uploading' || status === 'compressing') ? (isAr ? 'إلغاء' : 'Cancel') : (isAr ? 'حذف' : 'Remove')"
           :aria-label="
-            status === 'uploading'
-              ? (isAr ? `إلغاء رفع ${fileName}` : `Cancel uploading ${fileName}`)
+            (status === 'uploading' || status === 'compressing')
+              ? (isAr ? `إلغاء العملية ${fileName}` : `Cancel process ${fileName}`)
               : (isAr ? `حذف ${fileName}` : `Remove ${fileName}`)
           "
         >
@@ -261,14 +313,15 @@ const mediaIcon = computed(() => {
         :class="{
           'bg-emerald-500': status === 'success',
           'bg-rose-500': status === 'error',
+          'bg-linear-to-r from-violet-600 via-indigo-600 to-purple-600': status === 'compressing',
           'bg-linear-to-r from-indigo-500 via-purple-500 to-indigo-600': status === 'processing',
           'bg-linear-to-r from-emerald-500 via-teal-400 to-emerald-600': status === 'uploading'
         }"
         :style="{ width: `${clampedProgress}%` }"
       >
-        <!-- Animated Shimmer Stripe for Active Upload or Processing -->
+        <!-- Animated Shimmer Stripe for Active Upload, Compression, or Processing -->
         <div
-          v-if="status === 'uploading' || status === 'processing'"
+          v-if="status === 'uploading' || status === 'processing' || status === 'compressing'"
           class="absolute inset-0 bg-white/35 animate-pulse"
         />
       </div>
