@@ -300,11 +300,7 @@ export class AttachmentRepository implements IAttachmentRepository {
     return resolveUrlHelper(fileName, this.httpClient.getBaseUrl())
   }
 
-  getFileDownloadUrl(
-    fileName: string,
-    _mediaType: MediaType = MediaType.Image,
-    _place: number = 0
-  ): string {
+  getFileDownloadUrl(fileName: string): string {
     return this.resolveAttachmentUrl(fileName)
   }
 

@@ -24,6 +24,7 @@ const videoId = computed(() => route.params.id as string)
 const categories = ref<VideoCategory[]>([])
 const isLoading = ref(true)
 const isSubmitting = ref(false)
+const isVideoUploading = ref(false)
 const originalVideo = ref<VideoDto | null>(null)
 
 const form = ref({
@@ -102,6 +103,14 @@ const loadVideo = async () => {
 }
 
 const handleSave = async () => {
+  if (isVideoUploading.value) {
+    toast.warning(
+      isAr.value
+        ? 'يرجى الانتظار حتى يكتمل رفع ملف الفيديو'
+        : 'Please wait until the video finishes uploading'
+    )
+    return
+  }
   if (!form.value.titleEn.trim()) {
     toast.error(isAr.value ? 'يرجى إدخال عنوان الفيديو بالإنجليزية' : 'Please enter video title in English')
     return
@@ -306,6 +315,7 @@ onMounted(async () => {
               v-model="form.videoUrl"
               v-model:thumbnail-url="form.thumbnailUrl"
               v-model:duration-seconds="form.durationSeconds"
+              v-model:is-uploading="isVideoUploading"
               :label="isAr ? 'ملف الفيديو *' : 'Video File *'"
               :max-duration-seconds="3600"
               :hint="isAr ? 'صيغ: MP4, MOV, MKV (حتى ساعة واحدة / يتم رفعه والتقاط الغلاف تلقائياً)' : 'Formats: MP4, MOV, MKV (up to 1 hour / uploaded & cover auto-captured)'"
@@ -413,12 +423,16 @@ onMounted(async () => {
           <button
             type="button"
             @click="handleSave"
-            :disabled="isSubmitting"
-            class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs cursor-pointer text-center disabled:opacity-50"
+            :disabled="isSubmitting || isVideoUploading"
+            class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs cursor-pointer text-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span v-if="isSubmitting" class="inline-flex items-center gap-2">
               <div class="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
               {{ isAr ? 'جاري الحفظ...' : 'Saving...' }}
+            </span>
+            <span v-else-if="isVideoUploading" class="inline-flex items-center gap-2">
+              <div class="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+              {{ isAr ? 'جاري رفع الفيديو...' : 'Uploading video...' }}
             </span>
             <span v-else>{{ isAr ? 'حفظ التعديلات' : 'Save Changes' }}</span>
           </button>
