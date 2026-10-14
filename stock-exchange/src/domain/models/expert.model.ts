@@ -1,3 +1,11 @@
+export interface ExpertConsultationAreaDto {
+  id?: string
+  textEn: string
+  textAr: string
+  displayOrder?: number
+  text?: string
+}
+
 export interface ExpertDto {
   id: string
   fullNameEn: string
@@ -11,6 +19,7 @@ export interface ExpertDto {
   createdAt: string
   fullName?: string
   title?: string
+  consultationAreas?: ExpertConsultationAreaDto[]
 }
 
 export interface GetExpertsParams {
@@ -31,6 +40,7 @@ export interface CreateExpertPayload {
   displayOrder?: number
   isFeaturedOnHome?: boolean
   isActive?: boolean
+  consultationAreas?: ExpertConsultationAreaDto[]
 }
 
 export interface UpdateExpertPayload {
@@ -42,4 +52,5 @@ export interface UpdateExpertPayload {
   displayOrder?: number
   isFeaturedOnHome?: boolean
   isActive?: boolean
+  consultationAreas?: ExpertConsultationAreaDto[]
 }

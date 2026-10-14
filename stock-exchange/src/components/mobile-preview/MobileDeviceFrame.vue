@@ -15,7 +15,8 @@ import {
   Calendar,
   Layers,
   User,
-  Star
+  Star,
+  Globe
 } from 'lucide-vue-next'
 import { resolveAttachmentUrl, handleImageError } from '@/utils/attachment'
 import type { ArticleDto } from '@/domain/models/article.model'
@@ -479,38 +480,37 @@ const formatDate = (dateStr?: string) => {
                 </p>
               </div>
 
-              <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-bold"
-                :class="expert.isActive ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/30' : 'bg-slate-700 text-slate-300'"
-              >
-                <span class="w-1.5 h-1.5 rounded-full" :class="expert.isActive ? 'bg-emerald-400' : 'bg-slate-400'"></span>
-                <span>{{ expert.isActive ? (isAr ? 'متاح للاستشارات والتحليل' : 'Active Analyst') : (isAr ? 'غير متاح حالياً' : 'Currently Inactive') }}</span>
+              <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9.5px] font-bold bg-emerald-950/70 text-emerald-300 border border-emerald-500/30 shadow-2xs">
+                <Globe class="w-3 h-3 text-emerald-400" />
+                <span>{{ isAr ? 'منهج الاستشارات والتحليل' : 'Consultation & Analysis Curriculum' }}</span>
               </div>
             </div>
 
-            <!-- Expert Info Card -->
+            <!-- Expert Info Card: Consultation Areas -->
             <div class="bg-white rounded-2xl border border-slate-100 p-3.5 shadow-2xs space-y-2.5">
               <h3 class="text-xs font-black text-slate-800">
                 {{ isAr ? 'المجالات الاستشارية:' : 'Consultation Areas:' }}
               </h3>
-              <div class="space-y-2 text-[11px] text-slate-600">
-                <div class="flex items-start gap-2">
+              <div v-if="expert.consultationAreas && expert.consultationAreas.length > 0" class="space-y-2 text-[11px] text-slate-600">
+                <div
+                  v-for="(area, idx) in expert.consultationAreas"
+                  :key="area.id || idx"
+                  class="flex items-start gap-2"
+                >
                   <CheckCircle class="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                  <span>{{ isAr ? 'تحليل القوائم المالية وتقارير الشركات' : 'Financial statements & company report analysis' }}</span>
+                  <span class="leading-relaxed font-medium">
+                    {{ isAr ? (area.textAr || area.textEn || area.text) : (area.textEn || area.textAr || area.text) }}
+                  </span>
                 </div>
-                <div class="flex items-start gap-2">
-                  <CheckCircle class="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                  <span>{{ isAr ? 'متابعة حركة السيولة والمؤشرات الفنية' : 'Liquidity trends & technical chart patterns' }}</span>
-                </div>
-                <div class="flex items-start gap-2">
-                  <CheckCircle class="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                  <span>{{ isAr ? 'تقديم رؤى استثمارية وتوصيات إرشادية' : 'Market insights & strategic investment guidance' }}</span>
-                </div>
+              </div>
+              <div v-else class="py-3 px-2 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-center text-[10px] text-slate-400">
+                {{ isAr ? 'لا توجد مجالات استشارية مسجلة حالياً' : 'No consultation areas registered yet' }}
               </div>
             </div>
 
             <!-- Disclaimer Box -->
             <div class="p-3 rounded-2xl bg-slate-50 border border-slate-100 text-[10px] text-slate-500 leading-relaxed text-center">
-              {{ isAr ? 'تحليلات الخبير تعبر عن رؤيته المهنية بهدف التوعية والتثقيف المالي.' : 'Expert views represent professional commentary intended for market awareness.' }}
+              {{ isAr ? 'تحليلات الخبير تعبر عن رؤيته المهنية بهدف التوعية والتثقيف المالي.' : "The expert's analyses express their professional view, aiming at financial awareness and education." }}
             </div>
           </div>
 

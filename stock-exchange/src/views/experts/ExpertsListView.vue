@@ -9,7 +9,10 @@ import {
   CheckCircle2,
   XCircle,
   Star,
-  User
+  User,
+  ChevronUp,
+  ChevronDown,
+  Trash2
 } from 'lucide-vue-next'
 import AppShell from '@/components/layout/AppShell.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
@@ -20,7 +23,7 @@ import ActionMenu from '@/components/ui/ActionMenu.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { useI18n } from 'vue-i18n'
 import { coreServices } from '@/di'
-import type { ExpertDto, CreateExpertPayload, UpdateExpertPayload } from '@/domain/models/expert.model'
+import type { ExpertDto, CreateExpertPayload, UpdateExpertPayload, ExpertConsultationAreaDto } from '@/domain/models/expert.model'
 import type { AppError } from '@/domain/models/common.model'
 import { resolveAttachmentUrl, handleImageError } from '@/utils/attachment'
 
@@ -58,6 +61,7 @@ interface FormState {
   displayOrder: number
   isFeaturedOnHome: boolean
   isActive: boolean
+  consultationAreas: Array<{ id?: string; textEn: string; textAr: string; displayOrder: number }>
 }
 
 const form = ref<FormState>({
@@ -68,7 +72,8 @@ const form = ref<FormState>({
   avatarUrl: '',
   displayOrder: 1,
   isFeaturedOnHome: true,
-  isActive: true
+  isActive: true,
+  consultationAreas: []
 })
 
 const formErrors = ref<Record<string, string>>({})
@@ -130,6 +135,26 @@ watch(currentPage, () => {
   fetchExperts()
 })
 
+const addConsultationArea = () => {
+  form.value.consultationAreas.push({
+    textAr: '',
+    textEn: '',
+    displayOrder: form.value.consultationAreas.length + 1
+  })
+}
+
+const removeConsultationArea = (idx: number) => {
+  form.value.consultationAreas.splice(idx, 1)
+}
+
+const moveConsultationArea = (idx: number, direction: 'up' | 'down') => {
+  const targetIdx = direction === 'up' ? idx - 1 : idx + 1
+  if (targetIdx < 0 || targetIdx >= form.value.consultationAreas.length) return
+  const temp = form.value.consultationAreas[idx]!
+  form.value.consultationAreas[idx] = form.value.consultationAreas[targetIdx]!
+  form.value.consultationAreas[targetIdx] = temp
+}
+
 const openCreateModal = () => {
   modalMode.value = 'create'
   editingId.value = null
@@ -141,7 +166,8 @@ const openCreateModal = () => {
     avatarUrl: '',
     displayOrder: (experts.value.length || 0) + 1,
     isFeaturedOnHome: true,
-    isActive: true
+    isActive: true,
+    consultationAreas: []
   }
   formErrors.value = {}
   isModalOpen.value = true
@@ -158,7 +184,15 @@ const openEditModal = (expert: ExpertDto) => {
     avatarUrl: expert.avatarUrl || '',
     displayOrder: expert.displayOrder ?? 1,
     isFeaturedOnHome: expert.isFeaturedOnHome ?? false,
-    isActive: expert.isActive ?? true
+    isActive: expert.isActive ?? true,
+    consultationAreas: expert.consultationAreas
+      ? expert.consultationAreas.map((a, i) => ({
+          id: a.id,
+          textEn: a.textEn || '',
+          textAr: a.textAr || '',
+          displayOrder: a.displayOrder ?? (i + 1)
+        }))
+      : []
   }
   formErrors.value = {}
   isModalOpen.value = true
@@ -197,6 +231,17 @@ const validateForm = (): boolean => {
       : 'Expert avatar picture is required'
   }
 
+  // Validate consultation areas
+  for (let i = 0; i < form.value.consultationAreas.length; i++) {
+    const area = form.value.consultationAreas[i]!
+    const hasAr = Boolean(area.textAr?.trim())
+    const hasEn = Boolean(area.textEn?.trim())
+    if (hasAr !== hasEn) {
+      toast.error(t('experts.consultationAreaRequired'))
+      return false
+    }
+  }
+
   formErrors.value = errors
   if (Object.keys(errors).length > 0) {
     const firstError = Object.values(errors)[0]
@@ -211,6 +256,15 @@ const handleSubmit = async () => {
 
   isSubmitting.value = true
   try {
+    const validAreas = form.value.consultationAreas
+      .filter(a => a.textAr.trim() && a.textEn.trim())
+      .map((a, idx) => ({
+        id: a.id,
+        textAr: a.textAr.trim(),
+        textEn: a.textEn.trim(),
+        displayOrder: idx + 1
+      }))
+
     const payload: CreateExpertPayload | UpdateExpertPayload = {
       fullNameEn: form.value.fullNameEn.trim() || form.value.fullNameAr.trim(),
       fullNameAr: form.value.fullNameAr.trim() || form.value.fullNameEn.trim(),
@@ -219,7 +273,8 @@ const handleSubmit = async () => {
       avatarUrl: form.value.avatarUrl.trim() || null,
       displayOrder: Number(form.value.displayOrder) || 1,
       isFeaturedOnHome: Boolean(form.value.isFeaturedOnHome),
-      isActive: Boolean(form.value.isActive)
+      isActive: Boolean(form.value.isActive),
+      consultationAreas: validAreas
     }
 
     if (modalMode.value === 'create') {
@@ -631,6 +686,102 @@ onMounted(() => {
               aspect-ratio="aspect-square"
             />
             <p v-if="formErrors.avatarUrl" class="text-xs text-rose-500 font-semibold">{{ formErrors.avatarUrl }}</p>
+          </div>
+
+          <!-- Consultation Areas Management Section -->
+          <div class="flex flex-col gap-3 pt-3 border-t border-slate-100">
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="text-xs font-bold text-slate-800">
+                  {{ t('experts.consultationAreasTitle') }}
+                </label>
+                <p class="text-[11px] text-slate-400">
+                  {{ t('experts.consultationAreasSubtitle') }}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                @click="addConsultationArea"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold border border-emerald-200/80 transition-colors cursor-pointer"
+              >
+                <Plus class="w-3.5 h-3.5" />
+                <span>{{ t('experts.addConsultationArea') }}</span>
+              </button>
+            </div>
+
+            <div v-if="form.consultationAreas.length > 0" class="flex flex-col gap-3 max-h-56 overflow-y-auto pe-1">
+              <div
+                v-for="(item, idx) in form.consultationAreas"
+                :key="idx"
+                class="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2 relative group"
+              >
+                <div class="flex items-center justify-between pb-1 border-b border-slate-200/40">
+                  <span class="text-[11px] font-bold text-slate-500">
+                    #{{ idx + 1 }}
+                  </span>
+                  <div class="flex items-center gap-1">
+                    <button
+                      type="button"
+                      :disabled="idx === 0"
+                      @click="moveConsultationArea(idx, 'up')"
+                      class="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors disabled:opacity-30 cursor-pointer"
+                      title="Move Up"
+                    >
+                      <ChevronUp class="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      :disabled="idx === form.consultationAreas.length - 1"
+                      @click="moveConsultationArea(idx, 'down')"
+                      class="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors disabled:opacity-30 cursor-pointer"
+                      title="Move Down"
+                    >
+                      <ChevronDown class="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      @click="removeConsultationArea(idx)"
+                      class="p-1 rounded-md text-red-500 hover:bg-red-50 transition-colors cursor-pointer ms-1"
+                      title="Remove"
+                    >
+                      <Trash2 class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div class="flex flex-col gap-1">
+                    <label class="text-[10px] font-semibold text-slate-500">
+                      {{ t('experts.consultationAreaTextAr') }}
+                    </label>
+                    <input
+                      v-model="item.textAr"
+                      type="text"
+                      dir="rtl"
+                      :placeholder="t('experts.consultationAreaArPlaceholder')"
+                      class="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 transition-all"
+                    />
+                  </div>
+                  <div class="flex flex-col gap-1">
+                    <label class="text-[10px] font-semibold text-slate-500">
+                      {{ t('experts.consultationAreaTextEn') }}
+                    </label>
+                    <input
+                      v-model="item.textEn"
+                      type="text"
+                      dir="ltr"
+                      :placeholder="t('experts.consultationAreaEnPlaceholder')"
+                      class="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div v-else class="text-center py-4 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-[11px] text-slate-400">
+              {{ t('experts.noConsultationAreas') }}
+            </div>
           </div>
 
           <!-- Feature on Home & Active Toggles -->

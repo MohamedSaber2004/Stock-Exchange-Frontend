@@ -14,7 +14,11 @@ import {
   Globe,
   Smartphone,
   RefreshCw,
-  X
+  X,
+  Plus,
+  ChevronUp,
+  ChevronDown,
+  Briefcase
 } from 'lucide-vue-next'
 import AppShell from '@/components/layout/AppShell.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
@@ -44,6 +48,13 @@ const activeTab = ref<'ar' | 'en'>('ar')
 const isTogglingActive = ref(false)
 const isTogglingFeatured = ref(false)
 
+interface ConsultationAreaFormItem {
+  id?: string
+  textEn: string
+  textAr: string
+  displayOrder: number
+}
+
 // Edit Modal State
 const isEditModalOpen = ref(false)
 const isSubmitting = ref(false)
@@ -55,9 +66,30 @@ const editForm = ref({
   avatarUrl: '',
   displayOrder: 1,
   isFeaturedOnHome: true,
-  isActive: true
+  isActive: true,
+  consultationAreas: [] as ConsultationAreaFormItem[]
 })
 const editErrors = ref<Record<string, string>>({})
+
+const addEditConsultationArea = () => {
+  editForm.value.consultationAreas.push({
+    textAr: '',
+    textEn: '',
+    displayOrder: editForm.value.consultationAreas.length + 1
+  })
+}
+
+const removeEditConsultationArea = (idx: number) => {
+  editForm.value.consultationAreas.splice(idx, 1)
+}
+
+const moveEditConsultationArea = (idx: number, direction: 'up' | 'down') => {
+  const targetIdx = direction === 'up' ? idx - 1 : idx + 1
+  if (targetIdx < 0 || targetIdx >= editForm.value.consultationAreas.length) return
+  const temp = editForm.value.consultationAreas[idx]!
+  editForm.value.consultationAreas[idx] = editForm.value.consultationAreas[targetIdx]!
+  editForm.value.consultationAreas[targetIdx] = temp
+}
 
 const loadExpert = async () => {
   isLoading.value = true
@@ -162,7 +194,15 @@ const openEditModal = () => {
     avatarUrl: expert.value.avatarUrl || '',
     displayOrder: expert.value.displayOrder ?? 1,
     isFeaturedOnHome: expert.value.isFeaturedOnHome ?? true,
-    isActive: expert.value.isActive ?? true
+    isActive: expert.value.isActive ?? true,
+    consultationAreas: expert.value.consultationAreas
+      ? expert.value.consultationAreas.map((a, i) => ({
+          id: a.id,
+          textEn: a.textEn || '',
+          textAr: a.textAr || '',
+          displayOrder: a.displayOrder ?? (i + 1)
+        }))
+      : []
   }
   editErrors.value = {}
   isEditModalOpen.value = true
@@ -195,6 +235,18 @@ const validateEditForm = (): boolean => {
       ? 'يرجى رفع الصورة الشخصية للخبير'
       : 'Expert avatar picture is required'
   }
+
+  // Validate consultation areas
+  for (let i = 0; i < editForm.value.consultationAreas.length; i++) {
+    const area = editForm.value.consultationAreas[i]!
+    const hasAr = Boolean(area.textAr?.trim())
+    const hasEn = Boolean(area.textEn?.trim())
+    if (hasAr !== hasEn) {
+      toast.error(t('experts.consultationAreaRequired'))
+      return false
+    }
+  }
+
   editErrors.value = errors
   if (Object.keys(errors).length > 0) {
     const first = Object.values(errors)[0]
@@ -208,6 +260,15 @@ const handleSaveEdit = async () => {
   if (!expert.value || !validateEditForm()) return
   isSubmitting.value = true
   try {
+    const validAreas = editForm.value.consultationAreas
+      .filter(a => a.textAr.trim() && a.textEn.trim())
+      .map((a, idx) => ({
+        id: a.id,
+        textAr: a.textAr.trim(),
+        textEn: a.textEn.trim(),
+        displayOrder: idx + 1
+      }))
+
     const payload: UpdateExpertPayload = {
       fullNameEn: editForm.value.fullNameEn.trim() || editForm.value.fullNameAr.trim(),
       fullNameAr: editForm.value.fullNameAr.trim() || editForm.value.fullNameEn.trim(),
@@ -216,7 +277,8 @@ const handleSaveEdit = async () => {
       avatarUrl: editForm.value.avatarUrl.trim() || null,
       displayOrder: Number(editForm.value.displayOrder) || 1,
       isFeaturedOnHome: Boolean(editForm.value.isFeaturedOnHome),
-      isActive: Boolean(editForm.value.isActive)
+      isActive: Boolean(editForm.value.isActive),
+      consultationAreas: validAreas
     }
 
     await coreServices.experts.update(expert.value.id, payload)
@@ -510,6 +572,68 @@ onMounted(() => {
                 </div>
               </div>
 
+              <!-- Consultation Areas Card -->
+              <div class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-2xs">
+                <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                  <div class="flex items-center gap-2">
+                    <Briefcase class="w-4 h-4 text-emerald-600" />
+                    <div>
+                      <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700">
+                        {{ t('experts.consultationAreasTitle') }}
+                      </h3>
+                      <p class="text-[11px] text-slate-400">
+                        {{ t('experts.consultationAreasSubtitle') }}
+                      </p>
+                    </div>
+                  </div>
+
+                  <span
+                    v-if="expert.consultationAreas && expert.consultationAreas.length > 0"
+                    class="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-100"
+                  >
+                    {{ expert.consultationAreas.length }}
+                  </span>
+                </div>
+
+                <div class="pt-5">
+                  <div v-if="expert.consultationAreas && expert.consultationAreas.length > 0" class="space-y-3">
+                    <div
+                      v-for="(area, idx) in expert.consultationAreas"
+                      :key="area.id || idx"
+                      class="p-3.5 rounded-xl bg-slate-50/80 border border-slate-100 flex items-start gap-3 hover:bg-slate-50 transition-colors"
+                    >
+                      <div class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                        {{ idx + 1 }}
+                      </div>
+                      <div class="flex-1 space-y-1">
+                        <div class="flex items-center gap-2">
+                          <CheckCircle2 class="w-4 h-4 text-emerald-600 shrink-0" />
+                          <p class="text-xs font-bold text-slate-900 leading-snug">
+                            {{ activeTab === 'ar' ? (area.textAr || area.textEn) : (area.textEn || area.textAr) }}
+                          </p>
+                        </div>
+                        <p class="text-[11px] text-slate-400 ps-6">
+                          {{ activeTab === 'ar' ? area.textEn : area.textAr }}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div v-else class="text-center py-6 px-4 rounded-xl bg-slate-50 border border-dashed border-slate-200">
+                    <p class="text-xs text-slate-400 font-medium">
+                      {{ t('experts.noConsultationAreas') }}
+                    </p>
+                    <button
+                      type="button"
+                      @click="openEditModal"
+                      class="mt-2 text-xs font-bold text-emerald-600 hover:text-emerald-700 cursor-pointer"
+                    >
+                      + {{ t('experts.addConsultationArea') }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               <!-- Metadata Card -->
               <div class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-2xs">
                 <div class="flex items-center gap-2 pb-4 border-b border-slate-100">
@@ -701,6 +825,102 @@ onMounted(() => {
               min="1"
               class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all"
             />
+          </div>
+
+          <!-- Consultation Areas Management Section -->
+          <div class="space-y-3 pt-3 border-t border-slate-100">
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="block text-xs font-bold text-slate-800">
+                  {{ t('experts.consultationAreasTitle') }}
+                </label>
+                <p class="text-[11px] text-slate-400">
+                  {{ t('experts.consultationAreasSubtitle') }}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                @click="addEditConsultationArea"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold border border-emerald-200/80 transition-colors cursor-pointer"
+              >
+                <Plus class="w-3.5 h-3.5" />
+                <span>{{ t('experts.addConsultationArea') }}</span>
+              </button>
+            </div>
+
+            <div v-if="editForm.consultationAreas.length > 0" class="space-y-3 max-h-60 overflow-y-auto pe-1">
+              <div
+                v-for="(item, idx) in editForm.consultationAreas"
+                :key="idx"
+                class="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2 relative group"
+              >
+                <div class="flex items-center justify-between pb-1 border-b border-slate-200/40">
+                  <span class="text-[11px] font-bold text-slate-500">
+                    #{{ idx + 1 }}
+                  </span>
+                  <div class="flex items-center gap-1">
+                    <button
+                      type="button"
+                      :disabled="idx === 0"
+                      @click="moveEditConsultationArea(idx, 'up')"
+                      class="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors disabled:opacity-30 cursor-pointer"
+                      title="Move Up"
+                    >
+                      <ChevronUp class="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      :disabled="idx === editForm.consultationAreas.length - 1"
+                      @click="moveEditConsultationArea(idx, 'down')"
+                      class="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors disabled:opacity-30 cursor-pointer"
+                      title="Move Down"
+                    >
+                      <ChevronDown class="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      @click="removeEditConsultationArea(idx)"
+                      class="p-1 rounded-md text-red-500 hover:bg-red-50 transition-colors cursor-pointer ms-1"
+                      title="Remove"
+                    >
+                      <Trash2 class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label class="block text-[10px] font-semibold text-slate-500 mb-0.5">
+                      {{ t('experts.consultationAreaTextAr') }}
+                    </label>
+                    <input
+                      v-model="item.textAr"
+                      type="text"
+                      dir="rtl"
+                      :placeholder="t('experts.consultationAreaArPlaceholder')"
+                      class="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-[10px] font-semibold text-slate-500 mb-0.5">
+                      {{ t('experts.consultationAreaTextEn') }}
+                    </label>
+                    <input
+                      v-model="item.textEn"
+                      type="text"
+                      dir="ltr"
+                      :placeholder="t('experts.consultationAreaEnPlaceholder')"
+                      class="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div v-else class="text-center py-4 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-[11px] text-slate-400">
+              {{ t('experts.noConsultationAreas') }}
+            </div>
           </div>
 
           <!-- Toggles -->
